@@ -136,28 +136,21 @@ describe('SignInStore', () => {
       assert.equal(state?.kind, SignInStep.Authentication)
     })
 
-    it('redirects to dotcom flow for github.com URLs', async () => {
-      signInStore.beginGiteaSignIn()
-      await signInStore.setEndpoint('https://github.com')
+    // Gitea Desktop talks to Gitea instances only, so a github.com address is
+    // reported back to the user rather than sent down a dotcom sign-in flow.
+    for (const address of ['https://github.com', 'https://api.github.com']) {
+      it(`reports an error for ${address}`, async () => {
+        signInStore.beginGiteaSignIn()
+        await signInStore.setEndpoint(address)
 
-      const state = signInStore.getState()
-      // Should redirect to the Authentication step with the dotcom endpoint
-      assert.equal(state?.kind, SignInStep.Authentication)
-      if (state?.kind === SignInStep.Authentication) {
-        assert.equal(state.endpoint, getDotComAPIEndpoint())
-      }
-    })
-
-    it('redirects to dotcom flow for api.github.com URLs', async () => {
-      signInStore.beginGiteaSignIn()
-      await signInStore.setEndpoint('https://api.github.com')
-
-      const state = signInStore.getState()
-      assert.equal(state?.kind, SignInStep.Authentication)
-      if (state?.kind === SignInStep.Authentication) {
-        assert.equal(state.endpoint, getDotComAPIEndpoint())
-      }
-    })
+        const state = signInStore.getState()
+        assert.equal(state?.kind, SignInStep.EndpointEntry)
+        if (state?.kind === SignInStep.EndpointEntry) {
+          assert.notEqual(state.error, null)
+          assert.equal(state.loading, false)
+        }
+      })
+    }
 
     it('sets error for non-HTTPS URL', async () => {
       signInStore.beginGiteaSignIn()
@@ -172,7 +165,7 @@ describe('SignInStore', () => {
     })
 
     it('shows ExistingAccountWarning if enterprise account exists', async () => {
-      const endpoint = 'https://github.example.com/api/v3'
+      const endpoint = 'https://gitea.example.com/api/v1'
       const existingAccount = createEnterpriseAccount('user', endpoint)
       accountsStore = createAccountsStore()
       signInStore = new SignInStore(accountsStore)
@@ -180,7 +173,7 @@ describe('SignInStore', () => {
       await accountsStore.addAccount(existingAccount)
 
       signInStore.beginGiteaSignIn()
-      await signInStore.setEndpoint('https://github.example.com')
+      await signInStore.setEndpoint('https://gitea.example.com')
 
       const state = signInStore.getState()
       assert.equal(state?.kind, SignInStep.ExistingAccountWarning)

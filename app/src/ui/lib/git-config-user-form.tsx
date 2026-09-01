@@ -1,11 +1,7 @@
 import * as React from 'react'
 import { TextBox } from './text-box'
 import { Row } from './row'
-import {
-  Account,
-  isDotComAccount,
-  isEnterpriseAccount,
-} from '../../models/account'
+import { Account, isDotComAccount } from '../../models/account'
 import { Select } from './select'
 import { GitEmailNotFoundWarning } from './git-email-not-found-warning'
 import { getStealthEmailForAccount } from '../../lib/email'
@@ -169,14 +165,12 @@ export class GitConfigUserForm extends React.Component<
       return null
     }
 
-    // When the user signed in both accounts, show a suffix to differentiate
-    // the origin of each email address
-    const shouldShowAccountType =
-      this.props.accounts.some(isDotComAccount) &&
-      this.props.accounts.some(isEnterpriseAccount)
+    // Upstream distinguishes a GitHub.com account from an Enterprise one here.
+    // Every account is a Gitea account, so when there is more than one the
+    // thing that tells them apart is the instance they belong to.
+    const shouldShowAccountType = this.props.accounts.length > 1
 
-    const accountSuffix = (account: Account) =>
-      isDotComAccount(account) ? '(Gitea)' : '(Gitea)'
+    const accountSuffix = (account: Account) => `(${account.friendlyEndpoint})`
 
     return (
       <Row>

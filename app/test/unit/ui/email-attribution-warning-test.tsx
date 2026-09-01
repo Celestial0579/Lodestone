@@ -65,7 +65,7 @@ describe('GitEmailNotFoundWarning', () => {
 
     assert.notEqual(warning, null)
     assert.ok(
-      warning?.textContent?.includes('does not match your GitHub account')
+      warning?.textContent?.includes('does not match your Gitea account')
     )
     assert.equal(
       link.getAttribute('href'),
@@ -74,7 +74,7 @@ describe('GitEmailNotFoundWarning', () => {
     assert.equal(srOnly?.getAttribute('aria-live'), 'polite')
     assert.ok(
       srOnly?.textContent?.startsWith(
-        'This email address does not match your GitHub account.'
+        'This email address does not match your Gitea account.'
       )
     )
   })
@@ -90,7 +90,7 @@ describe('GitEmailNotFoundWarning', () => {
     const warning = view.container.querySelector('.git-email-not-found-warning')
 
     assert.notEqual(warning?.querySelector('.green-circle .check-icon'), null)
-    assert.ok(warning?.textContent?.includes('matches your GitHub account'))
+    assert.ok(warning?.textContent?.includes('matches your Gitea account'))
     assert.equal(
       screen.queryByRole('link', {
         name: 'Learn more about commit attribution',

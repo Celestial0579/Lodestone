@@ -161,7 +161,7 @@ describe('welcome and sign-in wrappers', () => {
       />
     )
 
-    assert.ok(screen.getByText('Sign in to your GitHub Enterprise'))
+    assert.ok(screen.getByText('Sign in to your Gitea instance'))
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     assert.deepEqual(advancedSteps, ['Start'])

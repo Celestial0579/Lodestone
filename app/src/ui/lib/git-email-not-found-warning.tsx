@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Account, isDotComAccount } from '../../models/account'
+import { Account } from '../../models/account'
 import { LinkButton } from './link-button'
 import { isAttributableEmailFor } from '../../lib/email'
 import { Octicon } from '../octicons'
@@ -86,14 +86,11 @@ export class GitEmailNotFoundWarning extends React.Component<IGitEmailNotFoundWa
   }
 
   private getAccountTypeDescription() {
-    if (this.props.accounts.length === 1) {
-      const accountType = isDotComAccount(this.props.accounts[0])
-        ? 'Gitea'
-        : 'Gitea'
-
-      return `your ${accountType} account`
-    }
-
-    return 'either of your Gitea nor Gitea accounts'
+    // Upstream distinguishes GitHub.com from Enterprise accounts here. Every
+    // account is a Gitea account, so the only thing that varies is whether the
+    // user has one or several.
+    return this.props.accounts.length === 1
+      ? 'your Gitea account'
+      : 'any of your Gitea accounts'
   }
 }

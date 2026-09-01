@@ -10,7 +10,7 @@ import { OkCancelButtonGroup } from '../dialog/ok-cancel-button-group'
 
 interface ICreateTutorialRepositoryDialogProps {
   /**
-   * The Gitea, or Gitea account that will
+   * The Gitea account that will
    * be the owner of the tutorial repository.
    */
   readonly account: Account

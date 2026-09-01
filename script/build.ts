@@ -202,7 +202,7 @@ function packageApp() {
       new RegExp('/\\.git($|/)'),
       new RegExp('/node_modules/\\.bin($|/)'),
     ],
-    appCopyright: `Copyright © ${new Date().getFullYear()} GitHub, Inc.`,
+    appCopyright: `Copyright © ${new Date().getFullYear()} ${getCompanyName()}. Portions copyright GitHub, Inc.`,
 
     // macOS
     appBundleId: getBundleID(),
@@ -239,7 +239,7 @@ function packageApp() {
     // Windows
     win32metadata: {
       CompanyName: getCompanyName(),
-      FileDescription: '',
+      FileDescription: getProductName(),
       OriginalFilename: '',
       ProductName: getProductName(),
       InternalName: getProductName(),
@@ -350,8 +350,14 @@ function copyDependencies() {
     { recursive: true, verbatimSymlinks: true }
   )
 
-  console.log('  Copying copilot…')
-  copyCopilotDependency()
+  // Copilot is switched off in Gitea Desktop: it talks to GitHub's GraphQL API,
+  // which Gitea does not implement. Its platform binaries are around 250 MB, so
+  // shipping them would more than triple the installer for a feature that can
+  // never run. Set GITEA_DESKTOP_BUNDLE_COPILOT=1 to include them anyway.
+  if (process.env.GITEA_DESKTOP_BUNDLE_COPILOT === '1') {
+    console.log('  Copying copilot…')
+    copyCopilotDependency()
+  }
 
   // Dev builds for macOS require a SSH wrapper to use SSH_ASKPASS
   if (process.platform === 'darwin' && isDevelopmentBuild) {

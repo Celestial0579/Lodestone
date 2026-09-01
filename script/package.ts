@@ -19,7 +19,7 @@ import {
   getIconDirectory,
 } from './dist-info'
 import { isGitHubActions } from './build-platforms'
-import { existsSync, rmSync, writeFileSync } from 'fs'
+import { copyFileSync, existsSync, rmSync, writeFileSync } from 'fs'
 import { getVersion } from '../app/package-info'
 import { computeBundleHashSync } from '../app/src/lib/compute-bundle-hash'
 import { rename } from 'fs/promises'
@@ -69,6 +69,34 @@ function packageOSX() {
   )
 }
 
+/**
+ * Squirrel shells out to `7z.exe` next to its own assembly, but
+ * electron-winstaller ships the archiver under architecture-suffixed names
+ * only. Without this the release packaging fails with a bare "the system cannot
+ * find the file specified" from deep inside Squirrel.
+ */
+function ensureSquirrelHasSevenZip() {
+  const vendor = join(
+    __dirname,
+    '..',
+    'node_modules',
+    'electron-winstaller',
+    'vendor'
+  )
+  const arch = getDistArchitecture()
+
+  for (const extension of ['exe', 'dll']) {
+    const expected = join(vendor, `7z.${extension}`)
+    const shipped = join(vendor, `7z-${arch}.${extension}`)
+
+    if (!existsSync(expected)) {
+      assertExistsSync(shipped)
+      copyFileSync(shipped, expected)
+      console.log(`Provisioned ${expected} from ${shipped}`)
+    }
+  }
+}
+
 function packageWindows() {
   const iconSource = join(getIconDirectory(), 'icon-logo.ico')
 
@@ -89,7 +117,12 @@ function packageWindows() {
     process.exit(1)
   }
 
-  const iconUrl = 'https://desktop.githubusercontent.com/app-icon.ico'
+  // Squirrel records this in the NuGet metadata and refuses an empty value.
+  // It is only metadata, so it points at the mark the icons are built from;
+  // set GITEA_DESKTOP_ICON_URL when publishing your own builds.
+  const iconUrl =
+    process.env.GITEA_DESKTOP_ICON_URL ??
+    'https://raw.githubusercontent.com/go-gitea/gitea/main/assets/logo.svg'
 
   const nugetPkgName = getWindowsIdentifierName()
   const options: electronInstaller.Options = {
@@ -133,6 +166,8 @@ function packageWindows() {
 
     options.signWithParams = `/v /fd SHA256 /tr "http://timestamp.acs.microsoft.com" /td SHA256 /dlib "${dlibPath}" /dmdf "${metadataPath}"`
   }
+
+  ensureSquirrelHasSevenZip()
 
   console.log('Packaging for Windows…')
   electronInstaller

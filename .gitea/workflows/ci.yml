@@ -1,0 +1,41 @@
+name: CI
+
+# Gitea Actions reads both .gitea/workflows and .github/workflows. The upstream
+# GitHub workflows were removed because they build signed releases on GitHub's
+# hosted macOS and Windows runners with GitHub-only secrets, none of which
+# exists here; this checks what can be checked on a plain Linux runner.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      # The vendored native modules are compiled during postinstall.
+      - name: Install build tooling
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Check formatting
+        run: yarn prettier
+
+      - name: Typecheck
+        run: yarn tsc --noEmit -p tsconfig.json
+
+      - name: Test the Gitea translation layer
+        run: node script/test.mjs app/test/unit/gitea
+
+      - name: Test
+        run: yarn test:unit

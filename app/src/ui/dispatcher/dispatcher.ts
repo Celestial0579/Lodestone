@@ -2917,7 +2917,9 @@ export class Dispatcher {
     const url = getGitHubHtmlUrl(repository)
     if (url !== null) {
       this.statsStore.increment('issueCreationWebpageOpenedCount')
-      return this.appStore._openInBrowser(`${url}/issues/new/choose`)
+      // GitHub's template chooser lives at /issues/new/choose; Gitea opens the
+      // new issue form directly and 404s on the chooser path.
+      return this.appStore._openInBrowser(`${url}/issues/new`)
     } else {
       return false
     }

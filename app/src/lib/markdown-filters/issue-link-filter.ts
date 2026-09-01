@@ -14,7 +14,9 @@ export function issueUrl(repository: GitHubRepository): RegExp {
       /** A regexp that searches for the owner/name pattern in issue href */
       /(?<nameWithOwner>\w+(?:-\w+)*\/[.\w-]+)/.source +
       '/' +
-      /(?:issues|pull|discussions)/.source +
+      // Gitea serves pull requests from /pulls/; /pull/ is GitHub's path and
+      // stays so that links pasted from there are still recognised.
+      /(?:issues|pulls|pull|discussions)/.source +
       '/' +
       /** A regexp that searches for the number and #anchor of an issue reference */
       /(?<refNumber>\d+)(?<anchor>#[\w-]+)?\b/.source

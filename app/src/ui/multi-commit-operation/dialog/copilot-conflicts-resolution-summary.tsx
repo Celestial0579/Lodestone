@@ -186,7 +186,7 @@ function buildPullRequestUrl(
   prNumber: number
 ): string | null {
   const base = gitHubRepository?.htmlURL ?? null
-  return base !== null ? `${base}/pull/${prNumber}` : null
+  return base !== null ? `${base}/pulls/${prNumber}` : null
 }
 
 function buildCommitUrl(

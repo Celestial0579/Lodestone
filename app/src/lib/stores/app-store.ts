@@ -35,6 +35,7 @@ import {
   getBYOKSecret,
   parseModelKey,
 } from '../copilot/byok'
+import { createPullRequestURL } from '../commit-url'
 import { getConflictResolutionModelDisplay } from '../copilot/conflict-resolution-model'
 import type {
   CopilotModelRequest,
@@ -8462,13 +8463,14 @@ export class AppStore extends TypedBaseStore<IAppState> {
   }
 
   public async _showPullRequestByPR(pr: PullRequest): Promise<void> {
-    const { htmlURL: baseRepoUrl } = pr.base.gitHubRepository
+    const showPrUrl = createPullRequestURL(
+      pr.base.gitHubRepository,
+      pr.pullRequestNumber
+    )
 
-    if (baseRepoUrl === null) {
+    if (showPrUrl === null) {
       return
     }
-
-    const showPrUrl = `${baseRepoUrl}/pull/${pr.pullRequestNumber}`
 
     await this._openInBrowser(showPrUrl)
   }
@@ -8548,9 +8550,11 @@ export class AppStore extends TypedBaseStore<IAppState> {
     const isForkContributingToParent =
       isForkedRepositoryContributingToParent(repository)
 
+    // Both sides of a cross-repository comparison are qualified as
+    // `owner/repo:branch` on Gitea, where GitHub writes `owner:repo:branch`.
     const baseForkPreface =
       isForkContributingToParent && parent !== null
-        ? `${parent.owner.login}:${parent.name}:`
+        ? `${parent.owner.login}/${parent.name}:`
         : ''
     const encodedBaseBranch =
       baseBranch !== undefined
@@ -8560,7 +8564,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
         : ''
 
     const compareForkPreface = isForkContributingToParent
-      ? `${owner.login}:${name}:`
+      ? `${owner.login}/${name}:`
       : ''
 
     const encodedCompareBranch =
@@ -8570,7 +8574,10 @@ export class AppStore extends TypedBaseStore<IAppState> {
       )
 
     const compareString = `${encodedBaseBranch}${encodedCompareBranch}`
-    const baseURL = `${htmlURL}/pull/new/${compareString}`
+
+    // Gitea opens the new pull request form from the compare view. GitHub's
+    // /pull/new/ path does not exist there, so this used to land on a 404.
+    const baseURL = `${htmlURL}/compare/${compareString}`
 
     await this._openInBrowser(baseURL)
   }

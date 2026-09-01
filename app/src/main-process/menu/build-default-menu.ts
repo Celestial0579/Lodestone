@@ -1,4 +1,4 @@
-import { Menu, shell, app, BrowserWindow } from 'electron'
+import { Menu, shell, BrowserWindow } from 'electron'
 import { ensureItemIds } from './ensure-item-ids'
 import { MenuEvent } from './menu-event'
 import { truncateWithEllipsis } from '../../lib/truncate-with-ellipsis'
@@ -381,9 +381,7 @@ export function buildDefaultMenuTemplate({
       separator,
       {
         id: 'create-issue-in-repository-on-github',
-        label: __DARWIN__
-          ? 'Create Issue on GitHub'
-          : 'Create &issue on GitHub',
+        label: __DARWIN__ ? 'Create Issue on Gitea' : 'Create &issue on Gitea',
         accelerator: 'CmdOrCtrl+I',
         click: emit('create-issue-in-repository-on-github'),
       },
@@ -523,43 +521,16 @@ export function buildDefaultMenuTemplate({
     })
   }
 
-  const submitIssueItem: Electron.MenuItemConstructorOptions = {
-    label: __DARWIN__ ? 'Report Issue…' : 'Report issue…',
+  // Upstream links here to GitHub support, to the desktop/desktop issue
+  // tracker and to GitHub's documentation for GitHub Desktop. None of those
+  // can help someone using this app against a Gitea server, so the only
+  // outward link left is Gitea's own documentation.
+  const giteaDocumentation: Electron.MenuItemConstructorOptions = {
+    label: __DARWIN__ ? 'Gitea Documentation' : 'Gitea &documentation',
     click() {
       shell
-        .openExternal('https://github.com/desktop/desktop/issues/new/choose')
-        .catch(err => log.error('Failed opening issue creation page', err))
-    },
-  }
-
-  const contactSupportItem: Electron.MenuItemConstructorOptions = {
-    label: __DARWIN__ ? 'Contact GitHub Support…' : '&Contact GitHub support…',
-    click() {
-      shell
-        .openExternal(
-          `https://github.com/contact?from_desktop_app=1&app_version=${app.getVersion()}`
-        )
-        .catch(err => log.error('Failed opening contact support page', err))
-    },
-  }
-
-  const showUserGuides: Electron.MenuItemConstructorOptions = {
-    label: 'Show User Guides',
-    click() {
-      shell
-        .openExternal('https://docs.github.com/en/desktop')
-        .catch(err => log.error('Failed opening user guides page', err))
-    },
-  }
-
-  const showKeyboardShortcuts: Electron.MenuItemConstructorOptions = {
-    label: __DARWIN__ ? 'Show Keyboard Shortcuts' : 'Show keyboard shortcuts',
-    click() {
-      shell
-        .openExternal(
-          'https://docs.github.com/en/desktop/installing-and-configuring-github-desktop/overview/keyboard-shortcuts'
-        )
-        .catch(err => log.error('Failed opening keyboard shortcuts page', err))
+        .openExternal('https://docs.gitea.com/')
+        .catch(err => log.error('Failed opening the Gitea documentation', err))
     },
   }
 
@@ -579,13 +550,7 @@ export function buildDefaultMenuTemplate({
     },
   }
 
-  const helpItems = [
-    submitIssueItem,
-    contactSupportItem,
-    showUserGuides,
-    showKeyboardShortcuts,
-    showLogsItem,
-  ]
+  const helpItems = [giteaDocumentation, showLogsItem]
 
   helpItems.push(...buildTestMenu())
 

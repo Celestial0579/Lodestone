@@ -694,7 +694,7 @@ export class TestNotifications extends React.Component<
     const pullRequest = this.state.pullRequests[indexPath.row]
     const repository = this.props.repository.gitHubRepository
     const endpointHtmlUrl = getHTMLURL(repository.endpoint)
-    const htmlURL = `${endpointHtmlUrl}/${repository.owner.login}/${repository.name}/pull/${pullRequest.pullRequestNumber}`
+    const htmlURL = `${endpointHtmlUrl}/${repository.owner.login}/${repository.name}/pulls/${pullRequest.pullRequestNumber}`
 
     return (
       <TestNotificationItemRowContent

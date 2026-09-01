@@ -582,7 +582,7 @@ export function getCheckRunStepURL(
   const url =
     checkRun.htmlUrl !== null
       ? `${checkRun.htmlUrl}/#step:${step.number}:1`
-      : `${repository.htmlURL}/pull/${pullRequestNumber}`
+      : `${repository.htmlURL}/pulls/${pullRequestNumber}`
 
   return url
 }

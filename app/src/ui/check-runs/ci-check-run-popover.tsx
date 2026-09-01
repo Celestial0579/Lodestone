@@ -162,7 +162,7 @@ export class CICheckRunPopover extends React.PureComponent<
     // dissatisfying tho more of an edgecase anyways.
     const url =
       checkRun.htmlUrl ??
-      `${this.props.repository.htmlURL}/pull/${this.props.prNumber}`
+      `${this.props.repository.htmlURL}/pulls/${this.props.prNumber}`
 
     this.props.dispatcher.openInBrowser(url)
     this.props.dispatcher.incrementMetric('viewsCheckOnline')

@@ -24,6 +24,9 @@
       color: var(--toolbar-button-secondary-color);
       margin: 0 var(--spacing);
       align-self: center;
+      // Sized explicitly because the mark is an image, not an octicon.
+      width: 16px;
+      height: 16px;
     }
   }
 

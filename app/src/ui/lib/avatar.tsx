@@ -1,4 +1,5 @@
 import * as React from 'react'
+import * as crypto from 'crypto'
 import { IAvatarUser } from '../../models/avatar'
 import { Octicon, OcticonSymbolVariant } from '../octicons'
 import { API, getDotComAPIEndpoint, getHTMLURL } from '../../lib/api'
@@ -9,6 +10,10 @@ import {
   isGHES,
   supportsAvatarsAPI,
 } from '../../lib/endpoint-capabilities'
+import {
+  getGiteaHTMLURL,
+  isGiteaEndpoint,
+} from '../../lib/gitea/gitea-endpoint'
 import { Account } from '../../models/account'
 import {
   getLegacyStealthEmailForUser,
@@ -188,7 +193,24 @@ const DefaultAvatarSymbol: OcticonSymbolVariant = {
   ],
 }
 
-function getEmailAvatarUrl(ep: string) {
+/**
+ * The url an avatar can be fetched from when all we know is an email address.
+ *
+ * Gitea addresses these by the md5 of the lowercased address, the same scheme
+ * Gravatar uses. Falling through to the dotcom branch would send every commit
+ * author's address to GitHub's avatar CDN as a query parameter, and get
+ * nothing back for it.
+ */
+function getEmailAvatarUrl(ep: string, email: string) {
+  if (isGiteaEndpoint(ep)) {
+    const hash = crypto
+      .createHash('md5')
+      .update(email.trim().toLowerCase())
+      .digest('hex')
+
+    return new URL(`/avatar/${hash}`, getGiteaHTMLURL(ep))
+  }
+
   if (isGHES(ep)) {
     // GHES Endpoint urls look something like https://github.example.com/api/v3
     // (note the lack of a trailing slash). We really should change our endpoint
@@ -260,10 +282,15 @@ function getAvatarUrlCandidates(
     return []
   }
 
-  const emailAvatarUrl = getEmailAvatarUrl(ep)
+  const emailAvatarUrl = getEmailAvatarUrl(ep, email)
 
-  emailAvatarUrl.searchParams.set('email', email)
-  emailAvatarUrl.searchParams.set('s', `${size}`)
+  if (isGiteaEndpoint(ep)) {
+    // The address is already in the path as a hash; Gitea sizes with `size`.
+    emailAvatarUrl.searchParams.set('size', `${size}`)
+  } else {
+    emailAvatarUrl.searchParams.set('email', email)
+    emailAvatarUrl.searchParams.set('s', `${size}`)
+  }
 
   if (isGHE(ep) && avatarToken) {
     emailAvatarUrl.searchParams.set('token', avatarToken)

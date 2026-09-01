@@ -2,8 +2,7 @@ import * as React from 'react'
 import memoizeOne from 'memoize-one'
 import { WindowState } from '../../lib/window-state'
 import { WindowControls } from './window-controls'
-import { Octicon } from '../octicons/octicon'
-import * as octicons from '../octicons/octicons.generated'
+import { encodePathAsUrl } from '../../lib/path'
 import { isMacOSBigSurOrLater, isMacOSTahoeOrLater } from '../../lib/get-os'
 import {
   getAppleActionOnDoubleClick,
@@ -29,6 +28,13 @@ export function getTitleBarHeight() {
 
   return 28
 }
+
+/**
+ * The Gitea mark shown at the left of the Windows title bar. It is a coloured
+ * SVG rather than an octicon, which are single-colour glyphs drawn on a 16 or
+ * 24 unit grid.
+ */
+const AppIconUri = encodePathAsUrl(__dirname, 'static/gitea-mark.svg')
 
 interface ITitleBarProps {
   /**
@@ -110,7 +116,7 @@ export class TitleBar extends React.Component<ITitleBarProps> {
       this.props.titleBarStyle === 'light' ? 'light-title-bar' : ''
 
     const appIcon = this.props.showAppIcon ? (
-      <Octicon className="app-icon" symbol={octicons.markGithub} />
+      <img className="app-icon" src={AppIconUri} alt="" />
     ) : null
 
     const onTitlebarDoubleClick = __DARWIN__

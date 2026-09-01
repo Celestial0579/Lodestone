@@ -16,6 +16,7 @@ import {
   isRebaseConflictState,
 } from '../../lib/app-state'
 import { BranchesContainer, PullRequestBadge } from '../branches'
+import { createBranchURL } from '../../lib/commit-url'
 import { assertNever } from '../../lib/fatal-error'
 import { BranchesTab } from '../../models/branches-tab'
 import { PullRequest } from '../../models/pull-request'
@@ -365,11 +366,14 @@ export class BranchDropdown extends React.Component<IBranchDropdownProps> {
       return
     }
 
-    const url = `${gitHubRepository.htmlURL}/tree/${encodeURIComponent(
+    const url = createBranchURL(
+      gitHubRepository,
       tip.branch.upstreamWithoutRemote
-    )}`
+    )
 
-    this.props.dispatcher.openInBrowser(url)
+    if (url !== null) {
+      this.props.dispatcher.openInBrowser(url)
+    }
   }
 
   private onViewPullRequestOnGithub = () => {

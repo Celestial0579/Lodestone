@@ -18,7 +18,7 @@ const IssueOwnerOrOwnerRepo = /(?<ownerOrOwnerRepo>\w+(?:-\w+)*(?:\/[.\w-]+)?)/
  * gh-, #, /issues/, /pull/, or /discussions/ followed by a digit
  */
 const IssueMentionMarker =
-  /(?<marker>#|gh-|\/(?:issues|pull|discussions)\/)(?=\d)/i
+  /(?<marker>#|gh-|\/(?:issues|pulls|pull|discussions)\/)(?=\d)/i
 
 /**
  * A regular expression string of a lookbehind is used so that valid matches

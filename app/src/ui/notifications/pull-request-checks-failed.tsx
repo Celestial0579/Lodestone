@@ -381,7 +381,7 @@ export class PullRequestChecksFailed extends React.Component<
     // dissatisfying tho more of an edgecase anyways.
     const url =
       checkRun.htmlUrl ??
-      `${repository.gitHubRepository.htmlURL}/pull/${pullRequest.pullRequestNumber}`
+      `${repository.gitHubRepository.htmlURL}/pulls/${pullRequest.pullRequestNumber}`
     if (url === null) {
       // The repository should have a htmlURL.
       return

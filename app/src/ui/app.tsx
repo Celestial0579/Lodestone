@@ -180,7 +180,11 @@ import { UnreachableCommitsDialog } from './history/unreachable-commits-dialog'
 import { OpenPullRequestDialog } from './open-pull-request/open-pull-request-dialog'
 import { sendNonFatalException } from '../lib/helpers/non-fatal-exception'
 import { ICustomIntegration } from '../lib/custom-integration'
-import { createCommitURL } from '../lib/commit-url'
+import {
+  createBranchURL,
+  createCommitURL,
+  createCompareURL,
+} from '../lib/commit-url'
 import { InstallingUpdate } from './installing-update/installing-update'
 import { DialogStackContext } from './dialog'
 import { TestNotifications } from './test-notifications/test-notifications'
@@ -717,30 +721,39 @@ export class App extends React.Component<IAppProps, IAppState> {
   }
 
   private openBranchOnGitHub(view: 'tree' | 'compare') {
-    const htmlURL = this.getCurrentRepositoryGitHubURL()
-    if (!htmlURL) {
-      return
-    }
-
     const state = this.state.selectedState
     if (state == null || state.type !== SelectionType.Repository) {
       return
     }
 
-    const branchTip = state.state.branchesState.tip
-    if (
-      branchTip.kind !== TipState.Valid ||
-      !branchTip.branch.upstreamWithoutRemote
-    ) {
+    const { gitHubRepository } = state.repository
+    if (gitHubRepository === null) {
       return
     }
 
-    const urlEncodedBranchName = encodeURIComponent(
-      branchTip.branch.upstreamWithoutRemote
-    )
+    const { tip, defaultBranch } = state.state.branchesState
+    if (tip.kind !== TipState.Valid || !tip.branch.upstreamWithoutRemote) {
+      return
+    }
 
-    const url = `${htmlURL}/${view}/${urlEncodedBranchName}`
-    this.props.dispatcher.openInBrowser(url)
+    const branchName = tip.branch.upstreamWithoutRemote
+
+    // Gitea needs both sides of a comparison, so fall back to the branch
+    // itself when we have no default branch to compare against.
+    const url =
+      view === 'compare'
+        ? createCompareURL(
+            gitHubRepository,
+            defaultBranch?.upstreamWithoutRemote ??
+              defaultBranch?.name ??
+              branchName,
+            branchName
+          )
+        : createBranchURL(gitHubRepository, branchName)
+
+    if (url !== null) {
+      this.props.dispatcher.openInBrowser(url)
+    }
   }
 
   private openCurrentRepositoryWorkingDirectory() {
@@ -1346,21 +1359,6 @@ export class App extends React.Component<IAppProps, IAppState> {
     const repository = this.getRepository()
 
     this.viewOnGitHub(repository)
-  }
-
-  /** Returns the URL to the current repository if hosted on Gitea */
-  private getCurrentRepositoryGitHubURL() {
-    const repository = this.getRepository()
-
-    if (
-      !repository ||
-      repository instanceof CloningRepository ||
-      !repository.gitHubRepository
-    ) {
-      return null
-    }
-
-    return repository.gitHubRepository.htmlURL
   }
 
   private openCurrentRepositoryInShell = () => {

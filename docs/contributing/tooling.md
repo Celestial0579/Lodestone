@@ -1,4 +1,4 @@
-# Tooling Support for GitHub Desktop
+# Tooling Support for Gitea Desktop
 
 ### [Atom](https://atom.io/)
 

@@ -18,7 +18,7 @@ interface IAccountsProps {
   readonly accounts: ReadonlyArray<Account>
 
   readonly onDotComSignIn: () => void
-  readonly onEnterpriseSignIn: () => void
+  readonly onGiteaSignIn: () => void
   readonly onLogout: (account: Account) => void
 }
 
@@ -56,7 +56,7 @@ export class Accounts extends React.Component<IAccountsProps, {}> {
         {enterpriseAccounts.length === 0 ? (
           this.renderSignIn(SignInType.Enterprise)
         ) : (
-          <Button onClick={this.props.onEnterpriseSignIn}>
+          <Button onClick={this.props.onGiteaSignIn}>
             Add GitHub Enterprise account
           </Button>
         )}
@@ -110,8 +110,8 @@ export class Accounts extends React.Component<IAccountsProps, {}> {
     this.props.onDotComSignIn()
   }
 
-  private onEnterpriseSignIn = () => {
-    this.props.onEnterpriseSignIn()
+  private onGiteaSignIn = () => {
+    this.props.onGiteaSignIn()
   }
 
   private renderSignIn(type: SignInType) {
@@ -136,7 +136,7 @@ export class Accounts extends React.Component<IAccountsProps, {}> {
         return (
           <CallToAction
             actionTitle={signInTitle + ' GitHub Enterprise'}
-            onAction={this.onEnterpriseSignIn}
+            onAction={this.onGiteaSignIn}
           >
             <div>
               If you are using GitHub Enterprise at work, sign in to it to get

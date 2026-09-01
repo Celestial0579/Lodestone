@@ -2,8 +2,13 @@ import * as React from 'react'
 import { DialogContent } from '../dialog'
 import { Checkbox, CheckboxValue } from '../lib/checkbox'
 import { LinkButton } from '../lib/link-button'
-import { SamplesURL } from '../../lib/stats'
 import { isWindowsOpenSSHAvailable } from '../../lib/ssh/ssh'
+import { TextBox } from '../lib/text-box'
+import {
+  getGiteaUpdateSourceURL,
+  parseGiteaUpdateSource,
+  setGiteaUpdateSourceURL,
+} from '../../lib/gitea/gitea-updates'
 
 interface IAdvancedPreferencesProps {
   readonly useWindowsOpenSSH: boolean
@@ -20,6 +25,7 @@ interface IAdvancedPreferencesState {
   readonly optOutOfUsageTracking: boolean
   readonly canUseWindowsSSH: boolean
   readonly useExternalCredentialHelper: boolean
+  readonly updateSourceURL: string
 }
 
 export class Advanced extends React.Component<
@@ -33,6 +39,7 @@ export class Advanced extends React.Component<
       optOutOfUsageTracking: this.props.optOutOfUsageTracking,
       canUseWindowsSSH: false,
       useExternalCredentialHelper: this.props.useExternalCredentialHelper,
+      updateSourceURL: getGiteaUpdateSourceURL(),
     }
   }
 
@@ -42,6 +49,50 @@ export class Advanced extends React.Component<
 
   private async checkSSHAvailability() {
     this.setState({ canUseWindowsSSH: await isWindowsOpenSSHAvailable() })
+  }
+
+  private onUpdateSourceChanged = (updateSourceURL: string) => {
+    this.setState({ updateSourceURL })
+    setGiteaUpdateSourceURL(updateSourceURL)
+  }
+
+  /**
+   * Where to look for new versions of the app.
+   *
+   * Gitea Desktop ships without an update source. Point it at a repository on
+   * any Gitea instance that publishes releases and the app will check that
+   * repository instead of phoning home to anyone.
+   */
+  private renderUpdateSource() {
+    const { updateSourceURL } = this.state
+    const parsed = parseGiteaUpdateSource(updateSourceURL)
+    const unusable = updateSourceURL.trim().length > 0 && parsed === null
+
+    return (
+      <div className="advanced-section">
+        <h2>Updates</h2>
+        <TextBox
+          label="Gitea repository publishing releases"
+          value={updateSourceURL}
+          onValueChanged={this.onUpdateSourceChanged}
+          placeholder="https://git.example.com/team/gitea-desktop"
+        />
+        <div className="settings-description">
+          {unusable ? (
+            <p className="error">
+              That doesn't look like a repository address. Expected something
+              like https://git.example.com/team/gitea-desktop
+            </p>
+          ) : (
+            <p>
+              Gitea Desktop checks this repository for newer releases. Leave it
+              empty to turn update checks off. Releases are downloaded from the
+              instance by hand, the app never installs anything on its own.
+            </p>
+          )}
+        </div>
+      </div>
+    )
   }
 
   private onReportingOptOutChanged = (
@@ -77,8 +128,7 @@ export class Advanced extends React.Component<
   private reportDesktopUsageLabel() {
     return (
       <span>
-        Help GitHub Desktop improve by submitting{' '}
-        <LinkButton uri={SamplesURL}>usage stats</LinkButton>
+        Collect usage measures locally. Gitea Desktop never sends them anywhere.
       </span>
     )
   }
@@ -111,6 +161,7 @@ export class Advanced extends React.Component<
             </p>
           </div>
         </div>
+        {this.renderUpdateSource()}
         <div className="advanced-section">
           <h2>Usage</h2>
           <Checkbox

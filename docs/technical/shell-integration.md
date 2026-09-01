@@ -1,6 +1,6 @@
 # "Open Shell" integration
 
-GitHub Desktop supports launching an available shell found on the user's
+Gitea Desktop supports launching an available shell found on the user's
 machine, to work with Git repositories outside of Desktop.
 
 ### My favourite shell XYZ isn't supported!

@@ -32,6 +32,7 @@ export class AboutTestDialog extends React.Component<
     this.state = {
       updateState: {
         status: UpdateStatus.UpdateNotAvailable,
+        giteaRelease: null,
         lastSuccessfulCheck: new Date(Date.now() - 1000 * 60 * 60),
         isX64ToARM64ImmediateAutoUpdate: false,
         newReleases: [],

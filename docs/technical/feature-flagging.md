@@ -51,14 +51,14 @@ feature once things are stabilized.
 
 **Opting-in for preview features**
 1. Set the `GITHUB_DESKTOP_PREVIEW_FEATURES` environment variable to `1`
-1. Restart GitHub Desktop
+1. Restart Gitea Desktop
 
 Don't have that environment variable?
 No worries, simply create it. (here's a [handy guide](https://www.schrodinger.com/kb/1842) for doing that on most major OSs).
 
 **Opting-out for preview features**
 1. Remove the `GITHUB_DESKTOP_PREVIEW_FEATURES` environment variable
-1. Restart GitHub Desktop
+1. Restart Gitea Desktop
 
 
 

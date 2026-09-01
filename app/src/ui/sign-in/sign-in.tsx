@@ -14,7 +14,9 @@ import { Dialog, DialogError, DialogContent, DialogFooter } from '../dialog'
 
 import { OkCancelButtonGroup } from '../dialog/ok-cancel-button-group'
 import { Ref } from '../lib/ref'
+import { LinkButton } from '../lib/link-button'
 import { getHTMLURL } from '../../lib/api'
+import { isGiteaEndpoint } from '../../lib/gitea/gitea-endpoint'
 
 interface ISignInProps {
   readonly dispatcher: Dispatcher
@@ -26,21 +28,39 @@ interface ISignInProps {
 
 interface ISignInState {
   readonly endpoint: string
+  readonly token: string
 }
 
 const SignInWithBrowserTitle = __DARWIN__
   ? 'Sign in Using Your Browser'
   : 'Sign in using your browser'
 
+const SignInWithTokenTitle = __DARWIN__
+  ? 'Sign in With a Token'
+  : 'Sign in with a token'
+
 const DefaultTitle = 'Sign in'
 
 const browserSignInInfoContent = (
   <p>
-    Your browser will redirect you back to GitHub Desktop once you've signed in.
-    If your browser asks for your permission to launch GitHub Desktop, please
+    Your browser will redirect you back to Gitea Desktop once you've signed in.
+    If your browser asks for your permission to launch Gitea Desktop, please
     allow it.
   </p>
 )
+
+/**
+ * The token scopes Gitea Desktop needs to do its job. Listing them saves the
+ * user a round trip through the Gitea documentation, and a token that is
+ * missing one of them fails in ways that are hard to diagnose after the fact.
+ */
+const requiredTokenScopes = [
+  'read:user',
+  'write:repository',
+  'write:issue',
+  'read:organization',
+  'read:notification',
+]
 
 export class SignIn extends React.Component<ISignInProps, ISignInState> {
   private readonly dialogRef = React.createRef<Dialog>()
@@ -50,6 +70,7 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
 
     this.state = {
       endpoint: '',
+      token: '',
     }
   }
 
@@ -95,7 +116,11 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
           .then(() => this.props.dispatcher.setSignInEndpoint(state.endpoint))
         break
       case SignInStep.Authentication:
-        this.props.dispatcher.requestBrowserAuthentication()
+        if (isGiteaEndpoint(state.endpoint)) {
+          this.props.dispatcher.signInWithToken(this.state.token)
+        } else {
+          this.props.dispatcher.requestBrowserAuthentication()
+        }
         break
       case SignInStep.Success:
         this.onDismissed()
@@ -107,6 +132,10 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
 
   private onEndpointChanged = (endpoint: string) => {
     this.setState({ endpoint })
+  }
+
+  private onTokenChanged = (token: string) => {
+    this.setState({ token })
   }
 
   private renderFooter(): JSX.Element | null {
@@ -130,10 +159,17 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
         primaryButtonText = 'Continue'
         break
       case SignInStep.ExistingAccountWarning:
-        primaryButtonText = continueWithBrowserLabel
+        primaryButtonText = isGiteaEndpoint(state.endpoint)
+          ? 'Continue'
+          : continueWithBrowserLabel
         break
       case SignInStep.Authentication:
-        primaryButtonText = continueWithBrowserLabel
+        if (isGiteaEndpoint(state.endpoint)) {
+          disableSubmit = this.state.token.trim().length === 0
+          primaryButtonText = 'Sign in'
+        } else {
+          primaryButtonText = continueWithBrowserLabel
+        }
         break
       default:
         return assertNever(state, `Unknown sign in step ${stepKind}`)
@@ -160,7 +196,7 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
           <Ref>{state.existingAccount.login}</Ref>. If you continue, you will
           first be signed out.
         </p>
-        {browserSignInInfoContent}
+        {isGiteaEndpoint(state.endpoint) ? null : browserSignInInfoContent}
       </DialogContent>
     )
   }
@@ -170,10 +206,10 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
       <DialogContent>
         <Row>
           <TextBox
-            label="Enterprise address"
+            label="Gitea instance address"
             value={this.state.endpoint}
             onValueChanged={this.onEndpointChanged}
-            placeholder="https://example.ghe.com"
+            placeholder="https://git.example.com"
           />
         </Row>
       </DialogContent>
@@ -189,10 +225,54 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
         </p>
       ) : undefined
 
+    if (isGiteaEndpoint(state.endpoint)) {
+      return this.renderTokenStep(state, credentialHelperInfo)
+    }
+
     return (
       <DialogContent>
         {credentialHelperInfo}
         {browserSignInInfoContent}
+      </DialogContent>
+    )
+  }
+
+  /**
+   * The Gitea flavour of the authentication step. Gitea instances don't share
+   * a registered OAuth application the way GitHub.com does, so we ask for a
+   * personal access token instead, which works against any instance.
+   */
+  private renderTokenStep(
+    state: IAuthenticationState,
+    credentialHelperInfo: JSX.Element | undefined
+  ) {
+    const htmlURL = getHTMLURL(state.endpoint)
+    const tokenSettingsURL = `${htmlURL}/user/settings/applications`
+
+    return (
+      <DialogContent>
+        {credentialHelperInfo}
+        <p>
+          Sign in to <Ref>{new URL(htmlURL).host}</Ref> with a personal access
+          token.{' '}
+          <LinkButton uri={tokenSettingsURL}>
+            Generate a token in Gitea
+          </LinkButton>{' '}
+          and paste it below.
+        </p>
+        <p className="token-scopes">
+          Select these scopes when creating the token:{' '}
+          <Ref>{requiredTokenScopes.join(', ')}</Ref>
+        </p>
+        <Row>
+          <TextBox
+            label="Personal access token"
+            type="password"
+            value={this.state.token}
+            onValueChanged={this.onTokenChanged}
+            autoFocus={true}
+          />
+        </Row>
       </DialogContent>
     )
   }
@@ -232,8 +312,10 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
     ) : null
 
     const title =
-      this.props.signInState.kind === SignInStep.Authentication
-        ? SignInWithBrowserTitle
+      state.kind === SignInStep.Authentication
+        ? isGiteaEndpoint(state.endpoint)
+          ? SignInWithTokenTitle
+          : SignInWithBrowserTitle
         : DefaultTitle
 
     return (

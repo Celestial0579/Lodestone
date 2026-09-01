@@ -88,7 +88,7 @@ class TrampolineUIHelper {
       if (hostname === 'github.com') {
         this.dispatcher.beginDotComSignIn(cb)
       } else {
-        this.dispatcher.beginEnterpriseSignIn(cb)
+        this.dispatcher.beginGiteaSignIn(cb)
         await this.dispatcher.setSignInEndpoint(origin)
       }
 

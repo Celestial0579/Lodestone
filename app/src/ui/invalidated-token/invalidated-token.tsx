@@ -48,7 +48,7 @@ export class InvalidatedToken extends React.Component<IInvalidatedTokenProps> {
     onDismissed()
 
     if (isEnterpriseAccount(account)) {
-      dispatcher.showEnterpriseSignInDialog(
+      dispatcher.showGiteaSignInDialog(
         getHTMLURL(this.props.account.endpoint)
       )
     } else {

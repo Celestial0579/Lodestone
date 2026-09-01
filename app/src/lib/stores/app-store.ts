@@ -859,7 +859,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
   /**
    * On Windows OS, whenever a user toggles their zoom factor, chromium stores it
-   * in their `%AppData%/Roaming/GitHub Desktop/Preferences.js` denoted by the
+   * in their `%AppData%/Roaming/Gitea Desktop/Preferences.js` denoted by the
    * file path to the application. That file path contains the apps version.
    * Thus, on every update, the users set zoom level gets reset as there is not
    * defined value for the current app version.
@@ -7615,7 +7615,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
         if (match === null) {
           this.emitError(
             new ExternalEditorError(
-              `No suitable editors installed for GitHub Desktop to launch. Install ${suggestedExternalEditor.name} for your platform and restart GitHub Desktop to try again.`,
+              `No suitable editors installed for Gitea Desktop to launch. Install ${suggestedExternalEditor.name} for your platform and restart Gitea Desktop to try again.`,
               { suggestDefaultEditor: true }
             )
           )
@@ -7649,7 +7649,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       if (match === null) {
         this.emitError(
           new ExternalEditorError(
-            `No suitable editors installed for GitHub Desktop to launch. Install ${suggestedExternalEditor.name} for your platform and restart GitHub Desktop to try again.`,
+            `No suitable editors installed for Gitea Desktop to launch. Install ${suggestedExternalEditor.name} for your platform and restart Gitea Desktop to try again.`,
             { suggestDefaultEditor: true }
           )
         )
@@ -7955,10 +7955,10 @@ export class AppStore extends TypedBaseStore<IAppState> {
     return this.signInStore.beginDotComSignIn(resultCallback)
   }
 
-  public _beginEnterpriseSignIn(
+  public _beginGiteaSignIn(
     resultCallback?: (result: SignInResult) => void
   ) {
-    return this.signInStore.beginEnterpriseSignIn(resultCallback)
+    return this.signInStore.beginGiteaSignIn(resultCallback)
   }
 
   public _setSignInEndpoint(url: string): Promise<void> {
@@ -7967,6 +7967,10 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
   public _requestBrowserAuthentication() {
     this.signInStore.authenticateWithBrowser()
+  }
+
+  public _signInWithToken(token: string): Promise<void> {
+    return this.signInStore.authenticateWithToken(token)
   }
 
   public async _setAppFocusState(isFocused: boolean): Promise<void> {

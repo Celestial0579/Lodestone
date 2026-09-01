@@ -551,7 +551,7 @@ export class CloneRepository extends React.Component<
   }
 
   private signInEnterprise = () => {
-    this.props.dispatcher.showEnterpriseSignInDialog()
+    this.props.dispatcher.showGiteaSignInDialog()
   }
 
   private onFilterTextChanged = (filterText: string) => {

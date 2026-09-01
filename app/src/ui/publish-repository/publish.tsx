@@ -324,7 +324,7 @@ export class Publish extends React.Component<IPublishProps, IPublishState> {
   }
 
   private signInEnterprise = () => {
-    this.props.dispatcher.showEnterpriseSignInDialog()
+    this.props.dispatcher.showGiteaSignInDialog()
   }
 
   private publishRepository = async () => {

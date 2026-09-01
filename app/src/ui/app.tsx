@@ -664,7 +664,11 @@ export class App extends React.Component<IAppProps, IAppState> {
       return
     }
 
-    updateStore.checkForUpdates(inBackground, skipGuidCheck)
+    updateStore.checkForUpdates(
+      inBackground,
+      skipGuidCheck,
+      this.state.accounts
+    )
   }
 
   private updateBranchWithContributionTargetBranch() {

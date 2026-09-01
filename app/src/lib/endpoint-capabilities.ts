@@ -1,6 +1,9 @@
 import * as semver from 'semver'
 import { getDotComAPIEndpoint } from './api'
 import { assertNonNullable } from './fatal-error'
+import { isGiteaEndpoint } from './gitea/gitea-endpoint'
+
+export { isGiteaEndpoint as isGitea }
 
 export type VersionConstraint = {
   /**
@@ -63,9 +66,15 @@ export const isGHE = (ep: string) => new URL(ep).hostname.endsWith('.ghe.com')
 
 /**
  * Whether or not the given endpoint URI appears to point to a GitHub Enterprise
- * Server instance
+ * Server instance.
+ *
+ * Gitea instances are explicitly excluded. Every capability below is gated on
+ * one of the three GitHub endpoint kinds, so leaving Gitea to fall through to
+ * GHES would have us assume support for GitHub-only APIs (the Enterprise
+ * avatars API, check re-runs, repository rules) that Gitea does not implement.
  */
-export const isGHES = (ep: string) => !isDotCom(ep) && !isGHE(ep)
+export const isGHES = (ep: string) =>
+  !isDotCom(ep) && !isGHE(ep) && !isGiteaEndpoint(ep)
 
 export function getEndpointVersion(endpoint: string) {
   const key = endpointVersionKey(endpoint)

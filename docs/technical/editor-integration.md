@@ -1,6 +1,6 @@
 # "Open External Editor" integration
 
-GitHub Desktop supports the user choosing an external program to open their
+Gitea Desktop supports the user choosing an external program to open their
 local repositories, and this is available from the top-level **Repository** menu
 or when right-clicking on a repository in the sidebar.
 
@@ -87,7 +87,7 @@ async function findApplication(editor: WindowsExternalEditor) {
 
 Windows programs are typically installed by the user. Installers will add
 entries to the registry to help the OS with cleaning up later, if the user
-wishes to uninstall. These entries are used by GitHub Desktop to identify
+wishes to uninstall. These entries are used by Gitea Desktop to identify
 relevant programs and where they can be located.
 
 The registry locations for each editor are listed in the `registryKeys`
@@ -213,7 +213,7 @@ missing or lost it won't let you launch the external editor.
 
 ### Support for JetBrains Toolbox editors
 
-Now GitHub Desktop support editors installed through JetBrains Toolbox.
+Now Gitea Desktop support editors installed through JetBrains Toolbox.
 The technique used to achieve that is using `jetBrainsToolboxScriptName` field
 to check if, in the default section for scripts in JetBrainsm Toolbox, a script
 with the corresponding name exists.
@@ -317,12 +317,12 @@ read information from the OS to see if they are present.
 
 The `CFBundleIdentifier` value in the plist is what applications use to
 uniquely identify themselves, for example `com.github.GitHubClient` is the
-identifier for GitHub Desktop.
+identifier for Gitea Desktop.
 
 To find the bundle identifier for an application, using `PhpStorm` as an example,
 run `defaults read /Applications/PhpStorm.app/Contents/Info CFBundleIdentifier`.
 
-With this bundle identifier, GitHub Desktop can obtain the install location of
+With this bundle identifier, Gitea Desktop can obtain the install location of
 the app.
 
 The `bundleIdentifiers` attribute lists all the bundle identifiers that can

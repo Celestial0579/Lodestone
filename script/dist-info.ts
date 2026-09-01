@@ -95,7 +95,7 @@ export function getWindowsDeltaNugetPackagePath() {
 }
 
 export function getWindowsIdentifierName() {
-  return 'GitHubDesktop'
+  return 'GiteaDesktop'
 }
 
 export function getBundleSizes() {
@@ -135,19 +135,38 @@ export function getDistArchitecture(): 'arm64' | 'x64' {
   return 'x64'
 }
 
+/**
+ * The Squirrel endpoint the app checks for updates.
+ *
+ * Gitea Desktop deliberately ships without one. The upstream URL points at
+ * GitHub's release infrastructure, which would both hand out Gitea Desktop
+ * builds and tell GitHub about every install of this app. Set
+ * `GITEA_DESKTOP_UPDATES_URL` when building to point at your own
+ * Squirrel-compatible endpoint; leaving it unset disables in-app updates.
+ */
 export function getUpdatesURL() {
-  // It is also possible to use a `x64/` path, but for now we'll leave the
-  // original URL without architecture in it (which will still work for
-  // compatibility reasons) in case anything goes wrong until we have everything
-  // sorted out.
-  const architecturePath = getDistArchitecture() === 'arm64' ? 'arm64/' : ''
-  return `https://central.github.com/api/deployments/desktop/desktop/${architecturePath}latest?version=${version}&env=${getChannel()}`
+  const architecture = getDistArchitecture()
+  const configured = process.env.GITEA_DESKTOP_UPDATES_URL
+
+  if (configured === undefined || configured.length === 0) {
+    return ''
+  }
+
+  const url = new URL(configured)
+  url.searchParams.set('version', version)
+  url.searchParams.set('env', getChannel())
+  url.searchParams.set('arch', architecture)
+
+  return url.toString()
 }
 
 export function shouldMakeDelta() {
-  // Only production and beta channels include deltas. Test releases aren't
-  // necessarily sequential so deltas wouldn't make sense.
-  return ['production', 'beta'].includes(getChannel())
+  // Deltas are served from the update endpoint, so they only make sense when
+  // one is configured. Only production and beta channels include them since
+  // test releases aren't necessarily sequential.
+  return (
+    getUpdatesURL().length > 0 && ['production', 'beta'].includes(getChannel())
+  )
 }
 
 /**

@@ -10,10 +10,10 @@ import {
 import {
   fetchUser,
   getDotComAPIEndpoint,
-  getEnterpriseAPIURL,
   requestOAuthToken,
   getOAuthAuthorizationURL,
 } from '../../lib/api'
+import { getGiteaAPIURL } from '../gitea/gitea-endpoint'
 
 import { TypedBaseStore } from './base-store'
 import { IOAuthAction } from '../parse-app-url'
@@ -329,6 +329,58 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       })
   }
 
+  /**
+   * Complete the sign in process using a Gitea personal access token.
+   *
+   * Gitea has no equivalent of the OAuth application Gitea Desktop ships with,
+   * and registering one is a per-instance administrative task. A personal
+   * access token works against every instance without any setup, so it is the
+   * way Gitea Desktop signs in.
+   *
+   * This method must only be called while the store is in the authentication
+   * step or an error will be thrown.
+   */
+  public async authenticateWithToken(token: string): Promise<void> {
+    const currentState = this.state
+
+    if (currentState?.kind !== SignInStep.Authentication) {
+      const stepText = currentState ? currentState.kind : 'null'
+      return fatalError(
+        `Sign in step '${stepText}' not compatible with token authentication`
+      )
+    }
+
+    const { endpoint, resultCallback } = currentState
+    this.setState({ ...currentState, error: null, loading: true })
+
+    let account: Account
+
+    try {
+      account = await fetchUser(endpoint, token)
+    } catch (e) {
+      // Make sure the user hasn't cancelled or restarted the flow in the
+      // meantime, otherwise we'd be reporting an error for a session that is
+      // no longer on screen.
+      if (this.state?.kind === SignInStep.Authentication) {
+        this.setState({
+          ...this.state,
+          loading: false,
+          error: toTokenSignInError(e),
+        })
+      }
+      return
+    }
+
+    if (this.state?.kind !== SignInStep.Authentication) {
+      log.warn('[SignInStore] account resolved but session has changed')
+      return
+    }
+
+    log.info('[SignInStore] signed in with a personal access token')
+    this.emitAuthenticate(account)
+    this.setState({ kind: SignInStep.Success, resultCallback })
+  }
+
   public async resolveOAuthRequest(action: IOAuthAction) {
     if (!this.state || this.state.kind !== SignInStep.Authentication) {
       return
@@ -359,11 +411,10 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
   }
 
   /**
-   * Initiate a sign in flow for a GitHub Enterprise instance.
-   * This will put the store in the EndpointEntry step ready to
-   * receive the url to the enterprise instance.
+   * Initiate a sign in flow for a Gitea instance. This will put the store in
+   * the EndpointEntry step ready to receive the url of the instance.
    */
-  public beginEnterpriseSignIn(
+  public beginGiteaSignIn(
     resultCallback?: (result: SignInResult) => void
   ) {
     if (this.state !== null) {
@@ -405,11 +456,17 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
     }
 
     /**
-     * If the user enters a github.com url in the GitHub Enterprise sign-in
-     * flow we'll redirect them to the GitHub.com sign-in flow.
+     * Gitea Desktop talks to Gitea instances only. Point the user at the right
+     * tool rather than letting them run into a confusing API error.
      */
     if (/^(?:https:\/\/)?(?:api\.)?github\.com($|\/)/.test(url)) {
-      this.beginDotComSignIn(currentState.resultCallback)
+      this.setState({
+        ...currentState,
+        loading: false,
+        error: new Error(
+          'Gitea Desktop connects to Gitea instances. Use Gitea Desktop to sign in to GitHub.com.'
+        ),
+      })
       return
     }
 
@@ -422,11 +479,11 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       let error = e
       if (e.name === InvalidURLErrorName) {
         error = new Error(
-          `The GitHub Enterprise instance address doesn't appear to be a valid URL. We're expecting something like https://example.ghe.com.`
+          `The Gitea instance address doesn't appear to be a valid URL. We're expecting something like https://git.example.com.`
         )
       } else if (e.name === InvalidProtocolErrorName) {
         error = new Error(
-          'Unsupported protocol. Only https is supported when authenticating with GitHub Enterprise instances.'
+          'Unsupported protocol. Only https is supported when authenticating with a Gitea instance, except on localhost.'
         )
       }
 
@@ -434,7 +491,7 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       return
     }
 
-    const endpoint = getEnterpriseAPIURL(validUrl)
+    const endpoint = getGiteaAPIURL(validUrl)
 
     const existingAccount = this.accounts.find(x => x.endpoint === endpoint)
 
@@ -457,4 +514,28 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       })
     }
   }
+}
+
+/**
+ * Turn whatever went wrong while exchanging a token for an account into
+ * something we can put in front of the user.
+ */
+function toTokenSignInError(error: any): Error {
+  const status: number | undefined = error?.responseStatus
+
+  if (status === 401 || status === 403) {
+    return new Error(
+      'That token was rejected. Check that it was copied in full and that it has not expired or been revoked.'
+    )
+  }
+
+  if (status === 404) {
+    return new Error(
+      "Couldn't find the Gitea API at that address. Check the instance URL and try again."
+    )
+  }
+
+  return error instanceof Error
+    ? error
+    : new Error('Failed to sign in with the provided token.')
 }

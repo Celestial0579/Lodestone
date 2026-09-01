@@ -99,16 +99,16 @@ describe('SignInStore', () => {
     })
   })
 
-  describe('beginEnterpriseSignIn', () => {
+  describe('beginGiteaSignIn', () => {
     it('transitions to EndpointEntry step', () => {
-      signInStore.beginEnterpriseSignIn()
+      signInStore.beginGiteaSignIn()
       const state = signInStore.getState()
       assert.notEqual(state, null)
       assert.equal(state?.kind, SignInStep.EndpointEntry)
     })
 
     it('sets initial state correctly', () => {
-      signInStore.beginEnterpriseSignIn()
+      signInStore.beginGiteaSignIn()
       const state = signInStore.getState()
       if (state?.kind === SignInStep.EndpointEntry) {
         assert.equal(state.error, null)
@@ -122,14 +122,14 @@ describe('SignInStore', () => {
       assert.equal(signInStore.getState()?.kind, SignInStep.Authentication)
 
       // Starting enterprise sign-in should replace that state
-      signInStore.beginEnterpriseSignIn()
+      signInStore.beginGiteaSignIn()
       assert.equal(signInStore.getState()?.kind, SignInStep.EndpointEntry)
     })
   })
 
   describe('setEndpoint', () => {
     it('transitions to Authentication step for valid enterprise URL', async () => {
-      signInStore.beginEnterpriseSignIn()
+      signInStore.beginGiteaSignIn()
       await signInStore.setEndpoint('https://github.example.com')
 
       const state = signInStore.getState()
@@ -137,7 +137,7 @@ describe('SignInStore', () => {
     })
 
     it('redirects to dotcom flow for github.com URLs', async () => {
-      signInStore.beginEnterpriseSignIn()
+      signInStore.beginGiteaSignIn()
       await signInStore.setEndpoint('https://github.com')
 
       const state = signInStore.getState()
@@ -149,7 +149,7 @@ describe('SignInStore', () => {
     })
 
     it('redirects to dotcom flow for api.github.com URLs', async () => {
-      signInStore.beginEnterpriseSignIn()
+      signInStore.beginGiteaSignIn()
       await signInStore.setEndpoint('https://api.github.com')
 
       const state = signInStore.getState()
@@ -160,7 +160,7 @@ describe('SignInStore', () => {
     })
 
     it('sets error for non-HTTPS URL', async () => {
-      signInStore.beginEnterpriseSignIn()
+      signInStore.beginGiteaSignIn()
       await signInStore.setEndpoint('http://github.example.com')
 
       const state = signInStore.getState()
@@ -179,7 +179,7 @@ describe('SignInStore', () => {
 
       await accountsStore.addAccount(existingAccount)
 
-      signInStore.beginEnterpriseSignIn()
+      signInStore.beginGiteaSignIn()
       await signInStore.setEndpoint('https://github.example.com')
 
       const state = signInStore.getState()

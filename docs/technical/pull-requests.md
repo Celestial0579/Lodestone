@@ -40,4 +40,4 @@ export const ForkedRemotePrefix = 'github-desktop-'
 [Code](https://github.com/desktop/desktop/blob/34a05b155ff69bb19cc4da5b2caa89856e3e63fb/app/src/lib/stores/pull-request-store.ts#L26)
 
 ## What does this mean for me?
-Doing this essentially gives us a namespace that we can safely work in. We chose the prefix `github-desktop-` because we are confident that your own remote names will never start with this prefix. This means that in order for GitHub Desktop to work as expected, you should never add a remote that starts with our prefix. We feel that this is an acceptable compromise.
+Doing this essentially gives us a namespace that we can safely work in. We chose the prefix `github-desktop-` because we are confident that your own remote names will never start with this prefix. This means that in order for Gitea Desktop to work as expected, you should never add a remote that starts with our prefix. We feel that this is an acceptable compromise.

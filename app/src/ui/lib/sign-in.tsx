@@ -19,7 +19,7 @@ interface ISignInProps {
 }
 
 /**
- * The sign in flow for GitHub.
+ * The sign in flow for Gitea.
  *
  * Provide `children` elements to render additional buttons in the active form.
  */
@@ -30,6 +30,10 @@ export class SignIn extends React.Component<ISignInProps, {}> {
 
   private onBrowserSignInRequested = () => {
     this.props.dispatcher.requestBrowserAuthentication()
+  }
+
+  private onTokenSignInRequested = (token: string) => {
+    this.props.dispatcher.signInWithToken(token)
   }
 
   private renderExistingAccountWarningStep(state: IExistingAccountWarning) {
@@ -67,8 +71,11 @@ export class SignIn extends React.Component<ISignInProps, {}> {
 
     return (
       <AuthenticationForm
+        endpoint={state.endpoint}
+        loading={state.loading}
         additionalButtons={children}
         onBrowserSignInRequested={this.onBrowserSignInRequested}
+        onTokenSignInRequested={this.onTokenSignInRequested}
       />
     )
   }

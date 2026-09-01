@@ -14,7 +14,7 @@
 
 # Known Issues
 
-This document outlines acknowledged issues with GitHub Desktop, including workarounds if known.
+This document outlines acknowledged issues with Gitea Desktop, including workarounds if known.
 
 ## What should I do if...
 
@@ -61,15 +61,15 @@ This issue seems to be caused by missing permissions for the `~/Library/Caches/c
    the "Read & Write" permissions
  - Start Desktop again and check for updates
 
-### GitHub Desktop prompts admin password to install helper tool very frequently
+### Gitea Desktop prompts admin password to install helper tool very frequently
 
 Related issue: [#13956](https://github.com/desktop/desktop/issues/13956)
 
-Users who use macOS' Migration Assistant to keep their stuff intact when moving to a new computer might run into this problem because the Migration Assistant changes the owner of the `/Applications/GitHub Desktop.app` folder to `root`.
+Users who use macOS' Migration Assistant to keep their stuff intact when moving to a new computer might run into this problem because the Migration Assistant changes the owner of the `/Applications/Gitea Desktop.app` folder to `root`.
 
-Since GitHub Desktop is able to auto-update by changing the contents of the `/Applications/GitHub Desktop.app` folder, it needs to be able to write to it. If the owner of the folder is not the current user, the user will be prompted for an admin password every time GitHub Desktop tries to update itself.
+Since Gitea Desktop is able to auto-update by changing the contents of the `/Applications/Gitea Desktop.app` folder, it needs to be able to write to it. If the owner of the folder is not the current user, the user will be prompted for an admin password every time Gitea Desktop tries to update itself.
 
-**Workaround:** you need to restore the ownership and permissions of the application folder to the current user. If your app is located in `/Applications/GitHub Desktop.app`, you can probably do this by just running the following commands in Terminal:
+**Workaround:** you need to restore the ownership and permissions of the application folder to the current user. If your app is located in `/Applications/Gitea Desktop.app`, you can probably do this by just running the following commands in Terminal:
 
 ```sh
 sudo chown -R ${USER}:staff /Applications/GitHub\ Desktop.app
@@ -86,7 +86,7 @@ This is related to Desktop tracking the window position between launches, but no
 
 **Workaround:**
 
- - Remove `%APPDATA%\GitHub Desktop\window-state.json`
+ - Remove `%APPDATA%\Gitea Desktop\window-state.json`
  - Restart Desktop
 
 ### Certificate revocation check fails
@@ -99,7 +99,7 @@ If you are using Desktop on a corporate network, you may encounter an error like
 fatal: unable to access 'https://github.com/owner/name.git/': schannel: next InitializeSecurityContext failed: Unknown error (0x80092012) - The revocation function was unable to check revocation for the certificate.
 ```
 
-GitHub Desktop by default uses the Windows Secure Channel (SChannel) APIs to validate the certificate received from a server. Some networks will block the attempts by Windows to check the revocation status of a certificate, which then causes the whole operation to error.
+Gitea Desktop by default uses the Windows Secure Channel (SChannel) APIs to validate the certificate received from a server. Some networks will block the attempts by Windows to check the revocation status of a certificate, which then causes the whole operation to error.
 
 **Workaround:**
 
@@ -144,7 +144,7 @@ Related issue: [#3096](https://github.com/desktop/desktop/issues/3096)
 Windows 10 Fall Creators Edition (version 1709 or later) added enhancements to the Enhanced Mitigation Experience Toolkit, one being to enable Mandatory ASLR. This setting affects the embedded Git shipped in Desktop, and produces errors that look like this:
 
 ```
-      1 [main] sh (2072) C:\Users\bdorrans\AppData\Local\GitHubDesktop\app-1.0.4\resources\app\git\usr\bin\sh.exe: *** fatal error - cygheap base mismatch detected - 0x2E07408/0x2EC7408.
+      1 [main] sh (2072) C:\Users\bdorrans\AppData\Local\GiteaDesktop\app-1.0.4\resources\app\git\usr\bin\sh.exe: *** fatal error - cygheap base mismatch detected - 0x2E07408/0x2EC7408.
 This problem is probably due to using incompatible versions of the cygwin DLL.
 Search for cygwin1.dll using the Windows Start->Find/Search facility
 and delete all but the most recent version.  The most recent version *should*
@@ -167,7 +167,7 @@ Electron enables hardware accelerated graphics by default, but some graphics car
 
 1. Open PowerShell
 2. Run the command `$env:GITHUB_DESKTOP_DISABLE_HARDWARE_ACCELERATION=1`
-3. Launch GitHub Desktop
+3. Launch Gitea Desktop
 
 ### Failed to open CA file after an update
 
@@ -177,7 +177,7 @@ A recent upgrade to Git for Windows changed how it uses `http.sslCAInfo`.
 
 An example of this error:
 
-> fatal: unable to access 'https://github.com/\<owner>/\<repo>.git/': schannel: failed to open CA file 'C:/Users/\<account>/AppData/Local/GitHubDesktop/app-1.2.2/resources/app/git/mingw64/bin/curl-ca-bundle.crt': No such file or directory
+> fatal: unable to access 'https://github.com/\<owner>/\<repo>.git/': schannel: failed to open CA file 'C:/Users/\<account>/AppData/Local/GiteaDesktop/app-1.2.2/resources/app/git/mingw64/bin/curl-ca-bundle.crt': No such file or directory
 
 This is occurring because some users have an existing Git for Windows installation that created a special config at `C:\ProgramData\Git\config`, and this config may contain an `http.sslCAInfo` entry, which is inherited by Desktop.
 
@@ -211,7 +211,7 @@ sslCAInfo = [some value here]
 
 Related issue: [#2623](https://github.com/desktop/desktop/issues/2623)
 
-If either the user or an application has modified the `Command Processor` registry entries it can cause GitHub Desktop to throw an `Authentication failed` error. To check if these registry entries have been modified open the Registry Editor (regedit.exe) and navigate to the following locations:
+If either the user or an application has modified the `Command Processor` registry entries it can cause Gitea Desktop to throw an `Authentication failed` error. To check if these registry entries have been modified open the Registry Editor (regedit.exe) and navigate to the following locations:
 
 `HKEY_CURRENT_USER\Software\Microsoft\Command Processor\`
 `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Command Processor\`
@@ -222,6 +222,6 @@ Check to see if there is an `Autorun` value in either of those location. If ther
 
 Related issue: [#15217](https://github.com/desktop/desktop/issues/15217)
 
-If you see an error that says "Not enough resources are available to process this command" when signing in to GitHub Desktop, it's likely that you have too many credentials stored in Windows Credentials Manager.
+If you see an error that says "Not enough resources are available to process this command" when signing in to Gitea Desktop, it's likely that you have too many credentials stored in Windows Credentials Manager.
 
 **Workaround:** open the Credential Manager application, click on Windows Credentials and go through the list to see if there are some you can delete.

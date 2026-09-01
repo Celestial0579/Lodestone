@@ -7,7 +7,7 @@ import { Account } from '../../models/account'
 import { SignInState, SignInStep } from '../../lib/stores'
 import { assertNever } from '../../lib/fatal-error'
 import { Start } from './start'
-import { SignInEnterprise } from './sign-in-enterprise'
+import { SignInGitea } from './sign-in-gitea'
 import { ConfigureGit } from './configure-git'
 import { UiView } from '../ui-view'
 import { getGlobalConfigValue } from '../../lib/git'
@@ -15,8 +15,7 @@ import { getGlobalConfigValue } from '../../lib/git'
 /** The steps along the Welcome flow. */
 export enum WelcomeStep {
   Start = 'Start',
-  SignInToDotComWithBrowser = 'SignInToDotComWithBrowser',
-  SignInToEnterprise = 'SignInToEnterprise',
+  SignInToGitea = 'SignInToGitea',
   ConfigureGit = 'ConfigureGit',
 }
 
@@ -94,19 +93,10 @@ export class Welcome extends React.Component<IWelcomeProps, IWelcomeState> {
 
   /**
    * Returns a value indicating whether or not the welcome flow is
-   * currently in one of the sign in steps, i.e. either dotcom sign
-   * in or enterprise sign in.
+   * currently in the sign in step.
    */
   private get inSignInStep() {
-    if (this.state.currentStep === WelcomeStep.SignInToDotComWithBrowser) {
-      return true
-    }
-
-    if (this.state.currentStep === WelcomeStep.SignInToEnterprise) {
-      return true
-    }
-
-    return false
+    return this.state.currentStep === WelcomeStep.SignInToGitea
   }
 
   /**
@@ -157,24 +147,16 @@ export class Welcome extends React.Component<IWelcomeProps, IWelcomeState> {
 
     switch (step) {
       case WelcomeStep.Start:
-      case WelcomeStep.SignInToDotComWithBrowser:
-        const loadingBrowserAuth =
-          step === WelcomeStep.SignInToDotComWithBrowser &&
-          signInState !== null &&
-          signInState.kind === SignInStep.Authentication &&
-          signInState.loading
-
         return (
           <Start
             advance={this.advanceToStep}
             dispatcher={this.props.dispatcher}
-            loadingBrowserAuth={loadingBrowserAuth}
           />
         )
 
-      case WelcomeStep.SignInToEnterprise:
+      case WelcomeStep.SignInToGitea:
         return (
-          <SignInEnterprise
+          <SignInGitea
             dispatcher={this.props.dispatcher}
             advance={this.advanceToStep}
             signInState={signInState}
@@ -199,8 +181,8 @@ export class Welcome extends React.Component<IWelcomeProps, IWelcomeState> {
 
   private advanceToStep = (step: WelcomeStep) => {
     log.info(`[Welcome] advancing to step: ${step}`)
-    if (step === WelcomeStep.SignInToEnterprise) {
-      this.props.dispatcher.beginEnterpriseSignIn()
+    if (step === WelcomeStep.SignInToGitea) {
+      this.props.dispatcher.beginGiteaSignIn()
     }
 
     // Refresh the global user name and email if we're moving to the

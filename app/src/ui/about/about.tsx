@@ -155,12 +155,25 @@ export class About extends React.Component<IAboutProps> {
       )
     }
 
-    const { status, lastSuccessfulCheck } = this.props.updateState
+    const { status, lastSuccessfulCheck, giteaRelease } = this.props.updateState
 
     switch (status) {
       case UpdateStatus.CheckingForUpdates:
         return <UpdateInfo message="Checking for updates…" loading={true} />
       case UpdateStatus.UpdateAvailable:
+        // A release found on a Gitea instance is a file to download, not a
+        // Squirrel package we can install, so send the user to the release.
+        if (giteaRelease !== null) {
+          return (
+            <p>
+              <LinkButton uri={giteaRelease.htmlURL}>
+                {giteaRelease.name}
+              </LinkButton>{' '}
+              is available for download.
+            </p>
+          )
+        }
+
         return <UpdateInfo message="Downloading update…" loading={true} />
       case UpdateStatus.UpdateNotAvailable:
         if (!lastSuccessfulCheck) {
@@ -270,7 +283,7 @@ export class About extends React.Component<IAboutProps> {
           <Row className="logo">
             <img
               src={DesktopLogo}
-              alt="GitHub Desktop"
+              alt="Gitea Desktop"
               width="64"
               height="64"
             />
@@ -298,7 +311,7 @@ export class About extends React.Component<IAboutProps> {
             </p>
             <p className="terms-and-license">
               <LinkButton uri="https://gh.io/copilot-for-desktop-transparency">
-                Responsible use of Copilot in GitHub Desktop
+                Responsible use of Copilot in Gitea Desktop
               </LinkButton>
             </p>
           </div>

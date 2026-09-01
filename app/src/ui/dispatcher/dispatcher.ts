@@ -1688,10 +1688,10 @@ export class Dispatcher {
    * put the store in the EndpointEntry step ready to receive the url
    * to the enterprise instance.
    */
-  public beginEnterpriseSignIn(
+  public beginGiteaSignIn(
     resultCallback?: (result: SignInResult) => void
   ) {
-    this.appStore._beginEnterpriseSignIn(resultCallback)
+    this.appStore._beginGiteaSignIn(resultCallback)
   }
 
   /**
@@ -1726,7 +1726,7 @@ export class Dispatcher {
       this.appStore._beginDotComSignIn(resultCallback)
       this.requestBrowserAuthentication()
     } else {
-      this.appStore._beginEnterpriseSignIn(resultCallback)
+      this.appStore._beginGiteaSignIn(resultCallback)
       this.appStore
         ._setSignInEndpoint(endpoint)
         .then(() => this.requestBrowserAuthentication())
@@ -1747,6 +1747,16 @@ export class Dispatcher {
    */
   public requestBrowserAuthentication() {
     this.appStore._requestBrowserAuthentication()
+  }
+
+  /**
+   * Complete the sign in flow with a Gitea personal access token.
+   *
+   * This method must only be called while the sign in store is in the
+   * authentication step.
+   */
+  public signInWithToken(token: string): Promise<void> {
+    return this.appStore._signInWithToken(token)
   }
 
   /**
@@ -1781,11 +1791,11 @@ export class Dispatcher {
    * a GitHub Enterprise instance.
    * Optionally, you can provide an endpoint URL.
    */
-  public async showEnterpriseSignInDialog(
+  public async showGiteaSignInDialog(
     endpoint?: string,
     resultCallback?: (result: SignInResult) => void
   ): Promise<void> {
-    this.appStore._beginEnterpriseSignIn(resultCallback)
+    this.appStore._beginGiteaSignIn(resultCallback)
 
     if (endpoint !== undefined) {
       this.appStore._setSignInEndpoint(endpoint)

@@ -5,15 +5,15 @@ import { SignIn } from '../lib/sign-in'
 import { Dispatcher } from '../dispatcher'
 import { SignInState } from '../../lib/stores'
 
-interface ISignInEnterpriseProps {
+interface ISignInGiteaProps {
   readonly dispatcher: Dispatcher
   readonly advance: (step: WelcomeStep) => void
   readonly signInState: SignInState | null
 }
 
-/** The Welcome flow step to login to an Enterprise instance. */
-export class SignInEnterprise extends React.Component<
-  ISignInEnterpriseProps,
+/** The Welcome flow step to sign in to a Gitea instance. */
+export class SignInGitea extends React.Component<
+  ISignInGiteaProps,
   {}
 > {
   public render() {
@@ -25,10 +25,10 @@ export class SignInEnterprise extends React.Component<
 
     return (
       <section
-        id="sign-in-enterprise"
-        aria-label="Sign in to your GitHub Enterprise"
+        id="sign-in-gitea"
+        aria-label="Sign in to your Gitea instance"
       >
-        <h1 className="welcome-title">Sign in to your GitHub Enterprise</h1>
+        <h1 className="welcome-title">Sign in to your Gitea instance</h1>
 
         <SignIn signInState={state} dispatcher={this.props.dispatcher}>
           <Button onClick={this.cancel}>Cancel</Button>

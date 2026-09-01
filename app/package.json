@@ -1,19 +1,19 @@
 {
-  "name": "desktop",
-  "productName": "GitHub Desktop",
-  "bundleID": "com.github.GitHubClient",
-  "companyName": "GitHub, Inc.",
-  "version": "3.6.5-beta1",
+  "name": "gitea-desktop",
+  "productName": "Gitea Desktop",
+  "bundleID": "org.giteadesktop.GiteaDesktop",
+  "companyName": "Gitea Desktop Contributors",
+  "version": "1.0.0",
   "main": "./main.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/desktop/desktop.git"
+    "url": ""
   },
-  "description": "Simple collaboration from your desktop",
+  "description": "Simple collaboration from your desktop, for Gitea",
   "author": {
-    "name": "GitHub, Inc.",
-    "email": "opensource+desktop@github.com",
-    "url": "https://desktop.github.com/"
+    "name": "Gitea Desktop Contributors",
+    "email": "",
+    "url": "https://about.gitea.com/"
   },
   "license": "MIT",
   "dependencies": {

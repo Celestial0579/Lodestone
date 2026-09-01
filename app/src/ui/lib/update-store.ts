@@ -24,6 +24,14 @@ import { offsetFromNow } from '../../lib/offset-from'
 import { gte, SemVer } from 'semver'
 import { getVersion } from './app-proxy'
 import { getUserAgent } from '../../lib/http'
+import { Account } from '../../models/account'
+import {
+  fetchLatestGiteaRelease,
+  getGiteaUpdateSourceURL,
+  IGiteaRelease,
+  isNewerRelease,
+  parseGiteaUpdateSource,
+} from '../../lib/gitea/gitea-updates'
 
 /** The last version a showcase was seen. */
 export const lastShowCaseVersionSeen = 'version-of-last-showcase'
@@ -53,6 +61,14 @@ export interface IUpdateState {
   newReleases: ReadonlyArray<ReleaseSummary> | null
   prioritizeUpdate: boolean
   prioritizeUpdateInfoUrl: string | undefined
+
+  /**
+   * A release found on the configured Gitea instance that is newer than the
+   * running version. Gitea publishes releases as file attachments rather than
+   * as a Squirrel feed, so there is nothing to install automatically; the user
+   * is pointed at the release page instead.
+   */
+  giteaRelease: IGiteaRelease | null
 }
 
 /** A store which contains the current state of the auto updater. */
@@ -62,6 +78,7 @@ class UpdateStore {
   private lastSuccessfulCheck: Date | null = null
   private newReleases: ReadonlyArray<ReleaseSummary> | null = null
   private isX64ToARM64ImmediateAutoUpdate: boolean = false
+  private giteaRelease: IGiteaRelease | null = null
 
   /** Is the most recent update check user initiated? */
   private userInitiatedUpdate = true
@@ -185,6 +202,7 @@ class UpdateStore {
       isX64ToARM64ImmediateAutoUpdate: this.isX64ToARM64ImmediateAutoUpdate,
       prioritizeUpdate: this.prioritizeUpdate,
       prioritizeUpdateInfoUrl: this.prioritizeUpdateInfoUrl,
+      giteaRelease: this.giteaRelease,
     }
   }
 
@@ -197,7 +215,11 @@ class UpdateStore {
    *                       effectively disable the staggered releases system and
    *                       attempt to retrieve the latest available deployment.
    */
-  public async checkForUpdates(inBackground: boolean, skipGuidCheck: boolean) {
+  public async checkForUpdates(
+    inBackground: boolean,
+    skipGuidCheck: boolean,
+    accounts: ReadonlyArray<Account> = []
+  ) {
     // An update has been downloaded and the app is waiting to be restarted.
     // Checking for updates again may result in the running app being nuked
     // when it finds a subsequent update on Windows, or the "Quit and Update"
@@ -208,13 +230,22 @@ class UpdateStore {
       return
     }
 
-    const updatesUrl = await this.getUpdatesUrl(skipGuidCheck)
+    this.userInitiatedUpdate = !inBackground
 
-    if (updatesUrl === null) {
+    // A Gitea instance the user pointed us at takes precedence: it is the only
+    // update source Gitea Desktop has unless someone stood up a Squirrel feed
+    // of their own at build time.
+    if (await this.checkGiteaForUpdates(accounts)) {
       return
     }
 
-    this.userInitiatedUpdate = !inBackground
+    const updatesUrl = await this.getUpdatesUrl(skipGuidCheck)
+
+    if (updatesUrl === null) {
+      // Nothing to check against. Leave the status alone so the UI can tell the
+      // user that updates aren't configured rather than claiming to be current.
+      return
+    }
 
     const error = await checkForUpdates(updatesUrl)
 
@@ -223,14 +254,59 @@ class UpdateStore {
     }
   }
 
+  /**
+   * Ask the configured Gitea repository whether a newer release exists.
+   *
+   * Returns true when a source is configured and was checked, in which case the
+   * caller should not fall through to the Squirrel updater. Returns false when
+   * no update source has been set up, which is the default.
+   */
+  private async checkGiteaForUpdates(
+    accounts: ReadonlyArray<Account>
+  ): Promise<boolean> {
+    const source = parseGiteaUpdateSource(getGiteaUpdateSourceURL())
+
+    if (source === null) {
+      return false
+    }
+
+    this.status = UpdateStatus.CheckingForUpdates
+    this.emitDidChange()
+
+    const release = await fetchLatestGiteaRelease(source, accounts)
+
+    if (release !== null && isNewerRelease(release, getVersion())) {
+      this.giteaRelease = release
+      this.status = UpdateStatus.UpdateAvailable
+    } else {
+      this.giteaRelease = null
+      this.status = UpdateStatus.UpdateNotAvailable
+    }
+
+    // A failed request leaves the version we know about unchanged, so only
+    // record a successful check when we actually heard back.
+    if (release !== null) {
+      this.touchLastChecked()
+    }
+
+    this.emitDidChange()
+    return true
+  }
+
   private async getUpdatesUrl(skipGuidCheck: boolean) {
     let url = null
+
+    // Gitea Desktop ships without an update endpoint unless one was configured
+    // at build time, in which case there is nothing to check against.
+    if (__UPDATES_URL__.length === 0) {
+      return null
+    }
 
     try {
       url = new URL(__UPDATES_URL__)
     } catch (e) {
       log.error('Error parsing updates url', e)
-      return __UPDATES_URL__
+      return null
     }
 
     if (skipGuidCheck) {
@@ -271,8 +347,16 @@ class UpdateStore {
   }
 
   private async updatePriorityUpdateStatus() {
+    const updatesUrl = await this.getUpdatesUrl(false)
+
+    // Prioritised updates are signalled through headers on the Squirrel feed.
+    // Without a feed there is nothing to ask.
+    if (updatesUrl === null) {
+      return
+    }
+
     try {
-      const response = await fetch(await this.getUpdatesUrl(false), {
+      const response = await fetch(updatesUrl, {
         method: 'HEAD',
         headers: { 'user-agent': getUserAgent() },
       })

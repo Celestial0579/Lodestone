@@ -198,9 +198,9 @@ Windows needed a few extra pieces to keep the suite stable.
 - the smoke suite only runs updater coverage against an installed app path on
   Windows
 - the workflow installs the generated Squirrel setup executable silently and
-  discovers the installed `GitHubDesktop.exe` path
+  discovers the installed `GiteaDesktop.exe` path
 - installer failures dump Squirrel log files for diagnosis
-- the E2E fixtures kill lingering `Update.exe` and `GitHubDesktop.exe` process
+- the E2E fixtures kill lingering `Update.exe` and `GiteaDesktop.exe` process
   trees during teardown to avoid hangs and races with the mock server
 
 ## Videos, Traces, and Diagnostics

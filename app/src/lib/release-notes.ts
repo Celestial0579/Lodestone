@@ -10,7 +10,6 @@ import { getVersion } from '../ui/lib/app-proxy'
 import { formatDate } from './format-date'
 import { offsetFromNow } from './offset-from'
 import { encodePathAsUrl } from './path'
-import { getUserAgent } from './http'
 
 // expects a release note entry to contain a header and then some text
 // example:
@@ -89,30 +88,18 @@ export function getReleaseSummary(
   }
 }
 
+/**
+ * Release notes for the running version.
+ *
+ * Upstream fetches these from GitHub's release infrastructure, which only knows
+ * about Gitea Desktop releases. Gitea Desktop has no such service, so there is
+ * nothing to show. Point this at a JSON document matching `ReleaseMetadata` if
+ * you publish your own builds and want the release notes dialog populated.
+ */
 export async function getChangeLog(
   limit?: number
 ): Promise<ReadonlyArray<ReleaseMetadata>> {
-  const changelogURL = new URL(
-    'https://central.github.com/deployments/desktop/desktop/changelog.json'
-  )
-
-  if (__RELEASE_CHANNEL__ === 'beta' || __RELEASE_CHANNEL__ === 'test') {
-    changelogURL.searchParams.set('env', __RELEASE_CHANNEL__)
-  }
-
-  if (limit !== undefined) {
-    changelogURL.searchParams.set('limit', limit.toString())
-  }
-
-  const response = await fetch(changelogURL.toString(), {
-    headers: { 'user-agent': getUserAgent() },
-  })
-  if (response.ok) {
-    const releases: ReadonlyArray<ReleaseMetadata> = await response.json()
-    return releases
-  } else {
-    return []
-  }
+  return []
 }
 
 export async function generateReleaseSummary(

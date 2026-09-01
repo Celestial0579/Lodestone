@@ -5,7 +5,7 @@ there are some parts in common but then each platform has it's own quirks.
 
 ## `webpack`
 
-GitHub Desktop use webpack to transpile and bundle its application resources.
+Gitea Desktop use webpack to transpile and bundle its application resources.
 The configuration files that webpack uses are found under `app/`:
 
  - `app/webpack.common.ts` - base config and settings
@@ -37,7 +37,7 @@ ignored in version control.
 ## `app/package.json`
 
 The `version` attribute in `app/package.json` is the canonical reference for
-the version number you see in the **About** view of GitHub Desktop.
+the version number you see in the **About** view of Gitea Desktop.
 
 ## `changelog.json`
 
@@ -56,7 +56,7 @@ This script is responsible for:
 
  - merging additional static resources into the output directory
  - generating a license bundle from the projects that Desktop uses, which are
-   accessible from the **About GitHub Desktop** dialog
+   accessible from the **About Gitea Desktop** dialog
  - generating license metadata from the `choosealicense.com` source repository,
    so the user can add a suitable license to their new repository when creating
    a repository in Desktop

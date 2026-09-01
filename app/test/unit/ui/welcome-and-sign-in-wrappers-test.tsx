@@ -11,7 +11,7 @@ import type {
 import { SignInStep } from '../../../src/lib/stores/sign-in-store'
 import type { Dispatcher } from '../../../src/ui/dispatcher'
 import { ConfigureGit } from '../../../src/ui/welcome/configure-git'
-import { SignInEnterprise } from '../../../src/ui/welcome/sign-in-enterprise'
+import { SignInGitea } from '../../../src/ui/welcome/sign-in-gitea'
 import { SignIn } from '../../../src/ui/lib/sign-in'
 import { fireEvent, render, screen } from '../../helpers/ui/render'
 
@@ -144,7 +144,7 @@ describe('welcome and sign-in wrappers', () => {
     }
 
     const view = render(
-      <SignInEnterprise
+      <SignInGitea
         dispatcher={toDispatcher(dispatcher)}
         advance={advance}
         signInState={null}
@@ -154,7 +154,7 @@ describe('welcome and sign-in wrappers', () => {
     assert.equal(view.container.textContent, '')
 
     view.rerender(
-      <SignInEnterprise
+      <SignInGitea
         dispatcher={toDispatcher(dispatcher)}
         advance={advance}
         signInState={createAuthenticationState('https://api.github.com')}

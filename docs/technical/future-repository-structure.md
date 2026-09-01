@@ -1,7 +1,7 @@
 # Future Repository Structure
 
 This document is a work in progress which covers where things should be found and
-outlines how things will be organized in the GitHub Desktop source.
+outlines how things will be organized in the Gitea Desktop source.
 
 **Note:** this document will be updated over time because this will be an
 incremental process, with lots of unknowns, and we want to continue to ship

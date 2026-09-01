@@ -22,6 +22,11 @@ import {
   updateEndpointVersion,
 } from './endpoint-capabilities'
 import {
+  getGiteaAPIURL,
+  getGiteaHTMLURL,
+  isGiteaEndpoint,
+} from './gitea/gitea-endpoint'
+import {
   clearCertificateErrorSuppressionFor,
   suppressCertificateErrorFor,
 } from './suppress-certificate-error'
@@ -2275,7 +2280,9 @@ export function getEndpointForRepository(url: string): string {
   if (parsed.hostname === 'github.com') {
     return getDotComAPIEndpoint()
   } else {
-    return `${parsed.protocol}//${parsed.hostname}/api`
+    // Anything that isn't GitHub.com is assumed to be a Gitea instance, which
+    // serves its API from `/api/v1` on the same origin as the web UI.
+    return getGiteaAPIURL(url)
   }
 }
 
@@ -2298,6 +2305,10 @@ export function getHTMLURL(endpoint: string): string {
   //  E.g., https://github.mycompany.com/api/v3 -> https://github.mycompany.com
   //
   // We need to normalize them.
+  if (isGiteaEndpoint(endpoint)) {
+    return getGiteaHTMLURL(endpoint)
+  }
+
   if (endpoint === getDotComAPIEndpoint() && !envEndpoint) {
     return 'https://github.com'
   } else {

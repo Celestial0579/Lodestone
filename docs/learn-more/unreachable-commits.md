@@ -51,12 +51,12 @@ Now, let's say that we merge the `feature-branch` into our `main` branch. Our gr
 
 Still `E` and `D` are unreachable by `F`. But, you may think "I merged the `feature-branch` into `main`, so I should be able to see changes from `E` and `D`." This is true if you start at a commit that has them in its ancestral path. That is `G` and it is known as a **merge commit**, and it is special in that it has two parents. The first is `F` as the last commit of the branch being merged into, and `E` as the last commit of the branch being merged. Now, all the commits in this graph are ancestors of `G`. Thus, if we were to execute `git diff B..G`. We will see changes of all ancestral paths of `G` to `B`. Those paths are `G` -> `F` -> `C` -> `B` and `G`-> `E` -> `D` -> `C` -> `B`. Therefore we will see changes from `G`, `F`, `E`, `D`, and `C`.
 
-# GitHub Desktop
-In GitHub Desktop, commits are displayed linearly and in chronological order. Thus, the graph from the previous section `Merge Commits` would look like:
+# Gitea Desktop
+In Gitea Desktop, commits are displayed linearly and in chronological order. Thus, the graph from the previous section `Merge Commits` would look like:
 
 ![image](../assets/unreachable-commits-history.png)
 
-In GitHub Desktop, diffing across multiple commits is accomplished through a range selection that results in executing `git diff`, which shows the changes of comparing the first and last commit in the selection (inclusive). Therefore, generating a diff on a branch where merge commits exist may result in unreachable commits being inside a diff selection. The following shows the unreachable commit scenario described above in `Merge Commits`.
+In Gitea Desktop, diffing across multiple commits is accomplished through a range selection that results in executing `git diff`, which shows the changes of comparing the first and last commit in the selection (inclusive). Therefore, generating a diff on a branch where merge commits exist may result in unreachable commits being inside a diff selection. The following shows the unreachable commit scenario described above in `Merge Commits`.
 
 ![image](../assets/unreachable-commits-demo.gif)
 

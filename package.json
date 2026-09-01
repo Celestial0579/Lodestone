@@ -1,9 +1,9 @@
 {
   "repository": {
     "type": "git",
-    "url": "https://github.com/desktop/desktop.git"
+    "url": ""
   },
-  "description": "GitHub Desktop build dependencies",
+  "description": "Gitea Desktop build dependencies",
   "scripts": {
     "cli": "ts-node app/src/cli/main.ts",
     "check:eslint": "tsc -P eslint-rules/",
@@ -50,9 +50,9 @@
     "validate-changelog": "ts-node -P script/tsconfig.json script/validate-changelog.ts"
   },
   "author": {
-    "name": "GitHub, Inc.",
-    "email": "opensource+desktop@github.com",
-    "url": "https://desktop.github.com/"
+    "name": "Gitea Desktop Contributors",
+    "email": "",
+    "url": "https://about.gitea.com/"
   },
   "license": "MIT",
   "engines": {

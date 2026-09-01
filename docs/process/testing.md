@@ -24,12 +24,12 @@
     - [ ] Forgot link (`/password_reset`)
     - [ ] `Cancel` returns to initial Welcome Flow page
     - [ ] `Sign-in using your browser` opens default browser for confirmation
-      - [ ] Browser login, "authorize" GitHub Desktop, “accept” link
+      - [ ] Browser login, "authorize" Gitea Desktop, “accept” link
         - [ ] If successful, Desktop shown in `/settings/applications` in user profile
   - [ ] `Sign in to Enterprise` link (v2.8 and up)
     - [ ] `Continue` successful if server address is valid, else error message
       - [ ] `Sign in using your browser` opens default browser for confirmation
-        - [ ] Browser login, [insert custom security measure], Authorize GitHub Desktop, “accept” link
+        - [ ] Browser login, [insert custom security measure], Authorize Gitea Desktop, “accept” link
     - [ ] User goes to Configure Git if successful
     - [ ] `Cancel` returns to initial Welcome Flow
     - [ ] User served generic message if not authorized to access Enterprise
@@ -112,8 +112,8 @@
   - [ ] Clicking Desktop icon in dock/taskbar opens the application
   - [ ] Changing desktop icon name while app is open results in package error; if app is closed then name change successful
 
-### GitHub Desktop menu top-level
-  - [ ] About GitHub Desktop
+### Gitea Desktop menu top-level
+  - [ ] About Gitea Desktop
     - [ ] Current version shown
     - [ ] Links to release notes (modal), terms (modal), licenses (modal)
     - [ ] Update banner shows `whats new` (modal) and `restart now`; App will restart with latest build
@@ -266,7 +266,7 @@
     - [ ] `Push Local Changes` modal surfaces with option to `Create Without Pushing` and `Push Commits`;(trigger: `Create Pull Request` after commit on branch before pushing)
 
 ### Window top-level menu (Mac only)
-  - [ ] Minimize, Zoom (maximize app size), Close, Bring All to Front, GitHub Desktop
+  - [ ] Minimize, Zoom (maximize app size), Close, Bring All to Front, Gitea Desktop
 
 ### Help top-level menu
   - [ ] `Report Issue...` opens issue filing in Desktop repository on `github.com`
@@ -276,7 +276,7 @@
   - [ ] `Show Logs in Finder/Explorer` opens Finder/Explorer logs in local directory
     - [ ] Mac: `ls ~/Library/Application\ Support/GitHub\ Desktop/Logs/*.log`
     - [ ] Windows: `%LOCALAPPDATA%\\Desktop\\*.desktop.production.log`
-  - [ ] About GitHub Desktop (Windows only)
+  - [ ] About Gitea Desktop (Windows only)
   
 ### Next Steps
  - [ ] Up to four suggested steps are shown at any given time, contingent on the state of the repository and/or branch

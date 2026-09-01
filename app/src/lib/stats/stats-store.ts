@@ -41,7 +41,6 @@ import { isInApplicationFolder } from '../../ui/main-process-proxy'
 import { getRendererGUID } from '../get-renderer-guid'
 import { ValidNotificationPullRequestReviewState } from '../valid-notification-pull-request-review'
 import { useExternalCredentialHelperKey } from '../trampoline/use-external-credential-helper'
-import { getUserAgent } from '../http'
 import { getHooksEnvEnabled } from '../hooks/config'
 import { parseModelKey } from '../copilot/byok'
 import { DefaultCopilotModel } from '../stores/copilot-store'
@@ -59,7 +58,12 @@ type PullRequestReviewStatFieldSuffix =
 type PullRequestReviewStatField =
   `pullRequestReview${PullRequestReviewStatFieldInfix}${PullRequestReviewStatFieldSuffix}`
 
-const StatsEndpoint = 'https://central.github.com/api/usage/desktop'
+/**
+ * Gitea Desktop has no telemetry backend of its own, and the endpoint the
+ * upstream app reports to has no business receiving data about a private Gitea
+ * instance. Usage measures are still collected locally because in-app features
+ * such as the onboarding tutorial read them, but they never leave the machine.
+ */
 
 /** The URL to the stats samples page. */
 export const SamplesURL = 'https://desktop.github.com/usage-data/'
@@ -469,15 +473,15 @@ export interface IStatsStore {
   increment: (k: keyof NumericMeasures, n?: number) => Promise<void>
 }
 
-const defaultPostImplementation = (body: Record<string, any>) =>
-  fetch(StatsEndpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'user-agent': getUserAgent(),
-    },
-    body: JSON.stringify(body),
-  })
+const defaultPostImplementation = async (body: Record<string, any>) => {
+  log.debug(
+    `[stats] discarding usage report (${
+      body.eventType ?? 'metrics'
+    }), reporting is disabled in Gitea Desktop`
+  )
+
+  return new Response(null, { status: 200, statusText: 'OK' })
+}
 
 /** The store for the app's stats. */
 export class StatsStore implements IStatsStore {
@@ -491,15 +495,9 @@ export class StatsStore implements IStatsStore {
     private readonly uiActivityMonitor: IUiActivityMonitor,
     private readonly post = defaultPostImplementation
   ) {
-    const storedValue = getHasOptedOutOfStats()
-
-    this.optOut = storedValue || false
-
-    // If the user has set an opt out value but we haven't sent the ping yet,
-    // give it a shot now.
-    if (!getBoolean(HasSentOptInPingKey, false)) {
-      this.sendOptInStatusPing(this.optOut, storedValue)
-    }
+    // Reporting is off by default and there is nowhere for the data to go, so
+    // the stored preference only affects whether measures are collected at all.
+    this.optOut = getHasOptedOutOfStats() ?? true
 
     this.enableUiActivityMonitoring()
 

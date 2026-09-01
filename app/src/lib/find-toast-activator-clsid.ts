@@ -16,10 +16,10 @@ export function findToastActivatorClsid() {
       'Windows',
       'Start Menu',
       'Programs',
-      'GitHub, Inc',
-      'Gitea Desktop.lnk'
+      __APP_COMPANY__,
+      `${__APP_NAME__}.lnk`
     ),
-    path.join(os.homedir(), 'Desktop', 'Gitea Desktop.lnk'),
+    path.join(os.homedir(), 'Desktop', `${__APP_NAME__}.lnk`),
   ]
 
   for (const shortcutPath of shortcutPaths) {

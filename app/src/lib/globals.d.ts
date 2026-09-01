@@ -27,6 +27,9 @@ declare const __LINUX__: boolean
  */
 declare const __APP_NAME__: string
 
+/** The company name from the app manifest, used for install paths. */
+declare const __APP_COMPANY__: string
+
 /**
  * The current version of the app, this is intended to be a compile-time
  * replacement for app.getVersion

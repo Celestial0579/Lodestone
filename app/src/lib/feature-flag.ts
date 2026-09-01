@@ -88,30 +88,20 @@ export const enableCustomIntegration = () => true
 
 export const enableResizingToolbarButtons = () => true
 
-export const enableCommitMessageGeneration = (account: Account) => {
-  return (
-    (account.features ?? []).includes(
-      'desktop_copilot_generate_commit_message'
-    ) &&
-    // IMPORTANT: Do not remove this feature flag without replacing its usages
-    // with a check for the `isCopilotDesktopEnabled` property on the account.
-    account.isCopilotDesktopEnabled
-  )
-}
+/*
+ * Copilot is a GitHub product reached over GitHub's GraphQL API, which Gitea
+ * does not implement. The integration is switched off here rather than removed
+ * so that the surrounding upstream code, and future merges from it, stay
+ * intact. Every Copilot surface in the app is gated on one of these.
+ */
 
-export const enableCopilotSdkCommitMessageGeneration = (account: Account) => {
-  // Enabled for all users in beta and development channels, and for users with
-  // the feature flag enabled in production.
-  return (
-    enableBetaFeatures() ||
-    (account.features ?? []).includes(
-      'desktop_enable_copilot_sdk_commit_message_generation'
-    )
-  )
-}
+export const enableCommitMessageGeneration = (account: Account) => false
+
+export const enableCopilotSdkCommitMessageGeneration = (account: Account) =>
+  false
 
 /** Should we enable Copilot-powered merge conflict resolution? */
-export const enableCopilotConflictResolution = () => true
+export const enableCopilotConflictResolution = () => false
 
 export function enableAccessibleListToolTips(): boolean {
   return enableBetaFeatures()

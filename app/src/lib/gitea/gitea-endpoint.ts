@@ -21,13 +21,17 @@ const withoutTrailingSlash = (value: string) => value.replace(/\/+$/, '')
 /**
  * Whether or not the given API endpoint points at a Gitea instance.
  *
- * We consider any endpoint whose path ends in `/api/v1` to be Gitea. Endpoints
- * are only ever constructed by us (see `getGiteaAPIURL`) or restored from a
- * previously stored account, so this is a reliable marker rather than a guess.
+ * We consider any endpoint whose path ends in `/api/v1` to be Gitea, which
+ * covers instances hosted under a sub path (`https://example.com/gitea`) as
+ * well. Endpoints are only ever constructed by us (see `getGiteaAPIURL`) or
+ * restored from a previously stored account, so this is a reliable marker
+ * rather than a guess.
  */
 export function isGiteaEndpoint(endpoint: string): boolean {
   try {
-    return withoutTrailingSlash(new URL(endpoint).pathname) === GiteaAPIPath
+    return withoutTrailingSlash(new URL(endpoint).pathname).endsWith(
+      GiteaAPIPath
+    )
   } catch {
     return false
   }

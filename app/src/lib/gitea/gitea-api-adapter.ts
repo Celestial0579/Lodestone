@@ -16,6 +16,7 @@
  */
 
 import { coreRequest, HTTPMethod } from '../http-core'
+import { getGiteaHTMLURL } from './gitea-endpoint'
 
 /** Everything needed to perform (or fake) a single API request. */
 export interface IGiteaRequestOptions {
@@ -47,15 +48,35 @@ const isPlainObject = (value: any): value is Record<string, any> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 /**
+ * Map a Gitea commit status onto the four states the app understands.
+ *
+ * Gitea has two extra ones. `warning` is surfaced as a failure so it stays
+ * visible rather than being quietly reported as green, and `skipped` counts as
+ * a success because a skipped check blocks nothing.
+ */
+function toRefState(state: string): string {
+  switch (state) {
+    case 'warning':
+      return 'failure'
+    case 'skipped':
+      return 'success'
+    default:
+      return state
+  }
+}
+
+/**
  * Gitea repository payloads carry almost everything the app needs but name a
  * few things differently, and omit `pushed_at` entirely. Rather than teaching
  * every call site about that we normalise repositories and users wherever they
  * appear in a response, including nested ones such as the head and base
  * repositories of a pull request.
+ *
+ * Note: exported for testability only, callers go through `giteaRequest`.
  */
-function normalizePayload(value: any): any {
+export function normalizePayload(value: any, htmlBase: string): any {
   if (Array.isArray(value)) {
-    return value.map(normalizePayload)
+    return value.map(x => normalizePayload(x, htmlBase))
   }
 
   if (!isPlainObject(value)) {
@@ -64,7 +85,7 @@ function normalizePayload(value: any): any {
 
   const result: Record<string, any> = {}
   for (const [key, nested] of Object.entries(value)) {
-    result[key] = normalizePayload(nested)
+    result[key] = normalizePayload(nested, htmlBase)
   }
 
   // A repository, identified by its clone URL which no other payload carries.
@@ -77,11 +98,41 @@ function normalizePayload(value: any): any {
     return result
   }
 
-  // A user or an organisation. Gitea calls the display name `full_name`.
+  // A single commit status. Gitea names the field `status` where the app, and
+  // GitHub, call it `state`.
+  if (
+    typeof result['context'] === 'string' &&
+    typeof result['status'] === 'string'
+  ) {
+    result['state'] ??= toRefState(result['status'])
+    return result
+  }
+
+  // The combined status for a ref. Its own state uses the same vocabulary.
+  if (
+    Array.isArray(result['statuses']) &&
+    typeof result['state'] === 'string'
+  ) {
+    result['state'] = toRefState(result['state'])
+    return result
+  }
+
+  // An organisation. Gitea names it `username` and gives it neither a `login`
+  // nor an `html_url`, both of which the app relies on - publishing into an
+  // organisation looks it up by `login`.
+  if (typeof result['username'] === 'string' && result['login'] === undefined) {
+    result['login'] = result['username']
+    result['name'] ??= result['full_name'] || result['username']
+    result['type'] ??= 'Organization'
+    result['html_url'] ??= `${htmlBase}/${result['username']}`
+    return result
+  }
+
+  // A user. Gitea calls the display name `full_name`.
   if (typeof result['login'] === 'string') {
-    result['name'] ??= result['full_name'] ?? result['login']
-    result['type'] ??=
-      result['is_organization'] === true ? 'Organization' : 'User'
+    result['name'] ??= result['full_name'] || result['login']
+    result['type'] ??= 'User'
+    result['html_url'] ??= `${htmlBase}/${result['login']}`
     return result
   }
 
@@ -111,8 +162,10 @@ const splitPath = (path: string) => {
  * Gitea reads its pagination size from `limit`, not `per_page`, and caps it at
  * the instance's `MAX_RESPONSE_ITEMS`. Passing `per_page` through unchanged
  * would silently give us the default page size for every paged request.
+ *
+ * Note: exported for testability only, callers go through `giteaRequest`.
  */
-function translateQuery(query: string): string {
+export function translateQuery(query: string): string {
   if (query === '') {
     return ''
   }
@@ -310,6 +363,9 @@ export async function giteaRequest(
     reloadCache
   )
 
-  const transform = resolved?.transform ?? normalizePayload
+  const transform =
+    resolved?.transform ??
+    ((json: any) => normalizePayload(json, getGiteaHTMLURL(endpoint)))
+
   return replaceBody(response, transform)
 }

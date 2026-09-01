@@ -80,6 +80,15 @@ Gitea instance:
 Keeping the translation in one place means changes from upstream GitHub Desktop
 can be merged without conflicting with the Gitea support.
 
+## Still to do: the artwork
+
+The application icons and in-app illustrations are still the ones from GitHub
+Desktop (`app/static/logos`, `app/static/common/ghd_*.svg`,
+`app/static/common/logo-64x64@2x.png`, and the `github-for-*.svg`
+illustrations). The MIT licence covers the source, **not** GitHub's logos and
+trademarks, so replace these before distributing a build outside your own
+organisation.
+
 ## Building
 
 The toolchain is unchanged from upstream, see
@@ -89,6 +98,15 @@ The toolchain is unchanged from upstream, see
 yarn
 yarn build:dev
 yarn start
+```
+
+Building the native vendor modules requires the Visual Studio build tools on
+Windows; without them `yarn test:unit` cannot load `windows-argv-parser` and the
+whole suite fails before running. The Gitea translation layer has its own tests,
+which need none of that:
+
+```sh
+node script/test.mjs app/test/unit/gitea
 ```
 
 ## License

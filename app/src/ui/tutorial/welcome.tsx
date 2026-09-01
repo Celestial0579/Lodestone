@@ -5,11 +5,11 @@ import { encodePathAsUrl } from '../../lib/path'
 const CodeImage = encodePathAsUrl(__dirname, 'static/code.svg')
 const TeamDiscussionImage = encodePathAsUrl(
   __dirname,
-  'static/github-for-teams.svg'
+  'static/gitea-for-teams.svg'
 )
 const CloudServerImage = encodePathAsUrl(
   __dirname,
-  'static/github-for-business.svg'
+  'static/gitea-for-business.svg'
 )
 
 export class TutorialWelcome extends React.Component {

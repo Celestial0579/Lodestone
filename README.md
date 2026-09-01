@@ -80,14 +80,24 @@ Gitea instance:
 Keeping the translation in one place means changes from upstream GitHub Desktop
 can be merged without conflicting with the Gitea support.
 
-## Still to do: the artwork
+## Artwork
 
-The application icons and in-app illustrations are still the ones from GitHub
-Desktop (`app/static/logos`, `app/static/common/ghd_*.svg`,
-`app/static/common/logo-64x64@2x.png`, and the `github-for-*.svg`
-illustrations). The MIT licence covers the source, **not** GitHub's logos and
-trademarks, so replace these before distributing a build outside your own
-organisation.
+The application icons, the installer splash and the in-app logo are built from
+the Gitea mark (`assets/logo.svg` in
+[go-gitea/gitea](https://github.com/go-gitea/gitea)), placed on a rounded tile.
+Development builds use a sand-coloured tile so they can be told apart from a
+release build in the taskbar.
+
+`script/generate-icons.mjs` regenerates all of them from a single SVG.
+
+Note that Gitea is a trademark of its owners and this fork is not an official
+Gitea product. Using the mark is fine for an in-house build; check their
+trademark policy before distributing one publicly under this name.
+
+The macOS 26 asset catalogue (`Assets.car`) is not included, because compiling
+one needs Xcode's `actool` on a Mac. The `.icon` source and the ICNS are both
+there, so a macOS build still gets a correct icon, and `script/build.ts` treats
+the catalogue as optional.
 
 ## Building
 

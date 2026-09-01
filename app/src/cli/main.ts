@@ -39,11 +39,10 @@ const args = parse(process.argv.slice(2), {
 const usage = (exitCode = 1): never => {
   process.stderr.write(
     'Gitea Desktop CLI usage: \n' +
-      '  github                            Open the current directory\n' +
-      '  github open [path]                Open the provided path\n' +
-      '  github clone [-b branch] <url>    Clone the repository by url or name/owner\n' +
-      '                                    (ex torvalds/linux), optionally checking out\n' +
-      '                                    the branch\n'
+      '  gitea                             Open the current directory\n' +
+      '  gitea open [path]                 Open the provided path\n' +
+      '  gitea clone [-b branch] <url>     Clone the repository by url,\n' +
+      '                                    optionally checking out the branch\n'
   )
   process.exit(exitCode)
 }
@@ -53,12 +52,9 @@ delete process.env.ELECTRON_RUN_AS_NODE
 if (args.help || args._.at(0) === 'help') {
   usage(0)
 } else if (args._.at(0) === 'clone') {
-  const urlArg = args._.at(1)
-  // Assume name with owner slug if it looks like it
-  const url =
-    urlArg && /^[^\/]+\/[^\/]+$/.test(urlArg)
-      ? `https://github.com/${urlArg}`
-      : urlArg
+  // Upstream expands a bare `owner/name` against github.com. There is no
+  // such default instance here, so the url has to be spelled out.
+  const url = args._.at(1)
 
   if (!url) {
     usage(1)

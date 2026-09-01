@@ -53,7 +53,6 @@ import {
 import { updateLicenseDump } from './licenses/update-license-dump'
 import { verifyInjectedSassVariables } from './validate-sass/validate-all'
 import { join } from 'path'
-import assert from 'assert'
 
 const isPublishableBuild = isPublishable()
 const isDevelopmentBuild = getChannel() === 'development'
@@ -171,11 +170,13 @@ function packageApp() {
   }
 
   const iconPath = getIconDirectory()
+
+  // The compiled asset catalogue behind the macOS 26 icon is produced by
+  // Xcode's actool, which only exists on a Mac. Gitea Desktop ships the .icon
+  // source and the ICNS instead, so treat the catalogue as optional rather
+  // than failing every build that doesn't have one.
   const assetsCarPath = join(iconPath, 'Assets.car')
-  assert(
-    existsSync(assetsCarPath),
-    `Unable to find Assets.car at ${assetsCarPath}`
-  )
+  const iconResources = existsSync(assetsCarPath) ? [assetsCarPath] : []
 
   return packager({
     name: getExecutableName(),
@@ -189,7 +190,7 @@ function packageApp() {
       iconPath,
       process.platform === 'darwin' ? 'icon-logo-legacy.icns' : 'icon-logo'
     ),
-    extraResource: [assetsCarPath],
+    extraResource: iconResources,
     dir: outRoot,
     overwrite: true,
     tmpdir: false,

@@ -53,7 +53,7 @@ export class ChangeRepositoryAlias extends React.Component<
           </p>
           {repository.gitHubRepository !== null && (
             <p className="description">
-              This will not affect the original repository name on GitHub.
+              This will not affect the original repository name on Gitea.
             </p>
           )}
         </DialogContent>

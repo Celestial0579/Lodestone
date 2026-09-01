@@ -13,7 +13,7 @@ interface IInvalidatedTokenProps {
 }
 
 /**
- * Dialog that alerts user that their GitHub (Enterprise) account token is not
+ * Dialog that alerts user that their Gitea (Enterprise) account token is not
  * valid and they need to sign in again.
  */
 export class InvalidatedToken extends React.Component<IInvalidatedTokenProps> {
@@ -48,9 +48,7 @@ export class InvalidatedToken extends React.Component<IInvalidatedTokenProps> {
     onDismissed()
 
     if (isEnterpriseAccount(account)) {
-      dispatcher.showGiteaSignInDialog(
-        getHTMLURL(this.props.account.endpoint)
-      )
+      dispatcher.showGiteaSignInDialog(getHTMLURL(this.props.account.endpoint))
     } else {
       dispatcher.showDotComSignInDialog()
     }

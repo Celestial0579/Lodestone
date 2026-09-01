@@ -479,7 +479,7 @@ export async function samlReauthRequired(error: Error, dispatcher: Dispatcher) {
 
 /**
  * Attempts to detect whether an error is the result of a failed push
- * due to insufficient GitHub permissions. (No `write` access.)
+ * due to insufficient Gitea permissions. (No `write` access.)
  */
 export async function insufficientGitHubRepoPermissions(
   error: Error,
@@ -607,7 +607,7 @@ export async function discardChangesHandler(
 
 /**
  * Extracts secret scanning results from the provided `remoteMessage` string
- * from the git error provided when GitHub Secret Scanning detects a secret on
+ * from the git error provided when Gitea Secret Scanning detects a secret on
  * push..
  *
  * This function parses the output of a secret scanning tool to identify
@@ -664,7 +664,7 @@ function extractSecretScanningResults(
 }
 
 /**
- * Handler for when a push is denied by GitHub's push protection feature of
+ * Handler for when a push is denied by Gitea's push protection feature of
  * secret scanning.
  */
 export async function secretScanningPushProtectionErrorHandler(

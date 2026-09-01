@@ -7,7 +7,7 @@ import { encodePathAsUrl } from '../../lib/path'
 const PaperStackImage = encodePathAsUrl(__dirname, 'static/paper-stack.svg')
 
 interface ICICheckRunNoStepProps {
-  /** Callback to opens check runs target url (maybe GitHub, maybe third party) */
+  /** Callback to opens check runs target url (maybe Gitea, maybe third party) */
   readonly onViewCheckExternally: () => void
 }
 

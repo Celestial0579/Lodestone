@@ -28,7 +28,7 @@ export class UpstreamAlreadyExists extends React.Component<IUpstreamAlreadyExist
   public render() {
     const name = this.props.repository.name
     const gitHubRepository = forceUnwrap(
-      'A repository must have a GitHub repository to add an upstream remote',
+      'A repository must have a Gitea repository to add an upstream remote',
       this.props.repository.gitHubRepository
     )
     const parent = forceUnwrap(

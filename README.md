@@ -1,110 +1,99 @@
-# [GitHub Desktop](https://desktop.github.com)
+# Gitea Desktop
 
-[GitHub Desktop](https://desktop.github.com/) is an open-source [Electron](https://www.electronjs.org/)-based
-GitHub app. It is written in [TypeScript](https://www.typescriptlang.org) and
-uses [React](https://reactjs.org/).
+Gitea Desktop is a fork of [GitHub Desktop](https://github.com/desktop/desktop)
+that talks to [Gitea](https://about.gitea.com/) instead of GitHub. It is an
+open-source [Electron](https://www.electronjs.org/) app written in
+[TypeScript](https://www.typescriptlang.org) and [React](https://reactjs.org/).
 
-<picture>
-  <source
-    srcset="https://user-images.githubusercontent.com/634063/202742848-63fa1488-6254-49b5-af7c-96a6b50ea8af.png"
-    media="(prefers-color-scheme: dark)"
-  />
-  <img
-    width="1072"
-    src="https://user-images.githubusercontent.com/634063/202742985-bb3b3b94-8aca-404a-8d8a-fd6a6f030672.png"
-    alt="A screenshot of the GitHub Desktop application showing changes being viewed and committed with two attributed co-authors"
-  />
-</picture>
+Forked from GitHub Desktop 3.6.5-beta1.
 
-## Where can I get it?
+## What it does
 
-Download the official installer for your operating system:
+Everything GitHub Desktop does against a GitHub repository, Gitea Desktop does
+against a repository on any Gitea instance:
 
- - [macOS](https://central.github.com/deployments/desktop/desktop/latest/darwin)
- - [macOS (Apple silicon)](https://central.github.com/deployments/desktop/desktop/latest/darwin-arm64)
- - [Windows](https://central.github.com/deployments/desktop/desktop/latest/win32)
- - [Windows machine-wide install](https://central.github.com/deployments/desktop/desktop/latest/win32?format=msi)
+- browse, clone, and create repositories
+- commit, push, pull, fetch, and manage branches
+- open, view, and check out pull requests
+- see issues and CI state from commit statuses
+- resolve conflicts, stash, rebase, cherry-pick, squash
 
-Linux is not officially supported; however, you can find installers created for Linux from a fork of GitHub Desktop in the [Community Releases](https://github.com/desktop/desktop#community-releases) section.
+## Signing in
 
-### Beta Channel
+Gitea Desktop signs in with a **personal access token**. Gitea instances have no
+shared OAuth application the way GitHub.com does, and registering one is an
+administrative task per instance, so a token is the only approach that works
+against every instance without setup.
 
-Want to test out new features and get fixes before everyone else? Install the
-beta channel to get access to early builds of Desktop:
+1. In Gitea, go to **Settings -> Applications -> Generate New Token**.
+2. Give it these scopes:
+   `read:user`, `write:repository`, `write:issue`, `read:organization`,
+   `read:notification`
+3. In Gitea Desktop, enter your instance address (e.g. `https://git.example.com`)
+   and paste the token.
 
- - [macOS](https://central.github.com/deployments/desktop/desktop/latest/darwin?env=beta)
- - [macOS (Apple silicon)](https://central.github.com/deployments/desktop/desktop/latest/darwin-arm64?env=beta)
- - [Windows](https://central.github.com/deployments/desktop/desktop/latest/win32?env=beta)
- - [Windows (ARM64)](https://central.github.com/deployments/desktop/desktop/latest/win32-arm64?env=beta)
+Plain `http://` is accepted for `localhost` only. Everywhere else TLS is
+required, because the token is sent to that host.
 
-The release notes for the latest beta versions are available [here](https://desktop.github.com/release-notes/?env=beta).
+## Updates
 
-### Past Releases
-You can find past releases at https://desktop.githubusercontent.com. After installation of a past version, the auto update functionality will attempt to download the latest version. 
+Gitea Desktop ships with **no update source configured**. Nothing is checked and
+nothing is reported anywhere until you point it at a repository yourself.
 
-### Community Releases
+To enable update checks, open **Preferences -> Advanced -> Updates** and enter
+the Gitea repository that publishes your releases, e.g.
+`https://git.example.com/team/gitea-desktop`. The app then asks that
+repository's release API whether a newer version exists and links you to it.
+Releases are downloaded by hand; the app never installs anything on its own.
+If the repository is private, the account you are signed in to on that same
+instance is used to read it.
 
-There are several community-supported package managers that can be used to
-install GitHub Desktop:
- - Windows users can install using [winget](https://docs.microsoft.com/en-us/windows/package-manager/winget/) `c:\> winget install github-desktop` or [Chocolatey](https://chocolatey.org/) `c:\> choco install github-desktop`
- - macOS users can install using [Homebrew](https://brew.sh/) package manager:
-      `$ brew install --cask github`
+If you run a Squirrel-compatible update feed, set `GITEA_DESKTOP_UPDATES_URL` at
+build time to use the built-in auto updater instead.
 
-Installers for various Linux distributions can be found on the
-[`shiftkey/desktop`](https://github.com/shiftkey/desktop) fork.
+## What was removed
 
-## Is GitHub Desktop right for me? What are the primary areas of focus?
+The GitHub-specific parts of the upstream app are gone or inert:
 
-[This document](https://github.com/desktop/desktop/blob/development/docs/process/what-is-desktop.md) describes the focus of GitHub Desktop and who the product is most useful for.
+- **Usage reporting.** Measures are still counted locally because in-app
+  features read them, but nothing is ever sent anywhere.
+- **Copilot.** Gitea has no GraphQL API and no Copilot integration.
+- **Check runs, rulesets, secret scanning push protection, Alive.** These are
+  GitHub-only APIs. Their endpoints are answered locally so callers degrade
+  rather than error. CI state comes from Gitea commit statuses instead.
+- **The GitHub.com sign-in flow and the GitHub changelog feed.**
 
-## I have a problem with GitHub Desktop
+## How Gitea support is wired in
 
-Note: The [GitHub Desktop Code of Conduct](https://github.com/desktop/desktop/blob/development/CODE_OF_CONDUCT.md) applies in all interactions relating to the GitHub Desktop project.
+The app still calls the GitHub-shaped endpoints it was written against. A
+translation layer under [`app/src/lib/gitea`](app/src/lib/gitea) sits beneath
+the HTTP request function and does three things for any endpoint belonging to a
+Gitea instance:
 
-First, please search the [open issues](https://github.com/desktop/desktop/issues?q=is%3Aopen)
-and [closed issues](https://github.com/desktop/desktop/issues?q=is%3Aclosed)
-to see if your issue hasn't already been reported (it may also be fixed).
+1. rewrites request paths and query strings to their Gitea equivalents
+   (`per_page` to `limit`, `mentionables/users` to `assignees`, `meta` to
+   `version`, and so on)
+2. answers GitHub-only endpoints locally instead of hitting the server
+3. reshapes response payloads into the shape the caller expects (Gitea has no
+   `pushed_at`, and calls a user's display name `full_name`)
 
-There is also a list of [known issues](https://github.com/desktop/desktop/blob/development/docs/known-issues.md)
-that are being tracked against Desktop, and some of these issues have workarounds.
+Keeping the translation in one place means changes from upstream GitHub Desktop
+can be merged without conflicting with the Gitea support.
 
-If you can't find an issue that matches what you're seeing, open a [new issue](https://github.com/desktop/desktop/issues/new/choose),
-choose the right template and provide us with enough information to investigate
-further.
+## Building
 
-## The issue I reported isn't fixed yet. What can I do?
+The toolchain is unchanged from upstream, see
+[setup instructions](docs/contributing/setup.md).
 
-If nobody has responded to your issue in a few days, you're welcome to respond to it with a friendly ping in the issue. Please do not respond more than a second time if nobody has responded. The GitHub Desktop maintainers are constrained in time and resources, and diagnosing individual configurations can be difficult and time consuming. While we'll try to at least get you pointed in the right direction, we can't guarantee we'll be able to dig too deeply into any one person's issue.
-
-## How can I contribute to GitHub Desktop?
-
-The [CONTRIBUTING.md](./.github/CONTRIBUTING.md) document will help you get setup and
-familiar with the source. The [documentation](docs/) folder also contains more
-resources relevant to the project.
-
-If you're looking for something to work on, check out the [help wanted](https://github.com/desktop/desktop/issues?q=is%3Aissue+is%3Aopen+label%3A%22help%20wanted%22) label.
-
-## Building Desktop
-
-To setup your development environment for building Desktop, check out: [`setup.md`](./docs/contributing/setup.md).
-
-## More Resources
-
-See [desktop.github.com](https://desktop.github.com) for more product-oriented
-information about GitHub Desktop.
-
-See our [getting started documentation](https://docs.github.com/en/desktop/overview/getting-started-with-github-desktop) for more information on how to set up, authenticate, and configure GitHub Desktop.
+```sh
+yarn
+yarn build:dev
+yarn start
+```
 
 ## License
 
 **[MIT](LICENSE)**
 
-The MIT license grant is not for GitHub's trademarks, which include the logo
-designs. GitHub reserves all trademark and copyright rights in and to all
-GitHub trademarks. GitHub's logos include, for instance, the stylized
-Invertocat designs that include "logo" in the file title in the following
-folder: [logos](app/static/logos).
-
-GitHub® and its stylized versions and the Invertocat mark are GitHub's
-Trademarks or registered Trademarks. When using GitHub's logos, be sure to
-follow the GitHub [logo guidelines](https://github.com/logos).
+The copyright for the original GitHub Desktop code remains with GitHub, Inc.
+See [LICENSE](LICENSE).

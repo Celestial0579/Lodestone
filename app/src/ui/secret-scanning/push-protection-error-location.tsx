@@ -18,7 +18,7 @@ interface IPushProtectionErrorLocationState {
 }
 
 /**
- * The dialog shown when a push is denied by GitHub's push protection feature of secret scanning.
+ * The dialog shown when a push is denied by Gitea's push protection feature of secret scanning.
  */
 export class PushProtectionErrorLocation extends React.Component<
   IPushProtectionErrorLocationProps,

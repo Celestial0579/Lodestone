@@ -26,7 +26,7 @@ interface ICICheckRunListProps {
   /** Whether the check run status has a tooltip */
   readonly hasStatusTooltip?: boolean
 
-  /** Callback to opens check runs target url (maybe GitHub, maybe third party) */
+  /** Callback to opens check runs target url (maybe Gitea, maybe third party) */
   readonly onViewCheckDetails?: (checkRun: IRefCheck) => void
 
   /** Callback when a check run is clicked */

@@ -12,10 +12,7 @@ interface ISignInGiteaProps {
 }
 
 /** The Welcome flow step to sign in to a Gitea instance. */
-export class SignInGitea extends React.Component<
-  ISignInGiteaProps,
-  {}
-> {
+export class SignInGitea extends React.Component<ISignInGiteaProps, {}> {
   public render() {
     const state = this.props.signInState
 
@@ -24,10 +21,7 @@ export class SignInGitea extends React.Component<
     }
 
     return (
-      <section
-        id="sign-in-gitea"
-        aria-label="Sign in to your Gitea instance"
-      >
+      <section id="sign-in-gitea" aria-label="Sign in to your Gitea instance">
         <h1 className="welcome-title">Sign in to your Gitea instance</h1>
 
         <SignIn signInState={state} dispatcher={this.props.dispatcher}>

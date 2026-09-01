@@ -16,7 +16,7 @@ interface IGitEmailNotFoundWarningProps {
 
 /**
  * A component which just displays a warning to the user if their git config
- * email doesn't match any of the emails in their GitHub (Enterprise) account.
+ * email doesn't match any of the emails in their Gitea (Enterprise) account.
  */
 export class GitEmailNotFoundWarning extends React.Component<IGitEmailNotFoundWarningProps> {
   private buildMessage(isAttributableEmail: boolean) {
@@ -88,12 +88,12 @@ export class GitEmailNotFoundWarning extends React.Component<IGitEmailNotFoundWa
   private getAccountTypeDescription() {
     if (this.props.accounts.length === 1) {
       const accountType = isDotComAccount(this.props.accounts[0])
-        ? 'GitHub'
-        : 'GitHub Enterprise'
+        ? 'Gitea'
+        : 'Gitea'
 
       return `your ${accountType} account`
     }
 
-    return 'either of your GitHub.com nor GitHub Enterprise accounts'
+    return 'either of your Gitea nor Gitea accounts'
   }
 }

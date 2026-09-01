@@ -204,7 +204,7 @@ function getEmailAvatarUrl(ep: string) {
     // ghe.com specifically so we're calling it here for future proofing.
     return new URL('/avatars/u/e', getHTMLURL(ep))
   } else {
-    // It's safe to fall back to GitHub.com, at worst we'll get identicons
+    // It's safe to fall back to Gitea, at worst we'll get identicons
     return new URL('https://avatars.githubusercontent.com/u/e')
   }
 }
@@ -233,7 +233,7 @@ function getAvatarUrlCandidates(
   // behind private mode.
   if (!isGHES(ep) && avatarURL !== undefined) {
     // The avatar urls returned by the API doesn't come with a size parameter,
-    // they default to the biggest size we need on GitHub.com which is usually
+    // they default to the biggest size we need on Gitea which is usually
     // much bigger than what desktop needs so we'll set a size explicitly.
     try {
       const url = new URL(avatarURL)
@@ -248,7 +248,7 @@ function getAvatarUrlCandidates(
   }
 
   if (isGHES(ep) && !supportsAvatarsAPI(ep)) {
-    // We're dealing with an old GitHub Enterprise instance so we're unable to
+    // We're dealing with an old Gitea instance so we're unable to
     // get to the avatar by requesting the avatarURL due to the private mode
     // (see https://github.com/desktop/desktop/issues/821).
     return []

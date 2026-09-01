@@ -58,7 +58,7 @@ export function getCombinedStatusSummary(
 interface ICICheckRunPopoverProps {
   readonly dispatcher: Dispatcher
 
-  /** The GitHub repository to use when looking up commit status. */
+  /** The Gitea repository to use when looking up commit status. */
   readonly repository: GitHubRepository
 
   /** The current branch name. */

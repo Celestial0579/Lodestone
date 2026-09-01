@@ -29,7 +29,7 @@ interface IRichTextProps {
   /**
    * The repository to use as the source for URLs for the rich text.
    *
-   * If not specified, or the repository is a non-GitHub repository,
+   * If not specified, or the repository is a non-Gitea repository,
    * no link highlighting is performed.
    */
   readonly repository?: Repository

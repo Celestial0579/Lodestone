@@ -9,7 +9,7 @@ interface ICICheckRunStepListHeaderProps {
   /** The check run to display **/
   readonly checkRun: IRefCheck
 
-  /** Callback to opens check runs target url (maybe GitHub, maybe third party) */
+  /** Callback to opens check runs target url (maybe Gitea, maybe third party) */
   readonly onViewCheckExternally: () => void
 
   /** Callback to rerun a job*/
@@ -50,7 +50,7 @@ export class CICheckRunStepListHeader extends React.PureComponent<ICICheckRunSte
       return null
     }
 
-    const label = `View ${checkRun.name} on GitHub`
+    const label = `View ${checkRun.name} on Gitea`
     return (
       <Button
         role="link"

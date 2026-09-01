@@ -124,7 +124,7 @@ export class Acknowledgements extends React.Component<
             <LinkButton uri={WebsiteURL}>Gitea Desktop</LinkButton> is an open
             source project published under the MIT License. You can view the
             source code and contribute to this project on{' '}
-            <LinkButton uri={RepositoryURL}>GitHub</LinkButton>.
+            <LinkButton uri={RepositoryURL}>its repository</LinkButton>.
           </p>
 
           {desktopLicense}

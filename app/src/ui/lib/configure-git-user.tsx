@@ -212,7 +212,7 @@ export class ConfigureGitUser extends React.Component<
     return (
       <div>
         <RadioButton
-          label={`Use my GitHub${accountTypeSuffix} account name and email address`}
+          label={`Use my Gitea${accountTypeSuffix} account name and email address`}
           checked={this.state.useGitHubAuthorInfo}
           onSelected={this.onUseGitHubInfoSelected}
           value="github-account"

@@ -74,7 +74,7 @@ export class TutorialDone extends React.Component<ITutorialDoneProps, {}> {
           </div>
           <SuggestedActionGroup>
             <SuggestedAction
-              title="Explore projects on GitHub"
+              title="Explore projects on Gitea"
               description="Contribute to a project that interests you"
               buttonText={__DARWIN__ ? 'Open in Browser' : 'Open in browser'}
               onClick={this.openDotcomExplore}

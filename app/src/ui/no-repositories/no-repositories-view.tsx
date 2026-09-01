@@ -36,7 +36,7 @@ interface INoRepositoriesProps {
   readonly accounts: ReadonlyArray<Account>
 
   /**
-   * A map keyed on a user account (GitHub.com or GitHub Enterprise)
+   * A map keyed on a user account
    * containing an object with repositories that the authenticated
    * user has explicit permission (:read, :write, or :admin) to access
    * as well as information about whether the list of repositories
@@ -64,7 +64,7 @@ interface INoRepositoriesState {
    */
   readonly selectedRepository: IAPIRepository | null
   /**
-   * The current filter text in the GitHub.com clone tab
+   * The current filter text in the Gitea clone tab
    */
   readonly filterText: string
 }

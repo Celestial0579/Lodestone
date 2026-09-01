@@ -771,7 +771,7 @@ export class Dispatcher {
     return this.appStore._fetch(repository, fetchType)
   }
 
-  /** Publish the repository to GitHub with the given properties. */
+  /** Publish the repository to Gitea with the given properties. */
   public publishRepository(
     repository: Repository,
     name: string,
@@ -1148,7 +1148,7 @@ export class Dispatcher {
     return this.appStore._resetCommitSummaryWidth()
   }
 
-  /** Update the repository's issues from GitHub. */
+  /** Update the repository's issues from Gitea. */
   public refreshIssues(repository: GitHubRepository): Promise<void> {
     return this.appStore._refreshIssues(repository)
   }
@@ -1684,13 +1684,11 @@ export class Dispatcher {
   }
 
   /**
-   * Initiate a sign in flow for a GitHub Enterprise instance. This will
+   * Initiate a sign in flow for a Gitea instance. This will
    * put the store in the EndpointEntry step ready to receive the url
    * to the enterprise instance.
    */
-  public beginGiteaSignIn(
-    resultCallback?: (result: SignInResult) => void
-  ) {
+  public beginGiteaSignIn(resultCallback?: (result: SignInResult) => void) {
     this.appStore._beginGiteaSignIn(resultCallback)
   }
 
@@ -1760,7 +1758,7 @@ export class Dispatcher {
   }
 
   /**
-   * Initiate an OAuth sign in using the system configured browser to GitHub.com.
+   * Initiate an OAuth sign in using the system configured browser to Gitea.
    *
    * The promise returned will only resolve once the user has successfully
    * authenticated. If the user terminates the sign-in process by closing
@@ -1777,7 +1775,7 @@ export class Dispatcher {
 
   /**
    * Launch a sign in dialog for authenticating a user with
-   * GitHub.com.
+   * Gitea.
    */
   public async showDotComSignInDialog(
     resultCallback?: (result: SignInResult) => void
@@ -1788,7 +1786,7 @@ export class Dispatcher {
 
   /**
    * Launch a sign in dialog for authenticating a user with
-   * a GitHub Enterprise instance.
+   * a Gitea instance.
    * Optionally, you can provide an endpoint URL.
    */
   public async showGiteaSignInDialog(
@@ -2033,7 +2031,7 @@ export class Dispatcher {
     }
     if (!isRepositoryWithGitHubRepository(repository)) {
       log.warn(
-        `Received a non-GitHub repository when opening repository from URL: ${url}`
+        `Received a non-Gitea repository when opening repository from URL: ${url}`
       )
       return null
     }
@@ -2453,14 +2451,14 @@ export class Dispatcher {
   }
 
   /**
-   * Open the Explore page at the GitHub instance of this repository
+   * Open the Explore page at the Gitea instance of this repository
    */
   public showGitHubExplore(repository: Repository): Promise<void> {
     return this.appStore._showGitHubExplore(repository)
   }
 
   /**
-   * Open the Create Pull Request page on GitHub after verifying ahead/behind.
+   * Open the Create Pull Request page on Gitea after verifying ahead/behind.
    *
    * Note that this method will present the user with a dialog in case the
    * current branch in the repository is ahead or behind the remote.
@@ -2491,7 +2489,7 @@ export class Dispatcher {
   }
 
   /**
-   * Immediately open the Create Pull Request page on GitHub.
+   * Immediately open the Create Pull Request page on Gitea.
    *
    * See the createPullRequest method for more details.
    */
@@ -2742,7 +2740,7 @@ export class Dispatcher {
   /**
    * Subscribe to commit status updates for a particular ref.
    *
-   * @param repository The GitHub repository to use when looking up commit status.
+   * @param repository The Gitea repository to use when looking up commit status.
    * @param ref        The commit ref (can be a SHA or a Git ref) for which to
    *                   fetch status.
    * @param callback   A callback which will be invoked whenever the
@@ -2780,7 +2778,7 @@ export class Dispatcher {
   }
 
   /**
-   * Triggers GitHub to rerequest a list of check suites, without pushing new
+   * Triggers Gitea to rerequest a list of check suites, without pushing new
    * code to a repository.
    */
   public async rerequestCheckSuites(
@@ -2902,17 +2900,17 @@ export class Dispatcher {
 
   /**
    * Create a tutorial repository using the given account. The account
-   * determines which host (i.e. GitHub.com or a GHES instance) that
+   * determines which host (i.e. Gitea or a GHES instance) that
    * the tutorial repository should be created on.
    *
-   * @param account The account (and thereby the GitHub host) under
+   * @param account The account (and thereby the Gitea host) under
    *                which the repository is to be created created
    */
   public createTutorialRepository(account: Account) {
     return this.appStore._createTutorialRepository(account)
   }
 
-  /** Open the issue creation page for a GitHub repository in a browser */
+  /** Open the issue creation page for a Gitea repository in a browser */
   public async openIssueCreationPage(repository: Repository): Promise<boolean> {
     // Default to creating issue on parent repo
     // See https://github.com/desktop/desktop/issues/9232 for rationale

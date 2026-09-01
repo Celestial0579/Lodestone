@@ -32,6 +32,18 @@ import { readdir } from 'fs/promises'
 import { isTopMostDialog } from '../dialog/is-top-most'
 import memoizeOne from 'memoize-one'
 
+/**
+ * The tabs the clone dialog offers.
+ *
+ * Upstream has a third, GitHub.com tab. Every account in Gitea Desktop lives on
+ * a Gitea instance, so that tab could never hold anything; the enum value is
+ * kept so the rest of the upstream branching still compiles.
+ */
+const visibleCloneTabs = [
+  CloneRepositoryTab.Enterprise,
+  CloneRepositoryTab.Generic,
+]
+
 interface ICloneRepositoryProps {
   readonly dispatcher: Dispatcher
   readonly onDismissed: () => void
@@ -48,7 +60,7 @@ interface ICloneRepositoryProps {
   readonly onTabSelected: (tab: CloneRepositoryTab) => void
 
   /**
-   * A map keyed on a user account (GitHub.com or GitHub Enterprise)
+   * A map keyed on a user account (Gitea or Gitea)
    * containing an object with repositories that the authenticated
    * user has explicit permission (:read, :write, or :admin) to access
    * as well as information about whether the list of repositories
@@ -90,13 +102,13 @@ interface ICloneRepositoryState {
 
   /**
    * The persisted state of the CloneGitHubRepository component for
-   * the GitHub.com account.
+   * the Gitea account.
    */
   readonly dotComTabState: IGitHubTabState
 
   /**
    * The persisted state of the CloneGitHubRepository component for
-   * the GitHub Enterprise account.
+   * the Gitea account.
    */
   readonly enterpriseTabState: IGitHubTabState
 
@@ -272,10 +284,12 @@ export class CloneRepository extends React.Component<
       >
         <TabBar
           onTabClicked={this.onTabClicked}
-          selectedIndex={this.props.selectedTab}
+          selectedIndex={Math.max(
+            0,
+            visibleCloneTabs.indexOf(this.props.selectedTab)
+          )}
         >
-          <span id="dotcom-tab">GitHub.com</span>
-          <span id="enterprise-tab">GitHub Enterprise</span>
+          <span id="enterprise-tab">Gitea</span>
           <span id="url-tab">URL</span>
         </TabBar>
 
@@ -290,13 +304,10 @@ export class CloneRepository extends React.Component<
     )
   }
 
-  private getSelectedTabId = () => {
-    return this.props.selectedTab === CloneRepositoryTab.DotCom
-      ? 'dotcom-tab'
-      : this.props.selectedTab === CloneRepositoryTab.Enterprise
-      ? 'enterprise-tab'
-      : 'url-tab'
-  }
+  private getSelectedTabId = () =>
+    this.props.selectedTab === CloneRepositoryTab.Generic
+      ? 'url-tab'
+      : 'enterprise-tab'
 
   private checkIfCloningDisabled = () => {
     const tabState = this.getSelectedTabState()
@@ -331,8 +342,10 @@ export class CloneRepository extends React.Component<
     )
   }
 
-  private onTabClicked = (tab: CloneRepositoryTab) => {
-    this.props.onTabSelected(tab)
+  private onTabClicked = (index: number) => {
+    this.props.onTabSelected(
+      visibleCloneTabs[index] ?? CloneRepositoryTab.Enterprise
+    )
   }
 
   private onPathChanged = (path: string) => {
@@ -523,7 +536,7 @@ export class CloneRepository extends React.Component<
         return (
           <CallToAction actionTitle={signInTitle} onAction={this.signInDotCom}>
             <div>
-              Sign in to your GitHub.com account to access your repositories.
+              Sign in to your Gitea account to access your repositories.
             </div>
           </CallToAction>
         )
@@ -534,8 +547,8 @@ export class CloneRepository extends React.Component<
             onAction={this.signInEnterprise}
           >
             <div>
-              If you are using GitHub Enterprise at work, sign in to it to get
-              access to your repositories.
+              If you are using Gitea at work, sign in to it to get access to
+              your repositories.
             </div>
           </CallToAction>
         )

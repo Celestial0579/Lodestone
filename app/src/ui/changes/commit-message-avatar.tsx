@@ -66,7 +66,7 @@ interface ICommitMessageAvatarProps {
   /** Whether or not the user's account is a GHE account. */
   readonly isEnterpriseAccount: boolean
 
-  /** Email addresses available in the relevant GitHub (Enterprise) account. */
+  /** Email addresses available in the relevant Gitea (Enterprise) account. */
   readonly accountEmails: ReadonlyArray<string>
 
   /** Preferred email address from the user's account. */
@@ -342,8 +342,8 @@ export class CommitMessageAvatar extends React.Component<
         <>
           <Row>
             <div>
-              {sharedHeader} doesn't match your GitHub{accountTypeSuffix}{' '}
-              account{userName}.{' '}
+              {sharedHeader} doesn't match your Gitea{accountTypeSuffix} account
+              {userName}.{' '}
               <LinkButton
                 ariaLabel="Learn more about commit attribution"
                 uri="https://docs.github.com/en/github/committing-changes-to-your-project/why-are-my-commits-linked-to-the-wrong-user"

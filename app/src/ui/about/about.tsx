@@ -235,7 +235,7 @@ export class About extends React.Component<IAboutProps> {
         <DialogError>
           Couldn't determine the last time an update check was performed. You
           may be running an old version. Please try manually checking for
-          updates and contact GitHub Support if the problem persists
+          updates
         </DialogError>
       )
     }
@@ -281,12 +281,7 @@ export class About extends React.Component<IAboutProps> {
         {this.renderUpdateErrors()}
         <DialogContent>
           <Row className="logo">
-            <img
-              src={DesktopLogo}
-              alt="Gitea Desktop"
-              width="64"
-              height="64"
-            />
+            <img src={DesktopLogo} alt="Gitea Desktop" width="64" height="64" />
           </Row>
           <h1 id={titleId}>About {name}</h1>
           <p className="no-padding">

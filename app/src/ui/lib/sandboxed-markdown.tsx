@@ -37,7 +37,7 @@ interface ISandboxedMarkdownProps {
   /** Map from the emoji shortcut (e.g., :+1:) to the image's local path. */
   readonly emoji: Map<string, Emoji>
 
-  /** The GitHub repository for some markdown filters such as issue and commits. */
+  /** The Gitea repository for some markdown filters such as issue and commits. */
   readonly repository?: GitHubRepository
 
   /** The context of which markdown resides - such as PullRequest, PullRequestComment, Commit */
@@ -129,11 +129,11 @@ export class SandboxedMarkdown extends React.PureComponent<
 
     const body = DOMPurify.sanitize(
       marked(markdown, {
-        // https://marked.js.org/using_advanced  If true, use approved GitHub
+        // https://marked.js.org/using_advanced  If true, use approved Gitea
         // Flavored Markdown (GFM) specification.
         gfm: true,
         // https://marked.js.org/using_advanced, If true, add <br> on a single
-        // line break (copies GitHub behavior on comments, but not on rendered
+        // line break (copies Gitea behavior on comments, but not on rendered
         // markdown files). Requires gfm be true.
         breaks: true,
       })

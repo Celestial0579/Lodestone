@@ -26,7 +26,8 @@ import {
 } from '../generic-git-auth'
 import { urlWithoutCredentials } from './url-without-credentials'
 import { trampolineUIHelper as ui } from './trampoline-ui-helper'
-import { getAPIEndpoint, isGitHubHost } from '../api'
+import { getAPIEndpoint } from '../api'
+import { isGiteaHost } from '../gitea/gitea-host'
 import { isDotCom, isGHE, isGist } from '../endpoint-capabilities'
 
 type Credential = Map<string, string>
@@ -156,9 +157,12 @@ const getEndpointKind = async (cred: Credential, store: Store) => {
   // having to resort to making a request ourselves.
   for (const [k, v] of cred.entries()) {
     if (k.startsWith('wwwauth[')) {
-      if (v.includes('realm="GitHub"')) {
+      // A Gitea host is one we may hold an account for, so it takes the same
+      // path GitHub Enterprise does upstream: authenticate with the token the
+      // app already has rather than asking the user for separate credentials.
+      if (v.includes('realm="Gitea"')) {
         return 'enterprise'
-      } else if (/realm="(GitLab|Gitea|Atlassian Bitbucket)"/.test(v)) {
+      } else if (/realm="(GitHub|GitLab|Atlassian Bitbucket)"/.test(v)) {
         return 'generic'
       }
     }
@@ -175,7 +179,7 @@ const getEndpointKind = async (cred: Credential, store: Store) => {
     return 'generic'
   }
 
-  return (await isGitHubHost(endpoint)) ? 'enterprise' : 'generic'
+  return (await isGiteaHost(endpoint)) ? 'enterprise' : 'generic'
 }
 
 /** Implementation of the 'store' git credential helper command */

@@ -57,7 +57,7 @@ function userToHit(
   }
 }
 
-/** The autocompletion provider for user mentions in a GitHub repository. */
+/** The autocompletion provider for user mentions in a Gitea repository. */
 export class UserAutocompletionProvider
   implements IAutocompletionProvider<UserHit>
 {

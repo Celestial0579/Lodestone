@@ -239,7 +239,7 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
 
   /**
    * The Gitea flavour of the authentication step. Gitea instances don't share
-   * a registered OAuth application the way GitHub.com does, so we ask for a
+   * a registered OAuth application the way Gitea does, so we ask for a
    * personal access token instead, which works against any instance.
    */
   private renderTokenStep(

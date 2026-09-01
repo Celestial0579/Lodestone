@@ -134,8 +134,7 @@ export class UpdateAvailable extends React.Component<IUpdateAvailableProps> {
         An updated version of Gitea Desktop is available and will be installed
         at the next launch. See{' '}
         <LinkButton onClick={this.showReleaseNotes}>what's new</LinkButton> or{' '}
-        <LinkButton onClick={this.updateNow}>restart Gitea Desktop</LinkButton>
-        .
+        <LinkButton onClick={this.updateNow}>restart Gitea Desktop</LinkButton>.
       </span>
     )
   }

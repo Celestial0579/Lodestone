@@ -72,7 +72,7 @@ export class GitConfigUserForm extends React.Component<
           .filter(x => x.verified)
           .map(x => x.email)
 
-        // For GitHub.com we always include the stealth email, see
+        // For Gitea we always include the stealth email, see
         // https://github.com/desktop/desktop/pull/19968
         const emails = isDotComAccount(account)
           ? [...verifiedEmails, getStealthEmailForAccount(account)]
@@ -176,7 +176,7 @@ export class GitConfigUserForm extends React.Component<
       this.props.accounts.some(isEnterpriseAccount)
 
     const accountSuffix = (account: Account) =>
-      isDotComAccount(account) ? '(GitHub.com)' : '(GitHub Enterprise)'
+      isDotComAccount(account) ? '(Gitea)' : '(Gitea)'
 
     return (
       <Row>

@@ -37,7 +37,7 @@ export class CopilotDisclaimer extends React.Component<ICopilotDisclaimerProps> 
     const { children, onDismissed } = this.props
     return (
       <Dialog
-        title="GitHub Copilot"
+        title="Gitea Copilot"
         type="warning"
         onDismissed={onDismissed}
         onSubmit={this.onSubmit}

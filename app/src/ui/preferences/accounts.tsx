@@ -34,12 +34,12 @@ export class Accounts extends React.Component<IAccountsProps, {}> {
 
     return (
       <DialogContent className="accounts-tab">
-        <h2>GitHub.com</h2>
+        <h2>Gitea</h2>
         {dotComAccount
           ? this.renderAccount(dotComAccount, SignInType.DotCom)
           : this.renderSignIn(SignInType.DotCom)}
 
-        <h2>GitHub Enterprise</h2>
+        <h2>Gitea</h2>
         {this.renderMultipleEnterpriseAccounts()}
       </DialogContent>
     )
@@ -56,9 +56,7 @@ export class Accounts extends React.Component<IAccountsProps, {}> {
         {enterpriseAccounts.length === 0 ? (
           this.renderSignIn(SignInType.Enterprise)
         ) : (
-          <Button onClick={this.props.onGiteaSignIn}>
-            Add GitHub Enterprise account
-          </Button>
+          <Button onClick={this.props.onGiteaSignIn}>Add Gitea account</Button>
         )}
       </>
     )
@@ -120,14 +118,14 @@ export class Accounts extends React.Component<IAccountsProps, {}> {
       case SignInType.DotCom: {
         return (
           <CallToAction
-            actionTitle={signInTitle + ' GitHub.com'}
+            actionTitle={signInTitle + ' Gitea'}
             onAction={this.onDotComSignIn}
             // The DotCom account is shown first, so its sign in/out button should be
             // focused initially when the dialog is opened.
             buttonClassName={DialogPreferredFocusClassName}
           >
             <div>
-              Sign in to your GitHub.com account to access your repositories.
+              Sign in to your Gitea account to access your repositories.
             </div>
           </CallToAction>
         )
@@ -135,12 +133,12 @@ export class Accounts extends React.Component<IAccountsProps, {}> {
       case SignInType.Enterprise:
         return (
           <CallToAction
-            actionTitle={signInTitle + ' GitHub Enterprise'}
+            actionTitle={signInTitle + ' Gitea'}
             onAction={this.onGiteaSignIn}
           >
             <div>
-              If you are using GitHub Enterprise at work, sign in to it to get
-              access to your repositories.
+              If you are using Gitea at work, sign in to it to get access to
+              your repositories.
             </div>
           </CallToAction>
         )

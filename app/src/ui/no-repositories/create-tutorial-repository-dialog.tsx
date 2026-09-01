@@ -10,7 +10,7 @@ import { OkCancelButtonGroup } from '../dialog/ok-cancel-button-group'
 
 interface ICreateTutorialRepositoryDialogProps {
   /**
-   * The GitHub.com, or GitHub Enterprise account that will
+   * The Gitea, or Gitea account that will
    * be the owner of the tutorial repository.
    */
   readonly account: Account
@@ -25,7 +25,7 @@ interface ICreateTutorialRepositoryDialogProps {
    * Called when the user has indicated that the tutorial repository
    * should be created
    *
-   * @param account The account (and thereby the GitHub host) under
+   * @param account The account (and thereby the Gitea host) under
    *                which the repository is to be created
    */
   readonly onCreateTutorialRepository: (account: Account) => void

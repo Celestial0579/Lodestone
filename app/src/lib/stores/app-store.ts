@@ -687,7 +687,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     | ((repository: Repository | null) => void)
     | null = null
 
-  private selectedCloneRepositoryTab = CloneRepositoryTab.DotCom
+  private selectedCloneRepositoryTab = CloneRepositoryTab.Enterprise
 
   private selectedBranchesTab = BranchesTab.Branches
   private selectedTheme = ApplicationTheme.System
@@ -7955,9 +7955,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     return this.signInStore.beginDotComSignIn(resultCallback)
   }
 
-  public _beginGiteaSignIn(
-    resultCallback?: (result: SignInResult) => void
-  ) {
+  public _beginGiteaSignIn(resultCallback?: (result: SignInResult) => void) {
     return this.signInStore.beginGiteaSignIn(resultCallback)
   }
 

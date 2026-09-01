@@ -171,7 +171,7 @@ export class PullRequestQuickView extends React.Component<
           onClick={this.onViewOnGitHub}
           role="link"
         >
-          View on GitHub
+          View on Gitea
           <Octicon symbol={octicons.linkExternal} />
         </Button>
       </header>

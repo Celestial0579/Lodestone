@@ -1331,12 +1331,12 @@ export class App extends React.Component<IAppProps, IAppState> {
 
   /**
    * Opens a browser to the issue creation page
-   * of the current GitHub repository.
+   * of the current Gitea repository.
    */
   private openIssueCreationOnGitHub() {
     const repository = this.getRepository()
     // this will likely never be null since we disable the
-    // issue creation menu item for non-GitHub repositories
+    // issue creation menu item for non-Gitea repositories
     if (repository instanceof Repository) {
       this.props.dispatcher.openIssueCreationPage(repository)
     }
@@ -1348,7 +1348,7 @@ export class App extends React.Component<IAppProps, IAppState> {
     this.viewOnGitHub(repository)
   }
 
-  /** Returns the URL to the current repository if hosted on GitHub */
+  /** Returns the URL to the current repository if hosted on Gitea */
   private getCurrentRepositoryGitHubURL() {
     const repository = this.getRepository()
 

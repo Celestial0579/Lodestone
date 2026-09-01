@@ -529,7 +529,7 @@ export class PushPullButton extends React.Component<
       <ToolbarButton
         {...this.defaultButtonProps()}
         title="Publish repository"
-        description="Publish this repository to GitHub"
+        description="Publish this repository to Gitea"
         className="push-pull-button"
         icon={octicons.upload}
         style={ToolbarButtonStyle.Subtitle}
@@ -560,7 +560,7 @@ export class PushPullButton extends React.Component<
     shouldNudge: boolean
   ) {
     const description = isGitHub
-      ? 'Publish this branch to GitHub'
+      ? 'Publish this branch to Gitea'
       : 'Publish this branch to the remote'
 
     const className = classNames(

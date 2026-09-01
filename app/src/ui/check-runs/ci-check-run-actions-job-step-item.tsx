@@ -77,8 +77,8 @@ export class CICheckRunActionsJobStepListItem extends React.PureComponent<ICIChe
           role="link"
           className="view-check-externally"
           onClick={this.onViewJobStepExternally}
-          tooltip={`View ${step.name} on GitHub`}
-          ariaLabel={`View ${step.name} on GitHub`}
+          tooltip={`View ${step.name} on Gitea`}
+          ariaLabel={`View ${step.name} on Gitea`}
         >
           <Octicon symbol={octicons.linkExternal} />
         </Button>

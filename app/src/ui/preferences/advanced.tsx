@@ -196,7 +196,7 @@ export class Advanced extends React.Component<
               <LinkButton uri="https://gh.io/gcm">
                 Git Credential Manager{' '}
               </LinkButton>{' '}
-              for private repositories outside of GitHub.com. This feature is
+              for private repositories outside of Gitea. This feature is
               experimental and subject to change.
             </p>
           </div>

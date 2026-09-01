@@ -228,7 +228,7 @@ const getCopilotModelGroups = (
   const groups = new Array<IFilterListGroup<ICopilotModelListItem>>()
 
   if (copilotModels.length > 0) {
-    const providerName = 'GitHub Copilot'
+    const providerName = 'Gitea Copilot'
     const uncategorizedItems = new Array<ICopilotModelListItem>()
     const categorizedItems = new Map<string, Array<ICopilotModelListItem>>()
 

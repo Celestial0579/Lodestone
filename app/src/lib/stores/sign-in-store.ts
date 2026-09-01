@@ -414,9 +414,7 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
    * Initiate a sign in flow for a Gitea instance. This will put the store in
    * the EndpointEntry step ready to receive the url of the instance.
    */
-  public beginGiteaSignIn(
-    resultCallback?: (result: SignInResult) => void
-  ) {
+  public beginGiteaSignIn(resultCallback?: (result: SignInResult) => void) {
     if (this.state !== null) {
       this.reset()
     }

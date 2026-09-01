@@ -284,7 +284,7 @@ export function showTestUI(
     ) {
       return dispatcher.postError(
         new Error(
-          'No GitHub repository to test with - check out a GitHub repository and try again'
+          'No Gitea repository to test with - check out a Gitea repository and try again'
         )
       )
     }
@@ -304,7 +304,7 @@ export function showTestUI(
     ) {
       return dispatcher.postError(
         new Error(
-          'No GitHub repository to test with - check out a GitHub repository and try again'
+          'No Gitea repository to test with - check out a Gitea repository and try again'
         )
       )
     }
@@ -377,7 +377,7 @@ export function showTestUI(
     ) {
       return dispatcher.postError(
         new Error(
-          'No GitHub repository to test with - check out a GitHub repository and try again'
+          'No Gitea repository to test with - check out a Gitea repository and try again'
         )
       )
     }
@@ -469,7 +469,7 @@ export function showTestUI(
     ) {
       return dispatcher.postError(
         new Error(
-          'No GitHub repository to test with - check out a github repo and try again'
+          'No Gitea repository to test with - check out a github repo and try again'
         )
       )
     }

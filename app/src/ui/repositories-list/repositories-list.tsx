@@ -53,7 +53,7 @@ interface IRepositoriesListProps {
   /** Called when the repository should be shown in Finder/Explorer/File Manager. */
   readonly onShowRepository: (repository: Repositoryish) => void
 
-  /** Called when the repository should be opened on GitHub in the default web browser. */
+  /** Called when the repository should be opened on Gitea in the default web browser. */
   readonly onViewOnGitHub: (repository: Repositoryish) => void
 
   /** Called when the repository should be shown in the shell. */

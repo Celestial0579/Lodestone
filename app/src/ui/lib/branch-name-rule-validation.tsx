@@ -26,7 +26,7 @@ export interface IBranchRuleError {
  * them.
  *
  * Returns `null` if the branch name passes all rules or if validation
- * cannot be performed (e.g. no accounts, non-GitHub repo).
+ * cannot be performed (e.g. no accounts, non-Gitea repo).
  */
 export async function checkBranchNameRules(
   branchName: string,

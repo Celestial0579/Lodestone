@@ -121,7 +121,7 @@ export class AppError extends React.Component<IAppErrorProps, IAppErrorState> {
           <p>
             See{' '}
             <LinkButton uri="https://gh.io/lfs">https://gh.io/lfs</LinkButton>{' '}
-            for more information on managing large files on GitHub
+            for more information on managing large files on Gitea
           </p>
         </>
       )

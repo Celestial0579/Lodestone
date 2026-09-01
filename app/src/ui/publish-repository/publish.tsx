@@ -8,7 +8,6 @@ import {
 } from '../../models/account'
 import { Repository } from '../../models/repository'
 import { Dialog, DialogFooter, DialogContent, DialogError } from '../dialog'
-import { TabBar } from '../tab-bar'
 import { assertNever, fatalError } from '../../lib/fatal-error'
 import { CallToAction } from '../lib/call-to-action'
 import { getGitDescription } from '../../lib/git'
@@ -95,12 +94,9 @@ export class Publish extends React.Component<IPublishProps, IPublishState> {
   public constructor(props: IPublishProps) {
     super(props)
 
-    const hasDotComAccount = props.accounts.some(isDotComAccount)
-    const hasEnterpriseAccount = props.accounts.some(isEnterpriseAccount)
-    let startingTab = PublishTab.DotCom
-    if (!hasDotComAccount && hasEnterpriseAccount) {
-      startingTab = PublishTab.Enterprise
-    }
+    // Every account is an account on a Gitea instance, so there is only one
+    // kind of destination to publish to and no tab to choose between them.
+    const startingTab = PublishTab.Enterprise
 
     const publicationSettings = {
       name: props.repository.name,
@@ -149,14 +145,6 @@ export class Publish extends React.Component<IPublishProps, IPublishState> {
         disabled={this.state.publishing}
         loading={this.state.publishing}
       >
-        <TabBar
-          onTabClicked={this.onTabClicked}
-          selectedIndex={this.state.currentTab}
-        >
-          <span id="dotcom-tab">GitHub.com</span>
-          <span id="enterprise-tab">GitHub Enterprise</span>
-        </TabBar>
-
         {currentTabState.error ? (
           <DialogError>{currentTabState.error.message}</DialogError>
         ) : null}
@@ -277,7 +265,7 @@ export class Publish extends React.Component<IPublishProps, IPublishState> {
         return (
           <CallToAction actionTitle={signInTitle} onAction={this.signInDotCom}>
             <div>
-              Sign in to your GitHub.com account to access your repositories.
+              Sign in to your Gitea account to access your repositories.
             </div>
           </CallToAction>
         )
@@ -288,8 +276,8 @@ export class Publish extends React.Component<IPublishProps, IPublishState> {
             onAction={this.signInEnterprise}
           >
             <div>
-              If you are using GitHub Enterprise at work, sign in to it to get
-              access to your repositories.
+              If you are using Gitea at work, sign in to it to get access to
+              your repositories.
             </div>
           </CallToAction>
         )
@@ -356,13 +344,6 @@ export class Publish extends React.Component<IPublishProps, IPublishState> {
     } catch (e) {
       this.setCurrentTabError(e)
       this.setState({ publishing: false })
-    }
-  }
-
-  private onTabClicked = (index: PublishTab) => {
-    const isTabChanging = index !== this.state.currentTab
-    if (isTabChanging) {
-      this.setState({ currentTab: index })
     }
   }
 

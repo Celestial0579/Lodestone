@@ -24,7 +24,7 @@ interface IUntrustedCertificateProps {
  * The dialog we display when an API request encounters an untrusted
  * certificate.
  *
- * An easy way to test this dialog is to attempt to sign in to GitHub
+ * An easy way to test this dialog is to attempt to sign in to Gitea
  * Enterprise using  one of the badssl.com domains, such
  * as https://self-signed.badssl.com/
  */
@@ -52,10 +52,9 @@ export class UntrustedCertificate extends React.Component<
           </p>
           <p>In some cases, this may be expected. For example:</p>
           <ul>
-            <li>If this is a GitHub Enterprise trial.</li>
+            <li>If this is a Gitea trial.</li>
             <li>
-              If your GitHub Enterprise instance is run on an unusual top-level
-              domain.
+              If your Gitea instance is run on an unusual top-level domain.
             </li>
           </ul>
           <p>

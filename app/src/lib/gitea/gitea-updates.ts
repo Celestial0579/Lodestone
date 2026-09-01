@@ -89,7 +89,9 @@ export function parseGiteaUpdateSource(url: string): IGiteaUpdateSource | null {
   let parsed: URL
 
   try {
-    parsed = new URL(/^https?:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`)
+    parsed = new URL(
+      /^https?:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`
+    )
   } catch {
     return null
   }

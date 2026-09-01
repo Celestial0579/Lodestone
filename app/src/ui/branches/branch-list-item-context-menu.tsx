@@ -39,14 +39,14 @@ export function generateBranchContextMenuItems(
 
   if (onViewBranchOnGitHub !== undefined) {
     items.push({
-      label: 'View Branch on GitHub',
+      label: 'View Branch on Gitea',
       action: () => onViewBranchOnGitHub(),
     })
   }
 
   if (onViewPullRequestOnGitHub !== undefined) {
     items.push({
-      label: 'View Pull Request on GitHub',
+      label: 'View Pull Request on Gitea',
       action: () => onViewPullRequestOnGitHub(),
     })
   }

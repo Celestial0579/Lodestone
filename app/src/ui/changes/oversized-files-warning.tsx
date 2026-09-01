@@ -39,14 +39,14 @@ export class OversizedFiles extends React.Component<IOversizedFilesProps> {
             The following files are over 100MB.{' '}
             <strong>
               If you commit these files, you will no longer be able to push this
-              repository to GitHub.com.
+              repository to Gitea.
             </strong>
           </p>
           {this.renderFileList()}
           <p className="recommendation">
             We recommend you avoid committing these files or use{' '}
             <LinkButton uri={GitLFSWebsiteURL}>Git LFS</LinkButton> to store
-            large files on GitHub.
+            large files on Gitea.
           </p>
         </DialogContent>
 

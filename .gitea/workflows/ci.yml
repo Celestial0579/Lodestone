@@ -14,6 +14,16 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+
+    env:
+      # getShellEnv asks the user's login shell what environment it hands to a
+      # program, and that environment is what git hooks run in. A container has
+      # no user, so SHELL is unset, the code falls back to /bin/sh, and dash
+      # under `-ilc` with an empty environment produces one containing nothing
+      # but PWD - no PATH. Naming bash gives the tests the kind of login shell
+      # any desktop would have.
+      SHELL: /bin/bash
+
     steps:
       - uses: actions/checkout@v4
 
@@ -21,9 +31,13 @@ jobs:
         with:
           node-version-file: .node-version
 
-      # The vendored native modules are compiled during postinstall.
+      # build-essential compiles the vendored native modules during postinstall.
+      # libsecret is the credential store on Linux; without it every test file
+      # that reaches the accounts store fails to load at all.
       - name: Install build tooling
-        run: sudo apt-get update && sudo apt-get install -y build-essential
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsecret-1-dev libsecret-1-0
 
       # postinstall tries to fetch the data submodules from the hosts named in
       # .gitmodules. This job does not need them - they are only bundled when

@@ -74,8 +74,8 @@ export function setUpdateSourceURL(url: string): void {
 /**
  * Turn a repository URL into the pieces needed to query its releases.
  *
- * https://git.example.com/team/gitea-desktop
- *   -> endpoint https://git.example.com/api/v1, owner team, name gitea-desktop
+ * https://git.example.com/team/lodestone
+ *   -> endpoint https://git.example.com/api/v1, owner team, name lodestone
  *
  * Returns null if the URL isn't a usable repository address, which is what the
  * settings UI uses to tell the user their input won't work.

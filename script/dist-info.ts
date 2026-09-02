@@ -141,12 +141,12 @@ export function getDistArchitecture(): 'arm64' | 'x64' {
  * Lodestone deliberately ships without one. The upstream URL points at
  * GitHub's release infrastructure, which would both hand out Lodestone
  * builds and tell GitHub about every install of this app. Set
- * `GITEA_DESKTOP_UPDATES_URL` when building to point at your own
+ * `LODESTONE_UPDATES_URL` when building to point at your own
  * Squirrel-compatible endpoint; leaving it unset disables in-app updates.
  */
 export function getUpdatesURL() {
   const architecture = getDistArchitecture()
-  const configured = process.env.GITEA_DESKTOP_UPDATES_URL
+  const configured = process.env.LODESTONE_UPDATES_URL
 
   if (configured === undefined || configured.length === 0) {
     return ''

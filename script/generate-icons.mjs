@@ -47,7 +47,7 @@ const ICON_SIZES = [16, 24, 32, 48, 64, 128, 256, 512, 1024]
 const CANVAS = 1024
 
 // Staged outside the project so a concurrent build can't sweep it away.
-const staging = join(tmpdir(), 'gitea-desktop-icon-staging')
+const staging = join(tmpdir(), 'lodestone-icon-staging')
 
 function iconPage(size, tileColor) {
   const radius = Math.round(size * 0.18)

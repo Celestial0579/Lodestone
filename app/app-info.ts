@@ -13,8 +13,9 @@ export function getReplacements() {
   const isDevBuild = channel === 'development'
 
   return {
-    // Gitea Desktop signs in with a personal access token and registers no
-    // OAuth application, so there is nothing to put here. Upstream falls back
+    // No OAuth application is registered for any provider, so there is nothing
+    // to put here by default. Browser sign-in uses an application registered
+    // per instance instead, with PKCE rather than a secret. Upstream falls back
     // to GitHub's own development credentials, which are not ours to ship.
     __OAUTH_CLIENT_ID__: s(process.env.DESKTOP_OAUTH_CLIENT_ID ?? ''),
     __OAUTH_SECRET__: s(process.env.DESKTOP_OAUTH_CLIENT_SECRET ?? ''),

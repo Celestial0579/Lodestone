@@ -350,8 +350,8 @@ function copyDependencies() {
   // Copilot is switched off in Lodestone: it talks to GitHub's GraphQL API,
   // which Gitea does not implement. Its platform binaries are around 250 MB, so
   // shipping them would more than triple the installer for a feature that can
-  // never run. Set GITEA_DESKTOP_BUNDLE_COPILOT=1 to include them anyway.
-  if (process.env.GITEA_DESKTOP_BUNDLE_COPILOT === '1') {
+  // never run. Set LODESTONE_BUNDLE_COPILOT=1 to include them anyway.
+  if (process.env.LODESTONE_BUNDLE_COPILOT === '1') {
     console.log('  Copying copilot…')
     copyCopilotDependency()
   }

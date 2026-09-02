@@ -71,11 +71,12 @@ findYarnVersion(path => {
   // for a self-hosted forge. Warn and carry on rather than failing the whole
   // install; script/build.ts refuses to package without them, with a message
   // saying what to do.
-  result = spawnSync(
-    'git',
-    ['submodule', 'update', '--recursive', '--init'],
-    options
-  )
+  // Deliberately not --recursive. choosealicense.com carries its own
+  // submodule, spdx/license-list-XML on github.com, which nothing here reads:
+  // the licence list is built from its _licenses directory and LICENSE.md.
+  // Fetching it cost a hundred megabytes and the last dependency this build
+  // had on a host we otherwise do not need.
+  result = spawnSync('git', ['submodule', 'update', '--init'], options)
 
   if (result.status !== 0) {
     console.warn(

@@ -1,6 +1,6 @@
 # Upgrading Dependencies
 
-This document outlines how we manage the dependencies that Gitea Desktop needs,
+This document outlines how we manage the dependencies that Lodestone needs,
 as some need to be handled differently to others
 
 ## General Guidelines

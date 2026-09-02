@@ -248,7 +248,7 @@ export const createHooksProxy = (
     }>((resolve, reject) => {
       const child = spawn(gitPath, args, {
         cwd: proxyCwd,
-        // GITHUB_DESKTOP lets hooks know they're run from Gitea Desktop.
+        // GITHUB_DESKTOP lets hooks know they're run from Lodestone.
         // See https://github.com/desktop/desktop/issues/19001
         env: { ...shellEnv.env, ...safeEnv, GITHUB_DESKTOP: '1' },
         signal: abortController.signal,

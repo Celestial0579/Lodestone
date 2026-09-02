@@ -92,7 +92,7 @@ export function getReleaseSummary(
  * Release notes for the running version.
  *
  * Upstream fetches these from GitHub's release infrastructure, which only knows
- * about Gitea Desktop releases. Gitea Desktop has no such service, so there is
+ * about Lodestone releases. Lodestone has no such service, so there is
  * nothing to show. Point this at a JSON document matching `ReleaseMetadata` if
  * you publish your own builds and want the release notes dialog populated.
  */

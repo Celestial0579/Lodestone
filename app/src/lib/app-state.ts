@@ -677,9 +677,9 @@ export interface IBranchesState {
   /**
    * The default branch for a given repository. Historically it's been
    * common to use 'master' as the default branch but as of September 2020
-   * Gitea Desktop and GitHub.com default to using 'main' as the default branch.
+   * Lodestone and GitHub.com default to using 'main' as the default branch.
    *
-   * Gitea Desktop users are able to configure the `init.defaultBranch` Git
+   * Lodestone users are able to configure the `init.defaultBranch` Git
    * setting in preferences.
    *
    * GitHub.com users are able to change their default branch in the web UI.
@@ -836,7 +836,7 @@ export interface IChangesState {
   readonly conflictState: ConflictState | null
 
   /**
-   * The latest Gitea Desktop stash entry for the current branch, or `null`
+   * The latest Lodestone stash entry for the current branch, or `null`
    * if no stash exists for the current branch.
    */
   readonly stashEntry: IStashEntry | null
@@ -968,9 +968,9 @@ export interface ICompareState {
   /**
    * The default branch for a given repository. Historically it's been
    * common to use 'master' as the default branch but as of September 2020
-   * Gitea Desktop and GitHub.com default to using 'main' as the default branch.
+   * Lodestone and GitHub.com default to using 'main' as the default branch.
    *
-   * Gitea Desktop users are able to configure the `init.defaultBranch` Git
+   * Lodestone users are able to configure the `init.defaultBranch` Git
    * setting in preferences.
    *
    * GitHub.com users are able to change their default branch in the web UI.

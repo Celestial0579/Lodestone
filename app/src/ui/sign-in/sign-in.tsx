@@ -44,9 +44,8 @@ const DefaultTitle = 'Sign in'
 
 const browserSignInInfoContent = (
   <p>
-    Your browser will redirect you back to Gitea Desktop once you've signed in.
-    If your browser asks for your permission to launch Gitea Desktop, please
-    allow it.
+    Your browser will redirect you back to Lodestone once you've signed in. If
+    your browser asks for your permission to launch Lodestone, please allow it.
   </p>
 )
 

@@ -131,7 +131,7 @@ interface IFetchAllOptions<T> {
 const ClientID = process.env.TEST_ENV ? '' : __OAUTH_CLIENT_ID__
 const ClientSecret = process.env.TEST_ENV ? '' : __OAUTH_SECRET__
 
-// No warning when these are empty: Gitea Desktop authenticates with a personal
+// No warning when these are empty: Lodestone authenticates with a personal
 // access token and never uses the OAuth flow, so an unset client id is the
 // expected state rather than a misconfiguration.
 

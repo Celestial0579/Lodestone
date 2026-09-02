@@ -49,7 +49,7 @@ export class CopilotDisclaimer extends React.Component<ICopilotDisclaimerProps> 
             Copilot is powered by AI, so mistakes are possible.
             {children !== undefined && <> {children}</>}{' '}
             <LinkButton uri="https://gh.io/copilot-for-desktop-transparency">
-              Learn more about Copilot in Gitea Desktop.
+              Learn more about Copilot in Lodestone.
             </LinkButton>
           </p>
         </DialogContent>

@@ -49,12 +49,12 @@ export class SAMLReauthRequiredDialog extends React.Component<
           <p>
             The "{this.props.organizationName}" organization has enabled or
             enforced SAML SSO. To access this repository, you must sign in again
-            and grant Gitea Desktop permission to access the organization's
+            and grant Lodestone permission to access the organization's
             repositories.
           </p>
           <p>
-            Would you like to open a browser to grant Gitea Desktop permission
-            to access the repository?
+            Would you like to open a browser to grant Lodestone permission to
+            access the repository?
           </p>
         </DialogContent>
         <DialogFooter>

@@ -28,7 +28,7 @@ export interface IUiActivityMonitor {
 export type UiActivityKind = 'pointer' | 'keyboard' | 'menu'
 
 /**
- * UI Activity monitor for user interactions within Gitea Desktop.
+ * UI Activity monitor for user interactions within Lodestone.
  */
 export class UiActivityMonitor implements IUiActivityMonitor {
   private readonly emitter = new Emitter()

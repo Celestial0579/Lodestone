@@ -10,7 +10,7 @@ These are good teams to start with for general communication and questions. (Mem
 
 | Team | Purpose |
 |:--|:--|
-| `@desktop/maintainers` | The people designing, developing, and driving Gitea Desktop. Includes all groups below. |
+| `@desktop/maintainers` | The people designing, developing, and driving Lodestone. Includes all groups below. |
 | `@desktop/collaborators` | Community members with a track record of activity in the Desktop project |
 
 ## Special-purpose Teams

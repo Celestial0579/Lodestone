@@ -95,7 +95,7 @@ export function getWindowsDeltaNugetPackagePath() {
 }
 
 export function getWindowsIdentifierName() {
-  return 'GiteaDesktop'
+  return 'Lodestone'
 }
 
 export function getBundleSizes() {
@@ -138,8 +138,8 @@ export function getDistArchitecture(): 'arm64' | 'x64' {
 /**
  * The Squirrel endpoint the app checks for updates.
  *
- * Gitea Desktop deliberately ships without one. The upstream URL points at
- * GitHub's release infrastructure, which would both hand out Gitea Desktop
+ * Lodestone deliberately ships without one. The upstream URL points at
+ * GitHub's release infrastructure, which would both hand out Lodestone
  * builds and tell GitHub about every install of this app. Set
  * `GITEA_DESKTOP_UPDATES_URL` when building to point at your own
  * Squirrel-compatible endpoint; leaving it unset disables in-app updates.

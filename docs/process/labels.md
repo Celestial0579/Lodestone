@@ -11,7 +11,7 @@ help understand the type of work involved.
 |                               | Label name       | Description |
 | ----------------------------- | -----------------| ----------- |
 | [:mag_right:][docs]           | `docs`           | Issues and pull requests related to documentation work on the project |
-| [:mag_right:][infrastructure] | `infrastructure` | Issues and pull requests related to scripts and tooling for Gitea Desktop |
+| [:mag_right:][infrastructure] | `infrastructure` | Issues and pull requests related to scripts and tooling for Lodestone |
 | [:mag_right:][tech-debt]      | `tech-debt`      | Issues and pull requests related to addressing technical debt or improving the codebase |
 
 ## Issue-specific labels

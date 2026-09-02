@@ -15,17 +15,16 @@ export class Start extends React.Component<IStartProps, {}> {
     return (
       <section
         id="start"
-        aria-label="Welcome to Gitea Desktop"
+        aria-label="Welcome to Lodestone"
         aria-describedby="start-description"
       >
         <div className="start-content">
           <h1 className="welcome-title">
-            Welcome to <span>Gitea Desktop</span>
+            Welcome to <span>Lodestone</span>
           </h1>
           <p id="start-description" className="welcome-text">
-            Gitea Desktop is a seamless way to contribute to projects on your
-            Gitea instance. Sign in below to get started with your existing
-            projects.
+            Lodestone is a seamless way to contribute to projects on your Gitea
+            instance. Sign in below to get started with your existing projects.
           </p>
 
           <div className="welcome-main-buttons">
@@ -42,8 +41,8 @@ export class Start extends React.Component<IStartProps, {}> {
 
         <div className="start-footer">
           <p>
-            Gitea Desktop talks to your Gitea instance and nothing else. It
-            sends no usage data anywhere.
+            Lodestone talks to your Gitea instance and nothing else. It sends no
+            usage data anywhere.
           </p>
         </div>
       </section>

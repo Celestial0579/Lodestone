@@ -7,7 +7,7 @@ export function getKeyForAccount(account: Account): string {
 
 /** Get the auth key for the endpoint. */
 export function getKeyForEndpoint(endpoint: string): string {
-  const appName = __DEV__ ? 'Gitea Desktop Dev' : 'Gitea Desktop'
+  const appName = __DEV__ ? 'Lodestone Dev' : 'Lodestone'
 
   return `${appName} - ${endpoint}`
 }

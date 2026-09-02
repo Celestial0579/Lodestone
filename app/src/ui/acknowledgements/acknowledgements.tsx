@@ -122,7 +122,7 @@ export class Acknowledgements extends React.Component<
       >
         <DialogContent>
           <p>
-            <LinkButton uri={WebsiteURL}>Gitea Desktop</LinkButton> is an open
+            <LinkButton uri={WebsiteURL}>Lodestone</LinkButton> is an open
             source project published under the MIT License. You can view the
             source code and contribute to this project on{' '}
             <LinkButton uri={RepositoryURL}>its repository</LinkButton>.
@@ -130,7 +130,7 @@ export class Acknowledgements extends React.Component<
 
           {desktopLicense}
 
-          <p>Gitea Desktop also distributes these libraries:</p>
+          <p>Lodestone also distributes these libraries:</p>
 
           {licenses ? this.renderLicenses(licenses) : <Loading />}
         </DialogContent>

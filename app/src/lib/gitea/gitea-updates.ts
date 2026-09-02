@@ -1,8 +1,8 @@
 /**
- * Checking a Gitea instance for new releases of Gitea Desktop.
+ * Checking a Gitea instance for new releases of Lodestone.
  *
  * The upstream app updates itself from GitHub's Squirrel infrastructure, which
- * only serves GitHub Desktop. Gitea Desktop ships with no update source at all,
+ * only serves GitHub Desktop. Lodestone ships with no update source at all,
  * so nothing is configured until someone points it at a repository they publish
  * releases to. Once they do, we ask that repository's release API whether there
  * is a newer version and, if there is, hand the user a link to it.
@@ -22,7 +22,7 @@ import { request, parsedResponse } from '../http'
 /** localStorage key holding the repository releases are published to. */
 const UpdateSourceKey = 'gitea-update-source-url'
 
-/** A repository on a Gitea instance that publishes Gitea Desktop releases. */
+/** A repository on a Gitea instance that publishes Lodestone releases. */
 export interface IGiteaUpdateSource {
   /** The API endpoint of the instance, e.g. https://git.example.com/api/v1 */
   readonly endpoint: string

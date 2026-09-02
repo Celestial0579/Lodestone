@@ -18,6 +18,6 @@
 	<key>CFBundleIconName</key>
 	<string>icon-logo</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Gitea Desktop uses Apple Events to implement integration features with external editors.</string>
+	<string>Lodestone uses Apple Events to implement integration features with external editors.</string>
 </dict>
 </plist>

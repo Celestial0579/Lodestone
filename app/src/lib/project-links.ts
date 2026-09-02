@@ -1,5 +1,5 @@
 /**
- * Where this build of Gitea Desktop lives.
+ * Where this build of Lodestone lives.
  *
  * The app points at its own repository in three places: the update check, the
  * crash reporter's issue tracker link, and the help menu. Keeping the address

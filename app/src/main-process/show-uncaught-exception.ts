@@ -28,9 +28,9 @@ export function showUncaughtException(isLaunchError: boolean, error: Error) {
       type: 'error',
       title: __DARWIN__ ? `Unrecoverable Error` : 'Unrecoverable error',
       message:
-        `Gitea Desktop has encountered an unrecoverable error and will need to restart.\n\n` +
+        `Lodestone has encountered an unrecoverable error and will need to restart.\n\n` +
         `This has been reported to the team, but if you encounter this repeatedly please report ` +
-        `this issue to the Gitea Desktop issue tracker.\n\n${
+        `this issue to the Lodestone issue tracker.\n\n${
           error.stack || error.message
         }`,
     })

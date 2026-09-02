@@ -16,12 +16,12 @@ Find your distribution on [this list](https://nodejs.org/en/download/package-man
 and follow the instructions to install the version you require.
 
 Ensure that you also choose the option for building native Node modules, as
-those are used in some dependencies used in Gitea Desktop.
+those are used in some dependencies used in Lodestone.
 
 ## Yarn
 
 Follow [this guide](https://yarnpkg.com/en/docs/install) to install
-a system-level `yarn` for your distribution. Gitea Desktop uses a local version
+a system-level `yarn` for your distribution. Lodestone uses a local version
 of `yarn`, but it needs a version on your `PATH` to bootstrap itself.
 
 This is important because `yarn` uses lock files to pin dependencies. If you
@@ -40,7 +40,7 @@ Python 3 series.
 ## Electron dependencies
 
 There are some additional dependencies which are required as part of building
-and running Gitea Desktop locally:
+and running Lodestone locally:
 
  - `libsecret-1.so.0` for reading and writing credentials using [`keytar`](https://github.com/atom/node-keytar)
  - `libXss.so.1` - the library for the X11 screen saver extension

@@ -18,7 +18,7 @@ const run = (...args: Array<string>) => {
   if (process.platform === 'darwin') {
     execFile('open', ['-n', join(__dirname, '../../..'), '--args', ...args], cb)
   } else if (process.platform === 'win32') {
-    const exeName = `GiteaDesktop${__DEV__ ? '-dev' : ''}.exe`
+    const exeName = `Lodestone${__DEV__ ? '-dev' : ''}.exe`
     spawn(join(__dirname, `../../${exeName}`), args, {
       detached: true,
       stdio: 'ignore',
@@ -38,10 +38,10 @@ const args = parse(process.argv.slice(2), {
 
 const usage = (exitCode = 1): never => {
   process.stderr.write(
-    'Gitea Desktop CLI usage: \n' +
-      '  gitea                             Open the current directory\n' +
-      '  gitea open [path]                 Open the provided path\n' +
-      '  gitea clone [-b branch] <url>     Clone the repository by url,\n' +
+    'Lodestone CLI usage: \n' +
+      '  lodestone                             Open the current directory\n' +
+      '  lodestone open [path]                 Open the provided path\n' +
+      '  lodestone clone [-b branch] <url>     Clone the repository by url,\n' +
       '                                    optionally checking out the branch\n'
   )
   process.exit(exitCode)

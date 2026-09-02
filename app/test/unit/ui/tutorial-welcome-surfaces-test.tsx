@@ -51,10 +51,10 @@ describe('tutorial welcome surfaces', () => {
       image => image.getAttribute('alt')
     )
 
-    assert.ok(screen.getByText('Welcome to Gitea Desktop'))
+    assert.ok(screen.getByText('Welcome to Lodestone'))
     assert.ok(
       screen.getByText(
-        'Use this tutorial to get comfortable with Git, Gitea, and Gitea Desktop.'
+        'Use this tutorial to get comfortable with Git, Gitea and Lodestone.'
       )
     )
     assert.equal(definitions.length, 3)

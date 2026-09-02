@@ -1,5 +1,5 @@
 /**
- * The scopes a Gitea personal access token needs for Gitea Desktop to work.
+ * The scopes a Gitea personal access token needs for Lodestone to work.
  *
  * Gitea derives the required scope level from the HTTP method: a GET under
  * `/orgs/{org}` needs `read:organization`, a POST needs `write:organization`.

@@ -1,7 +1,7 @@
 # Known Issues
 
 Here's a non-exhaustive list of environmental issues that you may encounter
-while working on Gitea Desktop:
+while working on Lodestone:
 
 ### Issues compiling node-keytar on Windows
 

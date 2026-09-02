@@ -35,7 +35,7 @@ import memoizeOne from 'memoize-one'
 /**
  * The tabs the clone dialog offers.
  *
- * Upstream has a third, GitHub.com tab. Every account in Gitea Desktop lives on
+ * Upstream has a third, GitHub.com tab. Every account in Lodestone lives on
  * a Gitea instance, so that tab could never hold anything; the enum value is
  * kept so the rest of the upstream branching still compiles.
  */

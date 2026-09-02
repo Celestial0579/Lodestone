@@ -1,6 +1,6 @@
 # Developer OAuth App
 
-Because Gitea Desktop uses [OAuth web application flow](https://developer.github.com/v3/oauth/#web-application-flow)
+Because Lodestone uses [OAuth web application flow](https://developer.github.com/v3/oauth/#web-application-flow)
 to interact with the GitHub API and perform actions on behalf of a user, it
 needs to be bundled with a Client ID and Secret.
 

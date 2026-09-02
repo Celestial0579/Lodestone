@@ -233,7 +233,7 @@ class UpdateStore {
     this.userInitiatedUpdate = !inBackground
 
     // A Gitea instance the user pointed us at takes precedence: it is the only
-    // update source Gitea Desktop has unless someone stood up a Squirrel feed
+    // update source Lodestone has unless someone stood up a Squirrel feed
     // of their own at build time.
     if (await this.checkGiteaForUpdates(accounts)) {
       return
@@ -296,7 +296,7 @@ class UpdateStore {
   private async getUpdatesUrl(skipGuidCheck: boolean) {
     let url = null
 
-    // Gitea Desktop ships without an update endpoint unless one was configured
+    // Lodestone ships without an update endpoint unless one was configured
     // at build time, in which case there is nothing to check against.
     if (__UPDATES_URL__.length === 0) {
       return null

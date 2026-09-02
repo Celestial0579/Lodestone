@@ -70,10 +70,10 @@ export function buildDefaultMenuTemplate({
 
   if (__DARWIN__) {
     template.push({
-      label: 'Gitea Desktop',
+      label: 'Lodestone',
       submenu: [
         {
-          label: 'About Gitea Desktop',
+          label: 'About Lodestone',
           click: emit('show-about'),
           id: 'about',
         },
@@ -576,7 +576,7 @@ export function buildDefaultMenuTemplate({
         ...helpItems,
         separator,
         {
-          label: '&About Gitea Desktop',
+          label: '&About Lodestone',
           click: emit('show-about'),
           id: 'about',
         },

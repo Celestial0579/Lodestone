@@ -1,6 +1,6 @@
 import { TokenStore } from '../stores'
 
-const appName = __DEV__ ? 'Gitea Desktop Dev' : 'Gitea Desktop'
+const appName = __DEV__ ? 'Lodestone Dev' : 'Lodestone'
 
 export function getSSHCredentialStoreKey(name: string) {
   return `${appName} - ${name}`

@@ -172,7 +172,7 @@ function packageApp() {
   const iconPath = getIconDirectory()
 
   // The compiled asset catalogue behind the macOS 26 icon is produced by
-  // Xcode's actool, which only exists on a Mac. Gitea Desktop ships the .icon
+  // Xcode's actool, which only exists on a Mac. Lodestone ships the .icon
   // source and the ICNS instead, so treat the catalogue as optional rather
   // than failing every build that doesn't have one.
   const assetsCarPath = join(iconPath, 'Assets.car')
@@ -226,10 +226,8 @@ function packageApp() {
       {
         name: getBundleID(),
         schemes: [
-          !isDevelopmentBuild
-            ? 'x-gitea-desktop-auth'
-            : 'x-gitea-desktop-dev-auth',
-          'x-gitea-client',
+          !isDevelopmentBuild ? 'x-lodestone-auth' : 'x-lodestone-dev-auth',
+          'x-lodestone-client',
           'github-mac',
         ],
       },
@@ -350,7 +348,7 @@ function copyDependencies() {
     { recursive: true, verbatimSymlinks: true }
   )
 
-  // Copilot is switched off in Gitea Desktop: it talks to GitHub's GraphQL API,
+  // Copilot is switched off in Lodestone: it talks to GitHub's GraphQL API,
   // which Gitea does not implement. Its platform binaries are around 250 MB, so
   // shipping them would more than triple the installer for a feature that can
   // never run. Set GITEA_DESKTOP_BUNDLE_COPILOT=1 to include them anyway.
@@ -480,7 +478,7 @@ function generateLicenseMetadata(outRoot: string) {
   )
 
   const licenseText = readFileSync(chooseALicenseLicense, 'utf8')
-  const licenseWithHeader = `Gitea Desktop uses licensing information provided by choosealicense.com.
+  const licenseWithHeader = `Lodestone uses licensing information provided by choosealicense.com.
 
 The bundle in available-licenses.json has been generated from a source list provided at https://github.com/github/choosealicense.com, which is made available under the below license:
 

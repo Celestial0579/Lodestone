@@ -59,7 +59,7 @@ type PullRequestReviewStatField =
   `pullRequestReview${PullRequestReviewStatFieldInfix}${PullRequestReviewStatFieldSuffix}`
 
 /**
- * Gitea Desktop has no telemetry backend of its own, and the endpoint the
+ * Lodestone has no telemetry backend of its own, and the endpoint the
  * upstream app reports to has no business receiving data about a private Gitea
  * instance. Usage measures are still collected locally because in-app features
  * such as the onboarding tutorial read them, but they never leave the machine.
@@ -477,7 +477,7 @@ const defaultPostImplementation = async (body: Record<string, any>) => {
   log.debug(
     `[stats] discarding usage report (${
       body.eventType ?? 'metrics'
-    }), reporting is disabled in Gitea Desktop`
+    }), reporting is disabled in Lodestone`
   )
 
   return new Response(null, { status: 200, statusText: 'OK' })

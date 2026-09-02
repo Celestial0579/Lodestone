@@ -62,7 +62,7 @@ export interface IBYOKProvider {
 
 const ProvidersStorageKey = 'copilot-byok-providers'
 const TokenStoreKey = `${
-  __DEV__ ? 'Gitea Desktop Dev' : 'Gitea Desktop'
+  __DEV__ ? 'Lodestone Dev' : 'Lodestone'
 } - Copilot BYOK provider`
 
 /**

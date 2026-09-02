@@ -1,8 +1,8 @@
 {
   "fill": {
     "linear-gradient": [
-      "srgb:0.94100,0.84300,0.54900,1.00000",
-      "srgb:0.85500,0.72200,0.36100,1.00000"
+      "srgb:0.90600,0.63900,0.23900,1.00000",
+      "srgb:0.70600,0.33300,0.12200,1.00000"
     ],
     "orientation": {
       "start": {
@@ -32,8 +32,8 @@
               }
             }
           ],
-          "image-name": "gitea.svg",
-          "name": "gitea"
+          "image-name": "lodestone.svg",
+          "name": "lodestone"
         }
       ],
       "name": "foreground",

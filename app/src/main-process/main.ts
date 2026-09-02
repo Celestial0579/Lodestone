@@ -102,17 +102,17 @@ function getExtraErrorContext(): Record<string, string> {
 /** Extra argument for the protocol launcher on Windows */
 const protocolLauncherArg = '--protocol-launcher'
 
-const possibleProtocols = new Set(['x-gitea-client'])
+const possibleProtocols = new Set(['x-lodestone-client'])
 if (__DEV_SECRETS__) {
-  possibleProtocols.add('x-gitea-desktop-dev-auth')
+  possibleProtocols.add('x-lodestone-dev-auth')
 } else {
-  possibleProtocols.add('x-gitea-desktop-auth')
+  possibleProtocols.add('x-lodestone-auth')
 }
 
 // On Windows, in order to get notifications properly working for dev builds,
 // we'll want to set the right App User Model ID from production builds.
 if (__WIN32__ && __DEV__) {
-  app.setAppUserModelId('com.squirrel.GiteaDesktop.GiteaDesktop')
+  app.setAppUserModelId('com.squirrel.Lodestone.Lodestone')
 }
 
 app.on('window-all-closed', () => {
@@ -241,7 +241,7 @@ async function handleCommandLineArguments(argv: string[]) {
 
   if (__WIN32__ && args['protocol-launcher'] === true) {
     // On Windows we'll end up getting called with something like
-    // `--protocol-launcher --allow-file-access-from-files x-gitea-client://..`
+    // `--protocol-launcher --allow-file-access-from-files x-lodestone-client://..`
     // which minimist naturally interprets as
     // `--allow-file-access-from-files=x:/github-client`. This is due to
     // Chromium's hot take on parsing command line arguments, see:

@@ -1,15 +1,20 @@
-# Gitea Desktop
+# Lodestone
 
-Gitea Desktop is a fork of [GitHub Desktop](https://github.com/desktop/desktop)
-that talks to [Gitea](https://about.gitea.com/) instead of GitHub. It is an
+**Lodestone for Git** is a desktop client for [Gitea](https://about.gitea.com/),
+forked from [GitHub Desktop](https://github.com/desktop/desktop). It is an
 open-source [Electron](https://www.electronjs.org/) app written in
 [TypeScript](https://www.typescriptlang.org) and [React](https://reactjs.org/).
 
 Forked from GitHub Desktop 3.6.5-beta1.
 
+> Lodestone is an independent project. It is not affiliated with, endorsed by or
+> supported by Gitea Ltd or GitHub, Inc. Gitea, GitHub and Git are trademarks of
+> their respective owners and are used here only to say what this software works
+> with.
+
 ## What it does
 
-Everything GitHub Desktop does against a GitHub repository, Gitea Desktop does
+Everything GitHub Desktop does against a GitHub repository, Lodestone does
 against a repository on any Gitea instance:
 
 - browse, clone, and create repositories
@@ -20,7 +25,7 @@ against a repository on any Gitea instance:
 
 ## Signing in
 
-Gitea Desktop signs in with a **personal access token**. Gitea instances have no
+Lodestone signs in with a **personal access token**. Gitea instances have no
 shared OAuth application the way GitHub.com does, and registering one is an
 administrative task per instance, so a token is the only approach that works
 against every instance without setup.
@@ -32,7 +37,7 @@ against every instance without setup.
    `write:organization` rather than `read:` matters: Gitea derives the required
    scope level from the HTTP method, and publishing a repository into an
    organisation is a POST under `/orgs/{org}`.
-3. In Gitea Desktop, enter your instance address (e.g. `https://git.example.com`)
+3. In Lodestone, enter your instance address (e.g. `https://git.example.com`)
    and paste the token.
 
 Plain `http://` is accepted for `localhost` only. Everywhere else TLS is
@@ -40,7 +45,7 @@ required, because the token is sent to that host.
 
 ## Updates
 
-Gitea Desktop ships with **no update source configured**. Nothing is checked and
+Lodestone ships with **no update source configured**. Nothing is checked and
 nothing is reported anywhere until you point it at a repository yourself.
 
 To enable update checks, open **Preferences -> Advanced -> Updates** and enter

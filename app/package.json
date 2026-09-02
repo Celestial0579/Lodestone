@@ -1,19 +1,19 @@
 {
-  "name": "gitea-desktop",
-  "productName": "Gitea Desktop",
-  "bundleID": "org.giteadesktop.GiteaDesktop",
-  "companyName": "Gitea Desktop Contributors",
+  "name": "lodestone",
+  "productName": "Lodestone",
+  "bundleID": "de.firestrike.lodestone",
+  "companyName": "Firestrike",
   "version": "1.0.0",
   "main": "./main.js",
   "repository": {
     "type": "git",
     "url": ""
   },
-  "description": "Simple collaboration from your desktop, for Gitea",
+  "description": "Lodestone, a desktop client for Gitea",
   "author": {
-    "name": "Gitea Desktop Contributors",
+    "name": "Firestrike",
     "email": "",
-    "url": "https://about.gitea.com/"
+    "url": "https://firestrike.de/"
   },
   "license": "MIT",
   "dependencies": {

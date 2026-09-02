@@ -59,7 +59,7 @@ export class Advanced extends React.Component<
   /**
    * Where to look for new versions of the app.
    *
-   * Gitea Desktop ships without an update source. Point it at a repository on
+   * Lodestone ships without an update source. Point it at a repository on
    * any Gitea instance that publishes releases and the app will check that
    * repository instead of phoning home to anyone.
    */
@@ -85,7 +85,7 @@ export class Advanced extends React.Component<
             </p>
           ) : (
             <p>
-              Gitea Desktop checks this repository for newer releases. Leave it
+              Lodestone checks this repository for newer releases. Leave it
               empty to turn update checks off. Releases are downloaded from the
               instance by hand, the app never installs anything on its own.
             </p>
@@ -128,7 +128,7 @@ export class Advanced extends React.Component<
   private reportDesktopUsageLabel() {
     return (
       <span>
-        Collect usage measures locally. Gitea Desktop never sends them anywhere.
+        Collect usage measures locally. Lodestone never sends them anywhere.
       </span>
     )
   }

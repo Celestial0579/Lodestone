@@ -136,7 +136,7 @@ describe('SignInStore', () => {
       assert.equal(state?.kind, SignInStep.Authentication)
     })
 
-    // Gitea Desktop talks to Gitea instances only, so a github.com address is
+    // Lodestone talks to Gitea instances only, so a github.com address is
     // reported back to the user rather than sent down a dotcom sign-in flow.
     for (const address of ['https://github.com', 'https://api.github.com']) {
       it(`reports an error for ${address}`, async () => {

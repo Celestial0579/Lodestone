@@ -194,7 +194,7 @@ export interface INumberFormat {
 
 /**
  * Any random date used for previewing date and time formats. This happens to be
- * the date of the 1.0 release of Gitea Desktop but it could be any date
+ * the date of the 1.0 release of Lodestone but it could be any date
  * (preferrably one where YYMMDD doesn't look the same as MMDDYY or DDMMYY to
  * avoid confusion in the previews). Similarly, the time portion should be
  * greater than 12:00 to make it clear when the 12-hour formats are used.

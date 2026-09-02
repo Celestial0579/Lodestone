@@ -30,14 +30,15 @@ const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const logosDir = join(projectRoot, 'app', 'static', 'logos')
 const commonDir = join(projectRoot, 'app', 'static', 'common')
 
-const markSvg = readFileSync(join(logosDir, 'gitea-mark.svg'), 'utf8').replace(
-  /<\?xml[^>]*\?>/,
-  ''
-)
+const markSvg = readFileSync(
+  join(logosDir, 'lodestone-mark.svg'),
+  'utf8'
+).replace(/<\?xml[^>]*\?>/, '')
 
-/** Gitea green, and the sand the dev channel uses to stand apart. */
-const PROD_TILE = '#ffffff'
-const DEV_TILE = '#f0d78c'
+// Firestrike's palette: steel for the tile, ember and spark for the needle.
+const PROD_TILE = '#212B33'
+// The dev channel gets the ember tile so the two are told apart in the taskbar.
+const DEV_TILE = '#B4551F'
 
 const ICON_SIZES = [16, 24, 32, 48, 64, 128, 256, 512, 1024]
 
@@ -52,7 +53,8 @@ function iconPage(size, tileColor) {
   const radius = Math.round(size * 0.18)
   // At taskbar sizes the padding eats the mark, so the small renders get a
   // tighter margin than the large ones.
-  const inset = Math.round(size * (size <= 48 ? 0.06 : 0.14))
+  const small = size <= 48
+  const inset = Math.round(size * (small ? 0.06 : 0.14))
 
   return `<!doctype html>
 <html><head><meta charset="utf-8"><style>
@@ -70,6 +72,7 @@ function iconPage(size, tileColor) {
     width: ${size - inset * 2}px; height: ${size - inset * 2}px;
   }
   .mark svg { width: 100%; height: 100%; display: block; }
+  ${small ? '.mark .detail { display: none; }' : ''}
 </style></head>
 <body><div class="tile"></div><div class="mark">${markSvg}</div></body></html>`
 }
@@ -82,9 +85,9 @@ function splashPage() {
   html, body { margin: 0; padding: 0; background: transparent; }
   body {
     width: ${SPLASH_SIZE}px; height: ${SPLASH_SIZE}px;
-    background: #21262d;
-    font-family: "Segoe UI", system-ui, sans-serif;
-    color: #ffffff;
+    background: #212B33;
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    color: #EFF0ED;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     text-align: center;
@@ -92,12 +95,13 @@ function splashPage() {
   .mark { width: 128px; height: 128px; margin-bottom: 28px; }
   .mark svg { width: 100%; height: 100%; display: block; }
   h1 { font-size: 34px; font-weight: 400; margin: 0 0 18px; letter-spacing: 0.3px; }
-  p { font-size: 14px; line-height: 1.6; margin: 0; color: #c9d1d9; }
+  p { font-size: 14px; line-height: 1.6; margin: 0; color: #C9CCC6;
+      font-family: system-ui, "Segoe UI", sans-serif; }
 </style></head>
 <body>
   <div class="mark">${markSvg}</div>
-  <h1>Gitea Desktop</h1>
-  <p>Gitea Desktop is being installed.<br>It will launch once it is done.</p>
+  <h1>Lodestone</h1>
+  <p>Lodestone is being installed.<br>It will launch once it is done.</p>
 </body></html>`
 }
 
@@ -342,17 +346,22 @@ function buildGif(bgra, width, height) {
  * otherwise merge into the rest of the shape.
  */
 function writeIconBundle(channel, gradient) {
-  const bodyPaths = [
-    ...markSvg.matchAll(/<path\s+style="fill:#609926"\s+d="([^"]+)"/g),
-  ].map(m => m[1])
+  // The foreground layer is filled with a flat colour by the renderer, so the
+  // artwork acts as a silhouette. The needle alone carries the shape; the
+  // bearing ring and the pivot would only muddy it at this size.
+  const needle = [...markSvg.matchAll(/<path d="(M320 (?:96|544)[^"]+)"/g)].map(
+    m => m[1]
+  )
 
-  if (bodyPaths.length === 0) {
-    throw new Error('found no body paths in the mark')
+  if (needle.length !== 2) {
+    throw new Error(
+      `expected both needle halves in the mark, found ${needle.length}`
+    )
   }
 
-  const scale = 1.25
+  const scale = 1.15
   const offset = (1024 - 640 * scale) / 2
-  const paths = bodyPaths
+  const paths = needle
     .map(d => `    <path d="${d}" fill="white"/>`)
     .join('\n')
 
@@ -368,7 +377,7 @@ ${paths}
 
   rmSync(assets, { recursive: true, force: true })
   mkdirSync(assets, { recursive: true })
-  writeFileSync(join(assets, 'gitea.svg'), layer, 'utf8')
+  writeFileSync(join(assets, 'lodestone.svg'), layer, 'utf8')
 
   const icon = {
     fill: {
@@ -386,8 +395,8 @@ ${paths}
                 value: { solid: 'srgb:1.00000,1.00000,1.00000,1.00000' },
               },
             ],
-            'image-name': 'gitea.svg',
-            name: 'gitea',
+            'image-name': 'lodestone.svg',
+            name: 'lodestone',
           },
         ],
         name: 'foreground',
@@ -411,7 +420,14 @@ app.commandLine.appendSwitch('force-device-scale-factor', '1')
 // flat design and burns through the colours a GIF palette has.
 app.commandLine.appendSwitch('disable-lcd-text')
 
-app.whenReady().then(async () => {
+app.whenReady().then(run).catch(err => {
+  // Without this an exception leaves the Electron process alive with no window
+  // and no message, which looks exactly like a hang.
+  console.error(err)
+  app.exit(1)
+})
+
+async function run() {
   mkdirSync(staging, { recursive: true })
 
   const win = new BrowserWindow({
@@ -425,15 +441,22 @@ app.whenReady().then(async () => {
   })
 
   for (const [channel, tile, gradient] of [
+    // steel for the release channel, ember for the dev channel
     [
       'prod',
       PROD_TILE,
-      ['srgb:0.48200,0.68600,0.20800,1.00000', 'srgb:0.37600,0.60000,0.14900,1.00000'],
+      [
+        'srgb:0.20000,0.25500,0.29400,1.00000',
+        'srgb:0.12900,0.16900,0.20000,1.00000',
+      ],
     ],
     [
       'dev',
       DEV_TILE,
-      ['srgb:0.94100,0.84300,0.54900,1.00000', 'srgb:0.85500,0.72200,0.36100,1.00000'],
+      [
+        'srgb:0.90600,0.63900,0.23900,1.00000',
+        'srgb:0.70600,0.33300,0.12200,1.00000',
+      ],
     ],
   ]) {
     const bySize = new Map()
@@ -478,4 +501,4 @@ app.whenReady().then(async () => {
   unlinkSync(join(staging, 'page.html'))
   win.destroy()
   app.quit()
-})
+}

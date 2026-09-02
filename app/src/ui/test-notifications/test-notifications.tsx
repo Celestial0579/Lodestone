@@ -203,7 +203,7 @@ export class TestNotifications extends React.Component<
           <LinkButton onClick={this.onGrantNotificationPermission}>
             grant permission
           </LinkButton>{' '}
-          to display these notifications from Gitea Desktop.
+          to display these notifications from Lodestone.
         </>
       )
     }
@@ -217,8 +217,8 @@ export class TestNotifications extends React.Component<
     if (warnNotificationsDenied) {
       return (
         <>
-          <span className="warning-icon">⚠️</span> Gitea Desktop has no
-          permission to display notifications. Please, enable them in the{' '}
+          <span className="warning-icon">⚠️</span> Lodestone has no permission
+          to display notifications. Please, enable them in the{' '}
           <LinkButton uri={notificationSettingsURL}>
             Notifications Settings
           </LinkButton>
@@ -233,7 +233,7 @@ export class TestNotifications extends React.Component<
 
     return (
       <>
-        Make sure notifications are {verb} for Gitea Desktop in the{' '}
+        Make sure notifications are {verb} for Lodestone in the{' '}
         <LinkButton uri={notificationSettingsURL}>
           Notifications Settings
         </LinkButton>

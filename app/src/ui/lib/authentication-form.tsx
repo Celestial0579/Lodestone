@@ -12,7 +12,7 @@ import { formatTokenScopes } from '../../lib/gitea/gitea-token-scopes'
 
 /** Text to let the user know their browser will send them back to Desktop */
 export const BrowserRedirectMessage =
-  "Your browser will redirect you back to Gitea Desktop once you've signed in. If your browser asks for your permission to launch Gitea Desktop please allow it to."
+  "Your browser will redirect you back to Lodestone once you've signed in. If your browser asks for your permission to launch Lodestone please allow it to."
 
 interface IAuthenticationFormProps {
   /** The API endpoint the user is authenticating against. */

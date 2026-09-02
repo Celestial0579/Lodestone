@@ -449,9 +449,7 @@ export function getDescriptionForError(
   stderr: string
 ): string | null {
   if (isAuthFailureError(error)) {
-    const menuHint = __DARWIN__
-      ? 'Gitea Desktop > Settings.'
-      : 'File > Options.'
+    const menuHint = __DARWIN__ ? 'Lodestone > Settings.' : 'File > Options.'
     return `Authentication failed. Some common reasons include:
 
 - You are not logged in to your account: see ${menuHint}
@@ -535,7 +533,7 @@ export function getDescriptionForError(
     case DugiteError.CannotMergeUnrelatedHistories:
       return 'Unable to merge unrelated histories in this repository.'
     case DugiteError.PushWithPrivateEmail:
-      return 'Cannot push these commits as they contain an email address marked as private on your Gitea instance. To push anyway, open your account settings there, turn off "Hide Email Address", then switch back to Gitea Desktop to push your commits. You can then enable the setting again.'
+      return 'Cannot push these commits as they contain an email address marked as private on your Gitea instance. To push anyway, open your account settings there, turn off "Hide Email Address", then switch back to Lodestone to push your commits. You can then enable the setting again.'
     case DugiteError.LFSAttributeDoesNotMatch:
       return 'Git LFS attribute found in global Git configuration does not match expected value.'
     case DugiteError.ProtectedBranchDeleteRejected:

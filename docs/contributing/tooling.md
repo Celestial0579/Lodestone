@@ -1,4 +1,4 @@
-# Tooling Support for Gitea Desktop
+# Tooling Support for Lodestone
 
 ### [Atom](https://atom.io/)
 

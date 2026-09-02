@@ -137,8 +137,8 @@ export class CrashApp extends React.Component<ICrashAppProps, ICrashAppState> {
   private renderTitle() {
     const message =
       this.state.type === 'launch'
-        ? 'Gitea Desktop failed to launch'
-        : 'Gitea Desktop encountered an error'
+        ? 'Lodestone failed to launch'
+        : 'Lodestone encountered an error'
 
     return (
       <header>
@@ -152,18 +152,18 @@ export class CrashApp extends React.Component<ICrashAppProps, ICrashAppState> {
     if (this.state.type === 'launch') {
       return (
         <p>
-          Gitea Desktop encountered a catastrophic error that prevents it from
+          Lodestone encountered a catastrophic error that prevents it from
           launching. This has been reported to the team, but if you encounter
-          this repeatedly please report this issue to the Gitea Desktop{' '}
+          this repeatedly please report this issue to the Lodestone{' '}
           <LinkButton uri={issuesUri}>issue tracker</LinkButton>.
         </p>
       )
     } else {
       return (
         <p>
-          Gitea Desktop has encountered an unrecoverable error and will need to
+          Lodestone has encountered an unrecoverable error and will need to
           restart. This has been reported to the team, but if you encounter this
-          repeatedly please report this issue to the Gitea Desktop{' '}
+          repeatedly please report this issue to the Lodestone{' '}
           <LinkButton uri={issuesUri}>issue tracker</LinkButton>.
         </p>
       )

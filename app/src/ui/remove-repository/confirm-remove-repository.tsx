@@ -67,10 +67,10 @@ export class ConfirmRemoveRepository extends React.Component<
         <DialogContent>
           <p>
             Are you sure you want to remove the repository "
-            {this.props.repository.name}" from Gitea Desktop?
+            {this.props.repository.name}" from Lodestone?
           </p>
           <div className="description">
-            <p>The repository will be removed from Gitea Desktop:</p>
+            <p>The repository will be removed from Lodestone:</p>
             <p>
               <Ref>{this.props.repository.path}</Ref>
             </p>

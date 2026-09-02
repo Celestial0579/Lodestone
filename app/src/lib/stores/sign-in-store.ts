@@ -332,10 +332,10 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
   /**
    * Complete the sign in process using a Gitea personal access token.
    *
-   * Gitea has no equivalent of the OAuth application Gitea Desktop ships with,
+   * Gitea has no equivalent of the OAuth application Lodestone ships with,
    * and registering one is a per-instance administrative task. A personal
    * access token works against every instance without any setup, so it is the
-   * way Gitea Desktop signs in.
+   * way Lodestone signs in.
    *
    * This method must only be called while the store is in the authentication
    * step or an error will be thrown.
@@ -454,7 +454,7 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
     }
 
     /**
-     * Gitea Desktop talks to Gitea instances only. Point the user at the right
+     * Lodestone talks to Gitea instances only. Point the user at the right
      * tool rather than letting them run into a confusing API error.
      */
     if (/^(?:https:\/\/)?(?:api\.)?github\.com($|\/)/.test(url)) {
@@ -462,7 +462,7 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
         ...currentState,
         loading: false,
         error: new Error(
-          'Gitea Desktop connects to Gitea instances. Use Gitea Desktop to sign in to GitHub.com.'
+          'Lodestone connects to Gitea instances. Use Lodestone to sign in to GitHub.com.'
         ),
       })
       return

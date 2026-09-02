@@ -15,7 +15,7 @@ export enum GitStatusEntry {
   UpdatedButUnmerged = 'U',
 }
 
-/** The enum representation of a Git file change in Gitea Desktop. */
+/** The enum representation of a Git file change in Lodestone. */
 export enum AppFileStatusKind {
   New = 'New',
   Modified = 'Modified',
@@ -27,7 +27,7 @@ export enum AppFileStatusKind {
 }
 
 /**
- * Normal changes to a repository detected by Gitea Desktop
+ * Normal changes to a repository detected by Lodestone
  */
 export type PlainFileStatus = {
   kind:

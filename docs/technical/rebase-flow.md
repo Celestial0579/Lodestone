@@ -1,7 +1,7 @@
 # Rebase Flow
 
 This document outlines the technical details about the rebase flow as
-implemented in Gitea Desktop. It is intended to be a simple subset of what is
+implemented in Lodestone. It is intended to be a simple subset of what is
 technically possible to do with the `git rebase` command line interface, and
 various decisions have been made along the way to support this flow.
 

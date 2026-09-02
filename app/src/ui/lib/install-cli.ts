@@ -4,10 +4,10 @@ import * as fsAdmin from 'fs-admin'
 import { mkdir, readlink, symlink, unlink } from 'fs/promises'
 
 /** The path for the installed command line tool. */
-export const InstalledCLIPath = '/usr/local/bin/gitea'
+export const InstalledCLIPath = '/usr/local/bin/lodestone'
 
 /** The path to the packaged CLI. */
-const PackagedPath = Path.resolve(__dirname, 'static', 'gitea.sh')
+const PackagedPath = Path.resolve(__dirname, 'static', 'lodestone.sh')
 
 /** Install the command line tool on macOS. */
 export async function installCLI(): Promise<void> {
@@ -42,7 +42,7 @@ function removeExistingSymlink(asAdmin: boolean) {
       if (error !== null) {
         reject(
           new Error(
-            `Failed to remove file at ${InstalledCLIPath}. Authorization of Gitea Desktop Helper is required.`
+            `Failed to remove file at ${InstalledCLIPath}. Authorization of Lodestone Helper is required.`
           )
         )
         return

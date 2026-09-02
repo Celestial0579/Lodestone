@@ -1,7 +1,7 @@
 # UI Component Testing with Testing Library
 
 This document describes the supported path for DOM-based UI component tests in
-Gitea Desktop.
+Lodestone.
 
 ## Scope
 

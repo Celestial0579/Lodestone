@@ -343,7 +343,7 @@ export function showTestUI(
   function showTestNoExternalEditor() {
     dispatcher.postError(
       new ExternalEditorError(
-        `No suitable editors installed for Gitea Desktop to launch. Install ${suggestedExternalEditor.name} for your platform and restart Gitea Desktop to try again.`,
+        `No suitable editors installed for Lodestone to launch. Install ${suggestedExternalEditor.name} for your platform and restart Lodestone to try again.`,
         { suggestDefaultEditor: true }
       )
     )

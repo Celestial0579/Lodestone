@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="none">
+  <g class="detail">
+    <circle cx="320" cy="320" r="262" stroke="#E8A33D" stroke-width="16" opacity="0.45"/>
+    <g stroke="#E8A33D" stroke-width="18" stroke-linecap="round" opacity="0.55">
+      <path d="M320 22v46"/>
+      <path d="M320 572v46"/>
+      <path d="M22 320h46"/>
+      <path d="M572 320h46"/>
+    </g>
+  </g>
+  <g class="needle">
+    <path d="M320 96 402 320 238 320Z" fill="#B4551F"/>
+    <path d="M320 544 238 320 402 320Z" fill="#EFF0ED"/>
+    <circle cx="320" cy="320" r="30" fill="#212B33"/>
+    <circle cx="320" cy="320" r="14" fill="#E8A33D"/>
+  </g>
+</svg>

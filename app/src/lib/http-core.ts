@@ -162,7 +162,7 @@ export function coreRequest(
 /** Get the user agent to use for all requests. */
 export function getUserAgent() {
   const platform = __DARWIN__ ? 'Macintosh' : 'Windows'
-  return `GiteaDesktop/${appProxy.getVersion()} (${platform})`
+  return `Lodestone/${appProxy.getVersion()} (${platform})`
 }
 
 /**

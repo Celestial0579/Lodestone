@@ -241,13 +241,13 @@ export class CopilotPreferences extends React.Component<ICopilotPreferencesProps
         return <p>Checking Copilot access…</p>
       case 'no-license':
         return this.renderAccessCallToAction(
-          'Copilot features in Gitea Desktop require a GitHub Copilot license.',
+          'Copilot features in Lodestone require a GitHub Copilot license.',
           'View Copilot plans',
           this.props.onOpenCopilotPlans
         )
       case 'desktop-disabled':
         return this.renderAccessCallToAction(
-          'A Copilot license is available for your account, but "Copilot in Gitea Desktop" is disabled in your Copilot feature settings.',
+          'A Copilot license is available for your account, but "Copilot in Lodestone" is disabled in your Copilot feature settings.',
           'Open Copilot feature settings',
           this.props.onOpenCopilotFeatureSettings
         )

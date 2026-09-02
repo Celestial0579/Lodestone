@@ -30,7 +30,7 @@ export class TermsAndConditions extends React.Component<
       >
         <DialogContent>
           <p>
-            Gitea Desktop is free software, published under the{' '}
+            Lodestone is free software, published under the{' '}
             <LinkButton uri={mitLicense}>MIT license</LinkButton>. You may use,
             copy, modify and redistribute it under the terms of that license.
             There is no separate agreement to accept and no warranty of any
@@ -44,22 +44,22 @@ export class TermsAndConditions extends React.Component<
             the libraries it builds on are listed under Open Source Licenses.
           </p>
 
-          <h2>Not an official Gitea product</h2>
+          <h2>An independent project</h2>
 
           <p>
-            This application is not published, endorsed or supported by the{' '}
-            <LinkButton uri={gitea}>Gitea</LinkButton> project. Gitea, GitHub
-            and their logos are trademarks of their respective owners, used here
-            to say what this software works with.
+            Lodestone is not affiliated with, endorsed by or supported by{' '}
+            <LinkButton uri={gitea}>Gitea Ltd</LinkButton> or GitHub, Inc.
+            Gitea, GitHub and Git are trademarks of their respective owners and
+            are named here only to say what this software works with.
           </p>
 
           <h2>Your data</h2>
 
           <p>
-            Gitea Desktop talks to the Gitea instances you sign in to and to
-            nothing else. It collects no usage data and sends no telemetry
-            anywhere. Your access tokens are held in the credential store your
-            operating system provides.
+            Lodestone talks to the Gitea instances you sign in to and to nothing
+            else. It collects no usage data and sends no telemetry anywhere.
+            Your access tokens are held in the credential store your operating
+            system provides.
           </p>
         </DialogContent>
 

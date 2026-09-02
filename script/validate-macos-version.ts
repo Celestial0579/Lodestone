@@ -10,7 +10,7 @@ type ChannelToValidate = 'production' | 'beta'
 
 /**
  * This object states the valid/expected minimum macOS versions for each publishable
- * channel of Gitea Desktop.
+ * channel of Lodestone.
  *
  * The purpose of this is to ensure that we don't accidentally publish a
  * production/beta/test build with the wrong minimum macOS version, which could

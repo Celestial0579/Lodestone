@@ -62,6 +62,15 @@ findYarnVersion(path => {
     process.exit(result.status || 1)
   }
 
+  // The three submodules hold data used when packaging the app: the emoji
+  // database, the gitignore templates and the licence texts. Nothing else
+  // reads them - not the typechecker, not the tests - so a machine that cannot
+  // reach them can still develop and check the code.
+  //
+  // They live on github.com, which is not a given on a build machine set up
+  // for a self-hosted forge. Warn and carry on rather than failing the whole
+  // install; script/build.ts refuses to package without them, with a message
+  // saying what to do.
   result = spawnSync(
     'git',
     ['submodule', 'update', '--recursive', '--init'],
@@ -69,7 +78,20 @@ findYarnVersion(path => {
   )
 
   if (result.status !== 0) {
-    process.exit(result.status || 1)
+    console.warn(
+      [
+        '',
+        'WARNING: could not fetch the data submodules.',
+        '',
+        '  Typechecking, linting and the tests do not need them, so this is not',
+        '  fatal. Packaging the app does: run',
+        '',
+        '    git submodule update --recursive --init',
+        '',
+        '  once this machine can reach the hosts in .gitmodules.',
+        '',
+      ].join('\n')
+    )
   }
 
   result = spawnSync('node', [path, 'compile:script'], options)

@@ -25,6 +25,9 @@ jobs:
       - name: Install build tooling
         run: sudo apt-get update && sudo apt-get install -y build-essential
 
+      # postinstall tries to fetch the data submodules from the hosts named in
+      # .gitmodules. This job does not need them - they are only bundled when
+      # packaging - so it warns and carries on if the runner cannot reach them.
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 

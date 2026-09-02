@@ -249,8 +249,33 @@ function removeAndCopy(source: string, destination: string) {
   cpSync(source, destination, { recursive: true, verbatimSymlinks: true })
 }
 
+/**
+ * Stop with something readable when a data submodule was never fetched.
+ *
+ * post-install only warns when it cannot reach them, so that checks can run on
+ * a machine without access. Packaging is where their absence actually matters.
+ */
+function requireSubmodule(dir: string, name: string) {
+  if (!existsSync(dir)) {
+    console.error(
+      [
+        '',
+        `Cannot package: the '${name}' submodule is missing.`,
+        '',
+        '  Run: git submodule update --recursive --init',
+        '',
+        '  It holds data bundled into the app, and lives on the host named in',
+        '  .gitmodules. Fetching it needs access to that host.',
+        '',
+      ].join('\n')
+    )
+    process.exit(1)
+  }
+}
+
 function copyEmoji() {
   const emojiImages = path.join(projectRoot, 'gemoji', 'images', 'emoji')
+  requireSubmodule(emojiImages, 'gemoji')
   const emojiImagesDestination = path.join(outRoot, 'emoji')
   removeAndCopy(emojiImages, emojiImagesDestination)
 
@@ -437,6 +462,8 @@ function copyDependencies() {
 function generateLicenseMetadata(outRoot: string) {
   const chooseALicense = path.join(outRoot, 'static', 'choosealicense.com')
   const licensesDir = path.join(chooseALicense, '_licenses')
+
+  requireSubmodule(licensesDir, 'app/static/common/choosealicense.com')
 
   const files = readdirSync(licensesDir)
 

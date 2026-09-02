@@ -16,6 +16,12 @@
     "strict": true,
     "outDir": "./out",
     "useUnknownInCatchVariables": false,
+    // Third-party declaration files are not ours to fix, and some of the ones
+    // this project depends on disagree with each other about built-in types:
+    // @types/lodash still redeclares WeakMap the way it did before TypeScript
+    // shipped its own. Checking our own code is the point; checking node_modules
+    // is not. eslint-rules/tsconfig.json has done this for the same reason.
+    "skipLibCheck": true,
     "lib": ["ES2023", "DOM", "DOM.Iterable", "ESNext.Array"],
     "types": ["node"]
   },

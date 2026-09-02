@@ -16,6 +16,7 @@ import {
 } from '../../lib/api'
 import { IResolvedInstance, resolveInstance } from '../forges/detect-forge'
 import { ForgeKind } from '../forges/forge-type'
+import { createPkcePair } from '../forges/forge-oauth'
 import { recordApiEndpointForOrigin } from '../forges/forge-registry'
 
 import { TypedBaseStore } from './base-store'
@@ -128,6 +129,8 @@ export interface IAuthenticationState extends ISignInState {
 
   readonly oauthState?: {
     state: string
+    /** The PKCE secret this exchange was started with. */
+    verifier?: string
     endpoint: string
     onAuthCompleted: (account: Account) => void
     onAuthError: (error: Error) => void
@@ -300,6 +303,10 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
 
     const csrfToken = crypto.randomUUID()
 
+    // PKCE, for instances that registered their own OAuth application. The
+    // verifier never leaves the app until it is exchanged for the token.
+    const pkce = createPkcePair()
+
     new Promise<Account>((resolve, reject) => {
       const { endpoint, forgeKind, htmlURL, resultCallback } = currentState
       log.info('[SignInStore] initializing OAuth flow')
@@ -313,12 +320,15 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
         loading: true,
         oauthState: {
           state: csrfToken,
+          verifier: pkce.verifier,
           endpoint,
           onAuthCompleted: resolve,
           onAuthError: reject,
         },
       })
-      shell.openExternal(getOAuthAuthorizationURL(endpoint, csrfToken))
+      shell.openExternal(
+        getOAuthAuthorizationURL(endpoint, csrfToken, pkce.challenge)
+      )
     })
       .then(account => {
         if (!this.state || this.state.kind !== SignInStep.Authentication) {
@@ -410,13 +420,17 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
 
     if (this.state.oauthState.state !== action.state) {
       log.warn(
-        'requestAuthenticatedUser was not called with valid OAuth state. This is likely due to a browser reloading the callback URL. Contact GitHub Support if you believe this is an error'
+        'requestAuthenticatedUser was not called with valid OAuth state. This is likely due to a browser reloading the callback URL.'
       )
       return
     }
 
     const { endpoint } = this.state
-    const token = await requestOAuthToken(endpoint, action.code)
+    const token = await requestOAuthToken(
+      endpoint,
+      action.code,
+      this.state.oauthState.verifier
+    )
 
     if (token) {
       const account = await fetchUser(endpoint, token)

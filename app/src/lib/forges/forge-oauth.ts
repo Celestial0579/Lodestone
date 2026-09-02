@@ -133,7 +133,9 @@ export function getForgeAuthorizationURL(
     return null
   }
 
-  const url = new URL('/login/oauth/authorize', htmlURL)
+  // Appended rather than rooted: an instance served under a sub path keeps it,
+  // so https://example.com/gitea stays https://example.com/gitea/login/...
+  const url = new URL(`${htmlURL.replace(/\/+$/, '')}/login/oauth/authorize`)
 
   url.searchParams.set('client_id', clientId)
   url.searchParams.set('redirect_uri', OAuthRedirectURI)

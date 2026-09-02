@@ -77,20 +77,19 @@ class TrampolineUIHelper {
     })
   }
 
-  public promptForGitHubSignIn(endpoint: string): Promise<Account | undefined> {
+  public promptForForgeSignIn(endpoint: string): Promise<Account | undefined> {
     return new Promise<Account | undefined>(async resolve => {
       const cb = (result: SignInResult) => {
         resolve(result.kind === 'success' ? result.account : undefined)
         this.dispatcher.closePopup(PopupType.SignIn)
       }
 
-      const { hostname, origin } = new URL(endpoint)
-      if (hostname === 'github.com') {
-        this.dispatcher.beginDotComSignIn(cb)
-      } else {
-        this.dispatcher.beginSignIn(cb)
-        await this.dispatcher.setSignInEndpoint(origin)
-      }
+      // One path for every host. github.com used to skip the endpoint step;
+      // it no longer needs to, because the address is recognised the same way
+      // as any other.
+      const { origin } = new URL(endpoint)
+      this.dispatcher.beginSignIn(cb)
+      await this.dispatcher.setSignInEndpoint(origin)
 
       this.dispatcher.showPopup({
         type: PopupType.SignIn,

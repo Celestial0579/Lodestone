@@ -133,3 +133,13 @@ export function getTokenSettingsURL(
     ? `${base}/settings/tokens`
     : `${base}/user/settings/applications`
 }
+
+/**
+ * Where an administrator registers an OAuth application, as a path to quote at
+ * the user rather than a link, since it needs signing in to reach.
+ */
+export function getOAuthApplicationSettingsPath(endpoint: string): string {
+  return getForgeFamily(endpoint) === ForgeFamily.GitHub
+    ? 'Settings, Developer settings, OAuth Apps'
+    : 'Settings, Applications, OAuth2 Applications'
+}

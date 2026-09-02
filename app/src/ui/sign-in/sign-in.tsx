@@ -10,16 +10,22 @@ import {
 import { assertNever } from '../../lib/fatal-error'
 import { Row } from '../lib/row'
 import { TextBox } from '../lib/text-box'
+import { Button } from '../lib/button'
 import { Dialog, DialogError, DialogContent, DialogFooter } from '../dialog'
 
 import { OkCancelButtonGroup } from '../dialog/ok-cancel-button-group'
 import { Ref } from '../lib/ref'
 import { LinkButton } from '../lib/link-button'
 import { getHTMLURL } from '../../lib/api'
-import { supportsForgeOAuth } from '../../lib/forges/forge-oauth'
+import {
+  OAuthRedirectURI,
+  setForgeOAuthClientId,
+  supportsForgeOAuth,
+} from '../../lib/forges/forge-oauth'
 import {
   getForgeDisplayName,
   getForgeFamily,
+  getOAuthApplicationSettingsPath,
   getTokenSettingsURL,
 } from '../../lib/forges/forge-type'
 import { formatTokenScopes } from '../../lib/gitea/gitea-token-scopes'
@@ -35,6 +41,12 @@ interface ISignInProps {
 interface ISignInState {
   readonly endpoint: string
   readonly token: string
+
+  /** Whether the OAuth application field is showing. */
+  readonly configuringOAuth: boolean
+
+  /** What the user has typed into that field so far. */
+  readonly clientId: string
 }
 
 const SignInWithBrowserTitle = __DARWIN__
@@ -63,6 +75,8 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
     this.state = {
       endpoint: '',
       token: '',
+      configuringOAuth: false,
+      clientId: '',
     }
   }
 
@@ -269,8 +283,82 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
             autoFocus={true}
           />
         </Row>
+        {this.renderOAuthSetup(state)}
       </DialogContent>
     )
+  }
+
+  /**
+   * The way in to browser sign-in on an instance that has none yet.
+   *
+   * This matters most where the instance authenticates through an identity
+   * provider. A token still works, but creating one means finding the token
+   * page behind the very sign-on the user is trying to use. Once an
+   * administrator registers an OAuth application and its id is entered here,
+   * the dialog offers the browser instead and the user signs in the way their
+   * organisation expects, without this app ever seeing a password.
+   *
+   * The id is not a secret, which is why it can live in the app's own storage
+   * and be typed in by whoever is signing in. Proof of identity comes from
+   * PKCE, not from anything stored here.
+   */
+  private renderOAuthSetup(state: IAuthenticationState) {
+    if (!this.state.configuringOAuth) {
+      return (
+        <p className="sign-in-sso-hint">
+          <LinkButton onClick={this.onConfigureOAuth}>
+            Signing in through single sign-on?
+          </LinkButton>
+        </p>
+      )
+    }
+
+    return (
+      <div className="sign-in-sso-setup">
+        <p>
+          Browser sign-in needs an OAuth application registered on{' '}
+          <Ref>{new URL(state.htmlURL).host}</Ref>. An administrator creates one
+          under <Ref>{getOAuthApplicationSettingsPath(state.endpoint)}</Ref>{' '}
+          with the redirect URI <Ref>{OAuthRedirectURI}</Ref>, leaving
+          confidential client unticked. Paste the client ID it gives you.
+        </p>
+        <Row>
+          <TextBox
+            label="OAuth application client ID"
+            value={this.state.clientId}
+            onValueChanged={this.onClientIdChanged}
+            autoFocus={true}
+          />
+        </Row>
+        <Row>
+          <Button onClick={this.onSaveClientId} type="button">
+            Use browser sign-in
+          </Button>
+        </Row>
+      </div>
+    )
+  }
+
+  private onConfigureOAuth = () => {
+    this.setState({ configuringOAuth: true })
+  }
+
+  private onClientIdChanged = (clientId: string) => {
+    this.setState({ clientId })
+  }
+
+  private onSaveClientId = () => {
+    const state = this.props.signInState
+
+    if (state?.kind !== SignInStep.Authentication) {
+      return
+    }
+
+    setForgeOAuthClientId(state.endpoint, this.state.clientId)
+
+    // supportsForgeOAuth now answers differently, so re-rendering is enough to
+    // turn the dialog into the browser flow.
+    this.setState({ configuringOAuth: false })
   }
 
   private renderStep(): JSX.Element | null {

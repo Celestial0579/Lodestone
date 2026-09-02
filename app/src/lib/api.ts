@@ -1,6 +1,10 @@
 import * as URL from 'url'
 import { Account } from '../models/account'
 import {
+  getForgeAuthorizationURL,
+  getForgeTokenRequestBody,
+} from './forges/forge-oauth'
+import {
   ICopilotCommitMessage,
   parseCopilotCommitMessage,
 } from './copilot-commit-message'
@@ -2360,11 +2364,33 @@ export function getAccountForEndpoint(
   return accounts.find(a => a.endpoint === endpoint) || null
 }
 
+/**
+ * Where to send the browser to start sign-in.
+ *
+ * An instance with its own registered OAuth application uses that, with PKCE
+ * instead of a client secret, since a desktop app cannot keep one. Otherwise
+ * this falls back to the application supplied at build time.
+ */
 export function getOAuthAuthorizationURL(
   endpoint: string,
-  state: string
+  state: string,
+  challenge?: string
 ): string {
   const urlBase = getHTMLURL(endpoint)
+
+  if (challenge !== undefined) {
+    const forgeURL = getForgeAuthorizationURL(
+      urlBase,
+      endpoint,
+      state,
+      challenge
+    )
+
+    if (forgeURL !== null) {
+      return forgeURL
+    }
+  }
+
   const scope = encodeURIComponent(oauthScopes.join(' '))
 
   return new window.URL(
@@ -2375,16 +2401,25 @@ export function getOAuthAuthorizationURL(
 
 export async function requestOAuthToken(
   endpoint: string,
-  code: string
+  code: string,
+  verifier?: string
 ): Promise<string | null> {
   try {
     const urlBase = getHTMLURL(endpoint)
+
+    // Same choice as when the flow started: the instance's own application
+    // proves itself with the PKCE verifier, the built-in one with its secret.
+    const forgeBody =
+      verifier === undefined
+        ? null
+        : getForgeTokenRequestBody(endpoint, code, verifier)
+
     const response = await request(
       urlBase,
       null,
       'POST',
       'login/oauth/access_token',
-      {
+      forgeBody ?? {
         client_id: ClientID,
         client_secret: ClientSecret,
         code: code,

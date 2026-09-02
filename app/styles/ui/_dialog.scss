@@ -621,6 +621,28 @@ dialog {
       }
     }
 
+    // The way in to single sign-on. Set apart from the token field above it,
+    // because it is a different way of signing in rather than more of the same.
+    .sign-in-sso-hint {
+      margin-top: var(--spacing);
+      margin-bottom: 0;
+      font-size: var(--font-size-sm);
+    }
+
+    .sign-in-sso-setup {
+      margin-top: var(--spacing);
+      padding-top: var(--spacing);
+      border-top: var(--base-border);
+
+      p {
+        font-size: var(--font-size-sm);
+      }
+
+      .ref-component {
+        word-break: break-word;
+      }
+    }
+
     .forgot-password-row,
     .what-is-this-row {
       font-size: var(--font-size-sm);

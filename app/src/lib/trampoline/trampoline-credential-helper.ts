@@ -116,7 +116,7 @@ async function getCredential(cred: Credential, store: Store, token: string) {
       return undefined
     }
 
-    const account = await ui.promptForGitHubSignIn(endpoint)
+    const account = await ui.promptForForgeSignIn(endpoint)
 
     if (!account) {
       setHasRejectedCredentialsForEndpoint(token, endpoint)

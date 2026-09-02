@@ -72,10 +72,27 @@ export const getShellEnv = async (
           )
           .matchAll(/([^=]+)=([^\0]*)\0/g)
 
-        resolve({
-          kind: 'success',
-          env: Object.fromEntries(Array.from(matches, m => [m[1], m[2]])),
-        })
+        const env: Record<string, string> = Object.fromEntries(
+          Array.from(matches, m => [m[1], m[2]])
+        )
+
+        // A login shell that hands back no PATH at all leaves a hook unable to
+        // find any command, which is not an environment worth passing on. It
+        // happens in containers, where PATH comes from the image's own
+        // environment rather than from a profile script - and this spawns the
+        // shell with an empty environment on purpose, so nothing carries it in.
+        //
+        // Only ever a fallback: a shell that provides a PATH keeps its own,
+        // however restrictive, because that is the environment the user set up.
+        if (!Object.keys(env).some(k => k.toLowerCase() === 'path')) {
+          const inherited = process.env.PATH
+
+          if (inherited !== undefined && inherited.length > 0) {
+            env.PATH = inherited
+          }
+        }
+
+        resolve({ kind: 'success', env })
       })
 
     child.on('error', err => reject(err))

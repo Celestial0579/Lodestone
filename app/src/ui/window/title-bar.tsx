@@ -34,7 +34,7 @@ export function getTitleBarHeight() {
  * SVG rather than an octicon, which are single-colour glyphs drawn on a 16 or
  * 24 unit grid.
  */
-const AppIconUri = encodePathAsUrl(__dirname, 'static/gitea-mark.svg')
+const AppIconUri = encodePathAsUrl(__dirname, 'static/lodestone-mark.svg')
 
 interface ITitleBarProps {
   /**

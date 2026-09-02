@@ -1,0 +1,66 @@
+// "Feuerstein auf Stahl" — the Firestrike design system.
+//
+// Colours are addressed by their ROLE, never by their colour name. Writing
+// `orange` instead of `glut` here means trouble at the next revision, because
+// the role stays and the hue may not.
+//
+// Source of truth is the `firestrike` child theme (theme.json / style.css);
+// these values are an extract of it, taken 2026-09-02, not a copy with a life
+// of its own. Two files ship alongside it upstream:
+// gestaltung-firestrike.css and gestaltung-firestrike.tokens.json.
+//
+// The idea: flint strikes steel and a spark appears. Hence a cool steel ground
+// and a single warm accent. No signal red, no second accent, no gradients, and
+// corners stay corners — the radius is 0 everywhere.
+
+// --- light ---------------------------------------------------------------
+
+/// page ground, the bottom layer
+$fs-grund: #eff0ed;
+/// cards, fields, anything sitting on the ground
+$fs-flaeche: #ffffff;
+/// set-off surface: source code, table headers, highlights
+$fs-flaeche-tief: #e3e5e1;
+/// dividers and borders. decoration only, never carries meaning
+$fs-linie: #c9ccc6;
+/// body text
+$fs-text: #1b1e1c;
+/// secondary: dates, captions, help text
+$fs-text-leise: #5a605b;
+/// button faces, calm accent surfaces
+$fs-stahl: #33414b;
+/// headings and the wordmark. A TEXT role, not a surface.
+$fs-stahl-tief: #212b33;
+/// warm accent: rules, markers
+$fs-funke: #e8a33d;
+/// links in running text
+$fs-glut: #ab5019;
+/// keyboard focus. Its own role: the spark only reaches 1.9:1 on light ground.
+$fs-fokus: #ab5019;
+
+// --- dark ----------------------------------------------------------------
+
+$fs-grund-dunkel: #141715;
+$fs-flaeche-dunkel: #1c201d;
+$fs-flaeche-tief-dunkel: #262b27;
+$fs-linie-dunkel: #38403a;
+$fs-text-dunkel: #e8ebe7;
+$fs-text-leise-dunkel: #a5ada6;
+$fs-stahl-dunkel: #7e93a1;
+// Deliberately LIGHT in the dark theme: this is the heading colour, and
+// darkening it mechanically makes every heading invisible.
+$fs-stahl-tief-dunkel: #b4c6d1;
+$fs-funke-dunkel: #f2b558;
+$fs-glut-dunkel: #d9713c;
+$fs-fokus-dunkel: #f2b558;
+
+// --- shape ---------------------------------------------------------------
+
+/// Corners stay corners.
+$fs-radius: 0;
+/// Keyboard focus: 2px solid, offset 2px, in the focus role.
+$fs-fokus-staerke: 2px;
+$fs-fokus-abstand: 2px;
+
+$fs-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua',
+  Georgia, serif;

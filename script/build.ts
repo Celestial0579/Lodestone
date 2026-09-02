@@ -228,7 +228,6 @@ function packageApp() {
         schemes: [
           !isDevelopmentBuild ? 'x-lodestone-auth' : 'x-lodestone-dev-auth',
           'x-lodestone-client',
-          'github-mac',
         ],
       },
     ],

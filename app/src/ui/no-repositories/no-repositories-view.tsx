@@ -367,7 +367,7 @@ export class NoRepositoriesView extends React.Component<
           <Octicon symbol={octicons.lightBulb} />
           <div>
             <strong>ProTip!</strong> You can drag &amp; drop an existing
-            repository folder here to add it to Desktop
+            repository folder here to add it to Lodestone
           </div>
         </div>
       </div>

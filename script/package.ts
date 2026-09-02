@@ -19,6 +19,7 @@ import {
   getIconDirectory,
 } from './dist-info'
 import { isGitHubActions } from './build-platforms'
+import { ProjectRepositoryURL } from '../app/src/lib/project-links'
 import { copyFileSync, existsSync, rmSync, writeFileSync } from 'fs'
 import { getVersion } from '../app/package-info'
 import { computeBundleHashSync } from '../app/src/lib/compute-bundle-hash'
@@ -117,12 +118,14 @@ function packageWindows() {
     process.exit(1)
   }
 
-  // Squirrel records this in the NuGet metadata and refuses an empty value.
-  // It is only metadata, so it points at the mark the icons are built from;
-  // set GITEA_DESKTOP_ICON_URL when publishing your own builds.
+  // Squirrel records this in the NuGet metadata, refuses an empty value, and
+  // Squirrel.Windows downloads it to app.ico in the install directory to use as
+  // the Add/Remove Programs icon. It therefore declares this package's own
+  // identity and must not point at anyone else's mark. Set LODESTONE_ICON_URL
+  // to a reachable copy of the Lodestone mark when publishing your own builds.
   const iconUrl =
-    process.env.GITEA_DESKTOP_ICON_URL ??
-    'https://raw.githubusercontent.com/go-gitea/gitea/main/assets/logo.svg'
+    process.env.LODESTONE_ICON_URL ??
+    `${ProjectRepositoryURL}/raw/branch/main/app/static/logos/lodestone-mark.svg`
 
   const nugetPkgName = getWindowsIdentifierName()
   const options: electronInstaller.Options = {

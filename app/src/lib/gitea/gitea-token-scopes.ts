@@ -13,9 +13,14 @@
  * sign-in surfaces, and getting it wrong is not something they can diagnose.
  */
 export const RequiredTokenScopes = [
-  'read:user',
+  // `POST user/repos` publishes to the personal account, and Gitea reads the
+  // level off the method, so listing `read:user` produces a token that cannot
+  // publish anywhere.
+  'write:user',
   'write:repository',
-  'write:issue',
+  // Issues and pull requests are only ever read; nothing here writes one.
+  'read:issue',
+  // Publishing into an organisation is `POST orgs/{org}/repos`.
   'write:organization',
 ]
 

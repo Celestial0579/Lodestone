@@ -12,8 +12,9 @@
  * introducing an import cycle.
  */
 
-/** The path under which every Gitea instance serves its REST API. */
-export const GiteaAPIPath = '/api/v1'
+import { ForgeFamily, GiteaAPIPath, getForgeFamily } from '../forges/forge-type'
+
+export { GiteaAPIPath }
 
 /** Strip any trailing slashes from a path or URL fragment. */
 const withoutTrailingSlash = (value: string) => value.replace(/\/+$/, '')
@@ -28,13 +29,7 @@ const withoutTrailingSlash = (value: string) => value.replace(/\/+$/, '')
  * rather than a guess.
  */
 export function isGiteaEndpoint(endpoint: string): boolean {
-  try {
-    return withoutTrailingSlash(new URL(endpoint).pathname).endsWith(
-      GiteaAPIPath
-    )
-  } catch {
-    return false
-  }
+  return getForgeFamily(endpoint) === ForgeFamily.Gitea
 }
 
 /**

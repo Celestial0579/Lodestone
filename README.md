@@ -90,22 +90,25 @@ can be merged without conflicting with the Gitea support.
 
 ## Artwork
 
-The application icons, the installer splash and the in-app logo are built from
-the Gitea mark (`assets/logo.svg` in
-[go-gitea/gitea](https://github.com/go-gitea/gitea)), placed on a rounded tile.
-Development builds use a sand-coloured tile so they can be told apart from a
-release build in the taskbar.
+The application icons, the installer splash, the title bar mark and the theme
+previews are drawn in this repository from `app/static/logos/lodestone-mark.svg`
+— a compass needle, for the stone that pointed north before the compass existed.
+The colours are the Firestrike palette: ember on steel, with the spark for the
+bearing ring.
 
-`script/generate-icons.mjs` regenerates all of them from a single SVG.
+`script/generate-icons.mjs` produces every size, both release channels, the
+macOS icon bundle and the installer GIF from that one file:
 
-Note that Gitea is a trademark of its owners and this fork is not an official
-Gitea product. Using the mark is fine for an in-house build; check their
-trademark policy before distributing one publicly under this name.
+```sh
+npx electron script/generate-icons.mjs
+```
 
-The macOS 26 asset catalogue (`Assets.car`) is not included, because compiling
-one needs Xcode's `actool` on a Mac. The `.icon` source and the ICNS are both
-there, so a macOS build still gets a correct icon, and `script/build.ts` treats
-the catalogue as optional.
+It runs under Electron because nothing in the dependency tree can rasterise an
+SVG: Chromium draws it and the script packs the container formats itself. The
+bearing ring is dropped below 48px, where it would turn to mush.
+
+Development builds get an ember tile instead of steel, so a dev build and a
+release build are distinguishable in the taskbar.
 
 ## Building
 

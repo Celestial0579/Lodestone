@@ -5,6 +5,9 @@
 // Primer colors, see https://github.com/primer/primer-css/blob/master/modules/primer-support/lib/variables/color-system.scss
 @import '~primer-support/lib/variables/color-system.scss';
 
+// Firestrike roles. Anything below that names a colour should name a role.
+@import 'firestrike';
+
 // Extracted as a SCSS variable so that we can define the --overlay-background-color
 // on both the :root and the ::backdrop scope. The ::backdrop pseudo-element
 // doesn't inherit :root, see
@@ -18,27 +21,27 @@ $overlay-background-color: rgba(0, 0, 0, 0.4);
   --color-renamed: #{$blue};
   --color-conflicted: #{$orange-800};
 
-  --text-color: #{$gray-900};
-  --text-secondary-color: #{$gray-500};
+  --text-color: #{$fs-text};
+  --text-secondary-color: #{$fs-text-leise};
   --text-secondary-color-muted: #{lighten($gray-500, 30%)};
-  --background-color: #{$white};
+  --background-color: #{$fs-grund};
 
   --button-height: 25px;
 
-  --button-background: #{$blue};
-  --button-border-radius: 6px;
-  --button-hover-background: #{lighten($blue, 5%)};
+  --button-background: #{$fs-stahl};
+  --button-border-radius: #{$fs-radius};
+  --button-hover-background: #{lighten($fs-stahl, 8%)};
   --button-text-color: #{$white};
-  --button-focus-border-color: #{$blue-100};
+  --button-focus-border-color: #{$fs-fokus};
 
-  --link-button-color: #{lighten($blue, 5%)};
-  --link-button-hover-color: #{$blue-600};
+  --link-button-color: #{$fs-glut};
+  --link-button-hover-color: #{darken($fs-glut, 8%)};
   --link-button-selected-hover-color: #{$blue-200};
 
-  --secondary-button-background: #{$gray-100};
+  --secondary-button-background: #{$fs-flaeche-tief};
   --secondary-button-border-color: var(--box-border-contrast-color);
   --secondary-button-hover-border-color: var(--box-border-contrast-color);
-  --secondary-button-hover-background: #{$white};
+  --secondary-button-hover-background: #{$fs-flaeche};
   --secondary-button-text-color: var(--text-color);
   --secondary-button-focus-shadow-color: #{rgba($gray-200, 0.75)};
   --secondary-button-focus-border-color: #{$gray-300};
@@ -116,7 +119,7 @@ $overlay-background-color: rgba(0, 0, 0, 0.4);
   // to decide what states to support (active selection, selection, etc).
 
   --box-background-color: var(--background-color);
-  --box-alt-background-color: #{$gray-100};
+  --box-alt-background-color: #{$fs-flaeche-tief};
 
   /**
    * Background color for skeleton or "loading" boxes
@@ -127,7 +130,7 @@ $overlay-background-color: rgba(0, 0, 0, 0.4);
   /**
    * Border color for boxes.
    */
-  --box-border-color: #{$gray-200};
+  --box-border-color: #{$fs-linie};
 
   // darkened version of gray-400 to get 3:1 contrast ratio against --box-alt-background-color
   --box-border-contrast-color: #{darken($gray-400, 5%)};
@@ -366,7 +369,7 @@ $overlay-background-color: rgba(0, 0, 0, 0.4);
   --tip-box-border-color: #{$blue-200};
 
   /** The highlight color used for focus rings and focus box shadows */
-  --focus-color: #{$blue};
+  --focus-color: #{$fs-fokus};
   --accent-color: #{$blue-400};
   --diff-linenumber-focus-color: #{$blue-600};
 

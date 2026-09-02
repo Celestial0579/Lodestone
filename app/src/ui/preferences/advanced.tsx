@@ -75,13 +75,13 @@ export class Advanced extends React.Component<
           label="Gitea repository publishing releases"
           value={updateSourceURL}
           onValueChanged={this.onUpdateSourceChanged}
-          placeholder="https://git.example.com/team/gitea-desktop"
+          placeholder="https://git.example.com/team/lodestone"
         />
         <div className="settings-description">
           {unusable ? (
             <p className="error">
               That doesn't look like a repository address. Expected something
-              like https://git.example.com/team/gitea-desktop
+              like https://git.example.com/team/lodestone
             </p>
           ) : (
             <p>

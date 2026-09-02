@@ -462,7 +462,7 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
         ...currentState,
         loading: false,
         error: new Error(
-          'Lodestone connects to Gitea instances. Use Lodestone to sign in to GitHub.com.'
+          'Lodestone connects to Gitea and Forgejo instances. Use GitHub Desktop to sign in to GitHub.com.'
         ),
       })
       return

@@ -578,7 +578,7 @@ export class CreateBranch extends React.Component<
 
 /** Reusable snippet */
 const defaultBranchLink = (
-  <LinkButton uri="https://help.github.com/articles/setting-the-default-branch/">
+  <LinkButton uri="https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell">
     default branch
   </LinkButton>
 )

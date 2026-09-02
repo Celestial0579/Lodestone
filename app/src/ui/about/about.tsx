@@ -221,44 +221,28 @@ export class About extends React.Component<IAboutProps> {
     if (isOSNoLongerSupportedByElectron()) {
       return (
         <DialogError>
-          This operating system is no longer supported. Software updates have
-          been disabled.{' '}
-          <LinkButton uri="https://docs.github.com/en/desktop/installing-and-configuring-github-desktop/overview/supported-operating-systems">
-            Supported operating systems
-          </LinkButton>
+          This operating system is no longer supported by Electron, so software
+          updates have been disabled.
         </DialogError>
       )
     }
 
-    if (!this.props.updateState.lastSuccessfulCheck) {
+    // Upstream treats "never checked" as an error worth a red banner. Here it
+    // is simply the state after a fresh install, so say nothing until a check
+    // has actually been attempted.
+    if (
+      !this.props.updateState.lastSuccessfulCheck &&
+      this.props.updateState.status !== UpdateStatus.UpdateNotChecked
+    ) {
       return (
         <DialogError>
-          Couldn't determine the last time an update check was performed. You
-          may be running an old version. Please try manually checking for
-          updates
+          The last update check did not complete. Check your connection to the
+          instance configured under Preferences, Advanced, Updates.
         </DialogError>
       )
     }
 
     return null
-  }
-
-  private renderBetaLink() {
-    if (__RELEASE_CHANNEL__ === 'beta') {
-      return
-    }
-
-    return (
-      <div>
-        <p className="no-padding">Looking for the latest features?</p>
-        <p className="no-padding">
-          Check out the{' '}
-          <LinkButton uri="https://desktop.github.com/beta">
-            Beta Channel
-          </LinkButton>
-        </p>
-      </div>
-    )
   }
 
   public render() {
@@ -292,7 +276,6 @@ export class About extends React.Component<IAboutProps> {
           </p>
           {this.renderUpdateDetails()}
           {this.renderUpdateButton()}
-          {this.renderBetaLink()}
           <div className="terms-and-license-container">
             <p className="no-padding terms-and-license">
               <LinkButton onClick={this.props.onShowTermsAndConditions}>
@@ -302,11 +285,6 @@ export class About extends React.Component<IAboutProps> {
             <p className="no-padding terms-and-license">
               <LinkButton onClick={this.props.onShowAcknowledgements}>
                 License and Open Source Notices
-              </LinkButton>
-            </p>
-            <p className="terms-and-license">
-              <LinkButton uri="https://gh.io/copilot-for-desktop-transparency">
-                Responsible use of Copilot in Gitea Desktop
               </LinkButton>
             </p>
           </div>

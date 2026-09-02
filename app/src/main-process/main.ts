@@ -108,12 +108,6 @@ if (__DEV_SECRETS__) {
 } else {
   possibleProtocols.add('x-gitea-desktop-auth')
 }
-// Also support Desktop Classic's protocols.
-if (__DARWIN__) {
-  possibleProtocols.add('github-mac')
-} else if (__WIN32__) {
-  possibleProtocols.add('github-windows')
-}
 
 // On Windows, in order to get notifications properly working for dev builds,
 // we'll want to set the right App User Model ID from production builds.

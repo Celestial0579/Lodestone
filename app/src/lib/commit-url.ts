@@ -1,7 +1,12 @@
-import * as crypto from 'crypto'
 import { GitHubRepository } from '../models/github-repository'
 
-/** Method to create the url for viewing a commit on dotcom */
+/**
+ * The url for viewing a commit.
+ *
+ * Upstream appends `#diff-<sha256 of the file path>` to jump to a particular
+ * file. Gitea ids its diff boxes differently, so that anchor would land
+ * nowhere; the commit page itself is the honest destination.
+ */
 export function createCommitURL(
   gitHubRepository: GitHubRepository,
   SHA: string,
@@ -13,14 +18,7 @@ export function createCommitURL(
     return null
   }
 
-  if (filePath === undefined) {
-    return `${baseURL}/commit/${SHA}`
-  }
-
-  const fileHash = crypto.createHash('sha256').update(filePath).digest('hex')
-  const fileSuffix = '#diff-' + fileHash
-
-  return `${baseURL}/commit/${SHA}${fileSuffix}`
+  return `${baseURL}/commit/${SHA}`
 }
 
 /**

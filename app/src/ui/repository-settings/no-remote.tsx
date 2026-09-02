@@ -3,7 +3,7 @@ import { DialogContent } from '../dialog'
 import { LinkButton } from '../lib/link-button'
 import { CallToAction } from '../lib/call-to-action'
 
-const HelpURL = 'https://help.github.com/articles/about-remote-repositories/'
+const HelpURL = 'https://docs.gitea.com/usage/repo-mirror'
 
 interface INoRemoteProps {
   /** The function to call when the users chooses to publish. */

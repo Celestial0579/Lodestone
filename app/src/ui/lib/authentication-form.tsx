@@ -8,22 +8,11 @@ import { LinkButton } from './link-button'
 import { Ref } from './ref'
 import { getHTMLURL } from '../../lib/api'
 import { isGiteaEndpoint } from '../../lib/gitea/gitea-endpoint'
+import { formatTokenScopes } from '../../lib/gitea/gitea-token-scopes'
 
 /** Text to let the user know their browser will send them back to Desktop */
 export const BrowserRedirectMessage =
   "Your browser will redirect you back to Gitea Desktop once you've signed in. If your browser asks for your permission to launch Gitea Desktop please allow it to."
-
-/**
- * The token scopes Gitea Desktop needs. A token missing one of these fails in
- * ways that are hard to diagnose after the fact, so we spell them out up front.
- */
-const requiredTokenScopes = [
-  'read:user',
-  'write:repository',
-  'write:issue',
-  'read:organization',
-  'read:notification',
-]
 
 interface IAuthenticationFormProps {
   /** The API endpoint the user is authenticating against. */
@@ -101,7 +90,7 @@ export class AuthenticationForm extends React.Component<
         </p>
         <p className="token-scopes">
           Select these scopes when creating the token:{' '}
-          <Ref>{requiredTokenScopes.join(', ')}</Ref>
+          <Ref>{formatTokenScopes()}</Ref>
         </p>
         <TextBox
           label="Personal access token"

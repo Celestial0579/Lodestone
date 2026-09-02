@@ -2,9 +2,6 @@ import { getSHA } from './git-info'
 import { getUpdatesURL, getChannel } from '../script/dist-info'
 import { version, productName, companyName } from './package.json'
 
-const devClientId = '3a723b10ac5575cc5bb9'
-const devClientSecret = '22c34d87789a365981ed921352a7b9a8c3f69d54'
-
 const channel = getChannel()
 
 const s = JSON.stringify
@@ -16,10 +13,11 @@ export function getReplacements() {
   const isDevBuild = channel === 'development'
 
   return {
-    __OAUTH_CLIENT_ID__: s(process.env.DESKTOP_OAUTH_CLIENT_ID || devClientId),
-    __OAUTH_SECRET__: s(
-      process.env.DESKTOP_OAUTH_CLIENT_SECRET || devClientSecret
-    ),
+    // Gitea Desktop signs in with a personal access token and registers no
+    // OAuth application, so there is nothing to put here. Upstream falls back
+    // to GitHub's own development credentials, which are not ours to ship.
+    __OAUTH_CLIENT_ID__: s(process.env.DESKTOP_OAUTH_CLIENT_ID ?? ''),
+    __OAUTH_SECRET__: s(process.env.DESKTOP_OAUTH_CLIENT_SECRET ?? ''),
     __DARWIN__: process.platform === 'darwin',
     __WIN32__: process.platform === 'win32',
     __LINUX__: process.platform === 'linux',

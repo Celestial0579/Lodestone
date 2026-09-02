@@ -8,8 +8,7 @@ import { ICommitContext } from '../../models/commit'
 import { DefaultCommitMessage } from '../../models/commit-message'
 import { OkCancelButtonGroup } from '../dialog/ok-cancel-button-group'
 
-const GitLFSWebsiteURL =
-  'https://help.github.com/articles/versioning-large-files/'
+const GitLFSWebsiteURL = 'https://git-lfs.com/'
 
 interface IOversizedFilesProps {
   readonly oversizedFiles: ReadonlyArray<string>

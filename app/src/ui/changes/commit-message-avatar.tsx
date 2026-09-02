@@ -329,10 +329,6 @@ export class CommitMessageAvatar extends React.Component<
     )
 
     if (warningType === 'misattribution') {
-      const accountTypeSuffix = this.props.isEnterpriseAccount
-        ? ' Enterprise'
-        : ''
-
       const userName =
         this.props.user && this.props.user.name
           ? ` for ${this.props.user.name}`
@@ -342,14 +338,9 @@ export class CommitMessageAvatar extends React.Component<
         <>
           <Row>
             <div>
-              {sharedHeader} doesn't match your Gitea{accountTypeSuffix} account
-              {userName}.{' '}
-              <LinkButton
-                ariaLabel="Learn more about commit attribution"
-                uri="https://docs.github.com/en/github/committing-changes-to-your-project/why-are-my-commits-linked-to-the-wrong-user"
-              >
-                Learn more
-              </LinkButton>
+              {sharedHeader} doesn't match your Gitea account{userName}. Add it
+              under Settings, Account on your instance for commits to be
+              attributed to you.
             </div>
           </Row>
           {sharedFooter}

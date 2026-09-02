@@ -42,6 +42,8 @@ interface IGiteaRoute {
   readonly transform?: (json: any) => any
   readonly synthesize?: () => any
   readonly notFound?: true
+  /** Rewrite query parameters this route names differently in Gitea. */
+  readonly query?: (params: URLSearchParams) => void
 }
 
 const isPlainObject = (value: any): value is Record<string, any> =>
@@ -165,11 +167,10 @@ const splitPath = (path: string) => {
  *
  * Note: exported for testability only, callers go through `giteaRequest`.
  */
-export function translateQuery(query: string): string {
-  if (query === '') {
-    return ''
-  }
-
+export function translateQuery(
+  query: string,
+  adjust?: (params: URLSearchParams) => void
+): string {
   const params = new URLSearchParams(query)
   const perPage = params.get('per_page')
 
@@ -180,6 +181,8 @@ export function translateQuery(query: string): string {
 
   // Branch protection is filtered client side, see the branches route below.
   params.delete('protected')
+
+  adjust?.(params)
 
   const result = params.toString()
   return result === '' ? '' : `?${result}`
@@ -192,8 +195,10 @@ const stripLeadingSlash = (path: string) =>
  * Determine how a given GitHub API route should be served against Gitea.
  * Returns `undefined` when the route works as-is, which is true for the large
  * majority of what Desktop uses.
+ *
+ * Note: exported for testability only, callers go through `giteaRequest`.
  */
-function resolveRoute(
+export function resolveRoute(
   method: HTTPMethod,
   route: string
 ): IGiteaRoute | undefined {
@@ -263,6 +268,51 @@ function resolveRoute(
         Array.isArray(json)
           ? json.filter((branch: any) => branch?.protected === true)
           : json,
+    }
+  }
+
+  // Pull request listing. Gitea has one `sort` parameter with its own
+  // vocabulary and no `direction`; leaving GitHub's pair in place means the
+  // list comes back in Gitea's default order, and the caller stops paging
+  // early because it assumes the newest are first.
+  if (rest === 'pulls' && method === 'GET') {
+    return {
+      query: params => {
+        const sort = params.get('sort')
+        const descending = params.get('direction') !== 'asc'
+
+        params.delete('direction')
+
+        if (sort === 'updated') {
+          params.set('sort', descending ? 'recentupdate' : 'leastupdate')
+        } else if (sort === 'created') {
+          params.set('sort', descending ? 'newest' : 'oldest')
+        } else if (sort !== null) {
+          params.delete('sort')
+        }
+      },
+    }
+  }
+
+  // Whether the user may push to a branch. GitHub answers this on a dedicated
+  // endpoint; Gitea puts the same facts on the branch itself.
+  const pushControl = /^branches\/(.+)\/push_control$/.exec(rest)
+
+  if (pushControl !== null) {
+    return {
+      rewrite: `repos/${owner}/${name}/branches/${pushControl[1]}`,
+      transform: (branch: any) => ({
+        pattern: branch?.effective_branch_protection_name || null,
+        required_signatures: false,
+        required_status_checks:
+          branch?.enable_status_check === true
+            ? branch?.status_check_contexts ?? []
+            : [],
+        required_approving_review_count: branch?.required_approvals ?? 0,
+        required_linear_history: false,
+        // Gitea tells us directly, which beats GitHub's actor matching.
+        allow_actor: branch?.user_can_push !== false,
+      }),
     }
   }
 
@@ -340,7 +390,10 @@ export async function giteaRequest(
     return localResponse(resolved.synthesize(), 200)
   }
 
-  const translatedPath = `${resolved?.rewrite ?? route}${translateQuery(query)}`
+  const translatedPath = `${resolved?.rewrite ?? route}${translateQuery(
+    query,
+    resolved?.query
+  )}`
 
   // Gitea authenticates personal access tokens with the `token` scheme. The
   // `Bearer` scheme is reserved for OAuth2 access tokens on older releases.

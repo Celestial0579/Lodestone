@@ -2,6 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import {
   normalizePayload,
+  resolveRoute,
   translateQuery,
 } from '../../../src/lib/gitea/gitea-api-adapter'
 
@@ -29,6 +30,72 @@ describe('gitea api adapter', () => {
 
     it('leaves an empty query alone', () => {
       assert.equal(translateQuery(''), '')
+    })
+
+    it('applies a route specific adjustment', () => {
+      const result = translateQuery('sort=updated&direction=desc', params => {
+        params.delete('direction')
+        params.set('sort', 'recentupdate')
+      })
+
+      assert.equal(result, '?sort=recentupdate')
+    })
+  })
+
+  describe('pull request sorting', () => {
+    // Gitea has one `sort` parameter with its own vocabulary and no
+    // `direction`. Passing GitHub's pair through unchanged gives Gitea's
+    // default order, and the caller then stops paging too early.
+    const sortPulls = (query: string) =>
+      translateQuery(query, resolveRoute('GET', 'repos/o/r/pulls')?.query)
+
+    it('maps newest-first updates onto recentupdate', () => {
+      assert.equal(
+        sortPulls('state=all&sort=updated&direction=desc'),
+        '?state=all&sort=recentupdate'
+      )
+    })
+
+    it('maps oldest-first updates onto leastupdate', () => {
+      assert.equal(sortPulls('sort=updated&direction=asc'), '?sort=leastupdate')
+    })
+
+    it('drops a sort Gitea does not understand', () => {
+      assert.equal(sortPulls('sort=popularity&direction=desc'), '')
+    })
+
+    it('only applies to listing, not to a single pull request', () => {
+      assert.equal(resolveRoute('GET', 'repos/o/r/pulls/7')?.query, undefined)
+    })
+  })
+
+  describe('push control', () => {
+    it('reads branch protection off the branch itself', () => {
+      const route = resolveRoute('GET', 'repos/o/r/branches/main/push_control')
+
+      assert.equal(route?.rewrite, 'repos/o/r/branches/main')
+
+      const control = route?.transform?.({
+        effective_branch_protection_name: 'main',
+        user_can_push: false,
+        required_approvals: 2,
+        enable_status_check: true,
+        status_check_contexts: ['ci/build'],
+      })
+
+      assert.equal(control.pattern, 'main')
+      assert.equal(control.allow_actor, false)
+      assert.equal(control.required_approving_review_count, 2)
+      assert.deepEqual(control.required_status_checks, ['ci/build'])
+    })
+
+    it('treats an unprotected branch as pushable', () => {
+      const route = resolveRoute('GET', 'repos/o/r/branches/topic/push_control')
+      const control = route?.transform?.({ protected: false })
+
+      assert.equal(control.pattern, null)
+      assert.equal(control.allow_actor, true)
+      assert.deepEqual(control.required_status_checks, [])
     })
   })
 

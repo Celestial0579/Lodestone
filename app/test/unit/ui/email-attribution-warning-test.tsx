@@ -59,17 +59,18 @@ describe('GitEmailNotFoundWarning', () => {
     const srOnly = view.container.querySelector(
       '#git-email-not-found-warning-for-screen-readers.sr-only'
     )
-    const link = screen.getByRole('link', {
-      name: 'Learn more about commit attribution',
-    })
-
     assert.notEqual(warning, null)
     assert.ok(
       warning?.textContent?.includes('does not match your Gitea account')
     )
+    // Gitea has no equivalent of GitHub's commit attribution article, so the
+    // warning tells the user what to do instead of linking somewhere useless.
+    assert.ok(warning?.textContent?.includes('Add it under Settings, Account'))
     assert.equal(
-      link.getAttribute('href'),
-      'https://docs.github.com/en/github/committing-changes-to-your-project/why-are-my-commits-linked-to-the-wrong-user'
+      screen.queryByRole('link', {
+        name: 'Learn more about commit attribution',
+      }),
+      null
     )
     assert.equal(srOnly?.getAttribute('aria-live'), 'polite')
     assert.ok(

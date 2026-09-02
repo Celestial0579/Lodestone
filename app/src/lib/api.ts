@@ -131,11 +131,9 @@ interface IFetchAllOptions<T> {
 const ClientID = process.env.TEST_ENV ? '' : __OAUTH_CLIENT_ID__
 const ClientSecret = process.env.TEST_ENV ? '' : __OAUTH_SECRET__
 
-if (!ClientID || !ClientID.length || !ClientSecret || !ClientSecret.length) {
-  log.warn(
-    `DESKTOP_OAUTH_CLIENT_ID and/or DESKTOP_OAUTH_CLIENT_SECRET is undefined. You won't be able to authenticate new users.`
-  )
-}
+// No warning when these are empty: Gitea Desktop authenticates with a personal
+// access token and never uses the OAuth flow, so an unset client id is the
+// expected state rather than a misconfiguration.
 
 export type GitHubAccountType = 'User' | 'Organization'
 
@@ -1120,8 +1118,11 @@ export class API {
     } catch (e) {
       if (e instanceof APIError) {
         if (org !== null) {
+          // Keep what the server said. Gitea's reply names the missing token
+          // scope, and swallowing it sends people looking at the
+          // organisation's permissions instead.
           throw new Error(
-            `Unable to create repository for organization '${org.login}'. Verify that the repository does not already exist and that you have permission to create a repository there.`
+            `Unable to create repository for organization '${org.login}': ${e.message}`
           )
         }
         throw e

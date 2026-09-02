@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { Account } from '../../models/account'
-import { LinkButton } from './link-button'
 import { isAttributableEmailFor } from '../../lib/email'
 import { Octicon } from '../octicons'
 import * as octicons from '../octicons/octicons.generated'
@@ -28,14 +27,11 @@ export class GitEmailNotFoundWarning extends React.Component<IGitEmailNotFoundWa
       </span>
     )
 
-    const learnMore = !isAttributableEmail ? (
-      <LinkButton
-        ariaLabel="Learn more about commit attribution"
-        uri="https://docs.github.com/en/github/committing-changes-to-your-project/why-are-my-commits-linked-to-the-wrong-user"
-      >
-        Learn more.
-      </LinkButton>
-    ) : null
+    // Upstream links to GitHub's article on commit attribution. Gitea has no
+    // equivalent page, so say what to do instead of pointing somewhere useless.
+    const learnMore = !isAttributableEmail
+      ? 'Add it under Settings, Account on your instance.'
+      : null
 
     return (
       <>

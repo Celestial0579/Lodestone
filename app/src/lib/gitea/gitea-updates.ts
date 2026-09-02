@@ -16,6 +16,7 @@
 import { SemVer, parse as parseSemVer, gt } from 'semver'
 import { Account } from '../../models/account'
 import { getGiteaAPIURL } from './gitea-endpoint'
+import { ProjectRepositoryURL } from '../project-links'
 import { request, parsedResponse } from '../http'
 
 /** localStorage key holding the repository releases are published to. */
@@ -52,22 +53,20 @@ interface IAPIGiteaRelease {
 }
 
 /**
- * The repository the user has pointed us at, as they typed it. Empty when no
- * update source has been configured, which is the default.
+ * The repository to check for updates.
+ *
+ * Defaults to the repository this build is published from. A user who clears
+ * the field turns update checks off, and that choice sticks: the stored empty
+ * string is kept rather than removed, so it is not mistaken for "never
+ * configured" on the next launch.
  */
 export function getGiteaUpdateSourceURL(): string {
-  return localStorage.getItem(UpdateSourceKey) ?? ''
+  return localStorage.getItem(UpdateSourceKey) ?? ProjectRepositoryURL
 }
 
 /** Store the repository to check for updates. Pass an empty string to unset. */
 export function setGiteaUpdateSourceURL(url: string): void {
-  const trimmed = url.trim()
-
-  if (trimmed === '') {
-    localStorage.removeItem(UpdateSourceKey)
-  } else {
-    localStorage.setItem(UpdateSourceKey, trimmed)
-  }
+  localStorage.setItem(UpdateSourceKey, url.trim())
 }
 
 /**

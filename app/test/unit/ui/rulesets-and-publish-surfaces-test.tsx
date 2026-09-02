@@ -84,7 +84,7 @@ describe('rulesets and publish surfaces', () => {
     )
     assert.equal(
       helpLink.getAttribute('href'),
-      'https://help.github.com/articles/about-remote-repositories/'
+      'https://docs.gitea.com/usage/repo-mirror'
     )
 
     fireEvent.click(publishButton)

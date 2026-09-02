@@ -27,8 +27,11 @@ against every instance without setup.
 
 1. In Gitea, go to **Settings -> Applications -> Generate New Token**.
 2. Give it these scopes:
-   `read:user`, `write:repository`, `write:issue`, `read:organization`,
-   `read:notification`
+   `read:user`, `write:repository`, `write:issue`, `write:organization`
+
+   `write:organization` rather than `read:` matters: Gitea derives the required
+   scope level from the HTTP method, and publishing a repository into an
+   organisation is a POST under `/orgs/{org}`.
 3. In Gitea Desktop, enter your instance address (e.g. `https://git.example.com`)
    and paste the token.
 

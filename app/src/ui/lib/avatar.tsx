@@ -2,7 +2,7 @@ import * as React from 'react'
 import * as crypto from 'crypto'
 import { IAvatarUser } from '../../models/avatar'
 import { Octicon, OcticonSymbolVariant } from '../octicons'
-import { API, getDotComAPIEndpoint, getHTMLURL } from '../../lib/api'
+import { API, getHTMLURL } from '../../lib/api'
 import { TooltippedContent } from './tooltipped-content'
 import { TooltipDirection } from './tooltip'
 import {
@@ -226,7 +226,8 @@ function getEmailAvatarUrl(ep: string, email: string) {
     // ghe.com specifically so we're calling it here for future proofing.
     return new URL('/avatars/u/e', getHTMLURL(ep))
   } else {
-    // It's safe to fall back to Gitea, at worst we'll get identicons
+    // Only reachable for a github.com endpoint, which this fork never creates.
+    // Kept so the branch still compiles against upstream.
     return new URL('https://avatars.githubusercontent.com/u/e')
   }
 }
@@ -247,7 +248,17 @@ function getAvatarUrlCandidates(
   }
 
   const { email, avatarURL } = user
-  const ep = user.endpoint ?? getDotComAPIEndpoint()
+
+  // Without an endpoint we have no instance to ask. Upstream falls back to
+  // GitHub.com here, which for a plain local repository would send every commit
+  // author's email address to GitHub's avatar CDN in exchange for an identicon.
+  // Drawing the built-in default avatar is both cheaper and none of GitHub's
+  // business.
+  if (user.endpoint === null || user.endpoint === undefined) {
+    return candidates
+  }
+
+  const ep = user.endpoint
 
   // By leveraging the avatar url from the API (if we've got it) we can
   // load the avatar from one of the load balanced domains (avatars). We can't

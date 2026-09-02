@@ -9,13 +9,14 @@ import { MenuLabelsEvent } from '../../models/menu-labels'
 import * as ipcWebContents from '../ipc-webcontents'
 import { mkdir } from 'fs/promises'
 import { buildTestMenu } from './build-test-menu'
+import { ProjectNewIssueURL } from '../../lib/project-links'
 
 const createPullRequestLabel = __DARWIN__
   ? 'Create Pull Request'
   : 'Create &pull request'
 const showPullRequestLabel = __DARWIN__
-  ? 'View Pull Request on GitHub'
-  : 'View &pull request on GitHub'
+  ? 'View Pull Request on Gitea'
+  : 'View &pull request on Gitea'
 const defaultBranchNameValue = __DARWIN__ ? 'Default Branch' : 'default branch'
 const confirmRepositoryRemovalLabel = __DARWIN__ ? 'Remove…' : '&Remove…'
 const repositoryRemovalLabel = __DARWIN__ ? 'Remove' : '&Remove'
@@ -342,7 +343,7 @@ export function buildDefaultMenuTemplate({
       separator,
       {
         id: 'view-repository-on-github',
-        label: __DARWIN__ ? 'View on GitHub' : '&View on GitHub',
+        label: __DARWIN__ ? 'View on Gitea' : '&View on Gitea',
         accelerator: 'CmdOrCtrl+Shift+G',
         click: emit('view-repository-on-github'),
       },
@@ -475,13 +476,13 @@ export function buildDefaultMenuTemplate({
     },
     separator,
     {
-      label: __DARWIN__ ? 'Compare on GitHub' : 'Compare on &GitHub',
+      label: __DARWIN__ ? 'Compare on Gitea' : 'Compare on &Gitea',
       id: 'compare-on-github',
       accelerator: 'CmdOrCtrl+Shift+C',
       click: emit('compare-on-github'),
     },
     {
-      label: __DARWIN__ ? 'View Branch on GitHub' : 'View branch on GitHub',
+      label: __DARWIN__ ? 'View Branch on Gitea' : 'View branch on Gitea',
       id: 'branch-on-github',
       accelerator: 'CmdOrCtrl+Alt+B',
       click: emit('branch-on-github'),
@@ -521,10 +522,19 @@ export function buildDefaultMenuTemplate({
     })
   }
 
-  // Upstream links here to GitHub support, to the desktop/desktop issue
-  // tracker and to GitHub's documentation for GitHub Desktop. None of those
-  // can help someone using this app against a Gitea server, so the only
-  // outward link left is Gitea's own documentation.
+  // Upstream links here to GitHub support and to GitHub's documentation for
+  // GitHub Desktop, neither of which can help someone running this app against
+  // a Gitea server. What is left is Gitea's own documentation and this
+  // project's issue tracker.
+  const reportIssue: Electron.MenuItemConstructorOptions = {
+    label: __DARWIN__ ? 'Report an Issue' : '&Report an issue',
+    click() {
+      shell
+        .openExternal(ProjectNewIssueURL)
+        .catch(err => log.error('Failed opening the issue tracker', err))
+    },
+  }
+
   const giteaDocumentation: Electron.MenuItemConstructorOptions = {
     label: __DARWIN__ ? 'Gitea Documentation' : 'Gitea &documentation',
     click() {
@@ -550,7 +560,7 @@ export function buildDefaultMenuTemplate({
     },
   }
 
-  const helpItems = [giteaDocumentation, showLogsItem]
+  const helpItems = [giteaDocumentation, reportIssue, showLogsItem]
 
   helpItems.push(...buildTestMenu())
 

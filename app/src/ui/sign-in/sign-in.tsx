@@ -17,6 +17,7 @@ import { Ref } from '../lib/ref'
 import { LinkButton } from '../lib/link-button'
 import { getHTMLURL } from '../../lib/api'
 import { isGiteaEndpoint } from '../../lib/gitea/gitea-endpoint'
+import { formatTokenScopes } from '../../lib/gitea/gitea-token-scopes'
 
 interface ISignInProps {
   readonly dispatcher: Dispatcher
@@ -48,19 +49,6 @@ const browserSignInInfoContent = (
     allow it.
   </p>
 )
-
-/**
- * The token scopes Gitea Desktop needs to do its job. Listing them saves the
- * user a round trip through the Gitea documentation, and a token that is
- * missing one of them fails in ways that are hard to diagnose after the fact.
- */
-const requiredTokenScopes = [
-  'read:user',
-  'write:repository',
-  'write:issue',
-  'read:organization',
-  'read:notification',
-]
 
 export class SignIn extends React.Component<ISignInProps, ISignInState> {
   private readonly dialogRef = React.createRef<Dialog>()
@@ -262,7 +250,7 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
         </p>
         <p className="token-scopes">
           Select these scopes when creating the token:{' '}
-          <Ref>{requiredTokenScopes.join(', ')}</Ref>
+          <Ref>{formatTokenScopes()}</Ref>
         </p>
         <Row>
           <TextBox

@@ -59,4 +59,9 @@ const args = [
 spawn('node', args, {
   stdio: 'inherit',
   cwd: resolve(import.meta.dirname, '..'),
-}).on('exit', process.exit)
+}).on('exit', (code, signal) => {
+  // A child killed by a signal reports a null code, and process.exit(null)
+  // exits 0 - so passing process.exit straight in would report a test run the
+  // kernel killed as a pass. Out-of-memory is the realistic way that happens.
+  process.exit(code ?? (signal === null ? 0 : 1))
+})

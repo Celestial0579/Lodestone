@@ -69,11 +69,16 @@ jobs:
 
       # This instance runs Forgejo 15.0.7, whose API has no endpoint for
       # workflow logs and whose web routes accept neither basic auth nor an API
-      # token. A failing run therefore cannot be read programmatically at all.
-      # Posting the tail of the log as a comment is what makes one diagnosable
-      # without downloading it by hand.
+      # token. A failing run therefore cannot be read programmatically at all,
+      # so the run reports itself: the tracker holds an open issue exactly
+      # while this branch is broken, and the script closes it again when a run
+      # passes. See script/ci-report.py.
       #
-      # Delete this step to switch that off; nothing else depends on it.
+      # Delete both steps to switch that off; nothing else depends on them.
+      # The environment is repeated rather than hoisted to the job, so that a
+      # token which can write to this repository is present only in these two
+      # steps. `yarn install` runs postinstall scripts from the dependency
+      # tree, and that is not a place to leave one lying about.
       - name: Report the failure
         if: failure()
         env:
@@ -81,28 +86,15 @@ jobs:
           API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
           RUN_NUMBER: ${{ github.run_number }}
           COMMIT: ${{ github.sha }}
-        run: |
-          # Comments have a size limit, and the interesting part is the end.
-          tail -c 40000 "$CI_LOG" > tail.txt || echo '(no output captured)' > tail.txt
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_number }}
+        run: python3 script/ci-report.py failure
 
-          python3 - <<'PY' > comment.json
-          import json, os
-
-          tail = open('tail.txt', encoding='utf-8', errors='replace').read()
-          # A fence inside the log would end the block early.
-          tail = tail.replace('```', '`​``')
-
-          body = (
-              f"Run **#{os.environ['RUN_NUMBER']}** failed on "
-              f"`{os.environ['COMMIT'][:9]}`.\n\n"
-              "Tail of the combined output:\n\n"
-              f"```\n{tail}\n```\n"
-          )
-          print(json.dumps({'body': body}))
-          PY
-
-          curl -sS -X POST "$API/issues/1/comments" \
-            -H "Authorization: token $TOKEN" \
-            -H 'Content-Type: application/json' \
-            --data-binary @comment.json \
-            -o /dev/null -w 'reported to issue #1: HTTP %{http_code}\n'
+      - name: Withdraw the report
+        if: success()
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
+          RUN_NUMBER: ${{ github.run_number }}
+          COMMIT: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_number }}
+        run: python3 script/ci-report.py success

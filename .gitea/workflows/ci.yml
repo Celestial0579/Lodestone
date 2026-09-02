@@ -86,7 +86,9 @@ jobs:
           API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
           RUN_NUMBER: ${{ github.run_number }}
           COMMIT: ${{ github.sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_number }}
+          RUN_URL:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{
+            github.run_number }}
         run: python3 script/ci-report.py failure
 
       - name: Withdraw the report
@@ -96,5 +98,7 @@ jobs:
           API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
           RUN_NUMBER: ${{ github.run_number }}
           COMMIT: ${{ github.sha }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_number }}
+          RUN_URL:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{
+            github.run_number }}
         run: python3 script/ci-report.py success

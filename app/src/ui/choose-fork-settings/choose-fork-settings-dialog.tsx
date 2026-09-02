@@ -17,7 +17,7 @@ interface IChooseForkSettingsProps {
   readonly dispatcher: Dispatcher
   /**
    * The current repository.
-   * It needs to be a forked Gitea-based repository
+   * It needs to be a forked forge-based repository
    */
   readonly repository: RepositoryWithForkedGitHubRepository
   /**

@@ -7,7 +7,7 @@ const localStorageKey = 'last-clone-location'
 export async function getDefaultDir(): Promise<string> {
   return (
     localStorage.getItem(localStorageKey) ||
-    Path.join(await getDocumentsPath(), 'Gitea')
+    Path.join(await getDocumentsPath(), 'Lodestone')
   )
 }
 

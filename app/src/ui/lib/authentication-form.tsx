@@ -7,7 +7,13 @@ import { TextBox } from './text-box'
 import { LinkButton } from './link-button'
 import { Ref } from './ref'
 import { getHTMLURL } from '../../lib/api'
-import { isGiteaEndpoint } from '../../lib/gitea/gitea-endpoint'
+import { supportsForgeOAuth } from '../../lib/forges/forge-oauth'
+import {
+  getForgeDisplayName,
+  getForgeFamily,
+  getTokenSettingsURL,
+} from '../../lib/forges/forge-type'
+import { getKnownForge } from '../../lib/forges/forge-registry'
 import { formatTokenScopes } from '../../lib/gitea/gitea-token-scopes'
 
 /** Text to let the user know their browser will send them back to Desktop */
@@ -54,7 +60,7 @@ export class AuthenticationForm extends React.Component<
   }
 
   public render() {
-    const usesToken = isGiteaEndpoint(this.props.endpoint)
+    const usesToken = !supportsForgeOAuth(this.props.endpoint)
 
     return (
       <Form
@@ -69,14 +75,21 @@ export class AuthenticationForm extends React.Component<
   }
 
   /**
-   * Ask for a personal access token. Gitea instances don't share a registered
-   * OAuth application the way GitHub.com does, and registering one is a
-   * per-instance administrative task, so a token is the way in that works
-   * against every instance without any setup.
+   * Ask for a personal access token.
+   *
+   * This is the way in that needs no setup on the server, so it is what is
+   * offered whenever no OAuth application has been registered for the
+   * instance.
    */
   private renderTokenForm() {
     const htmlURL = getHTMLURL(this.props.endpoint)
-    const tokenSettingsURL = `${htmlURL}/user/settings/applications`
+    const tokenSettingsURL = getTokenSettingsURL(
+      htmlURL,
+      getForgeFamily(this.props.endpoint)
+    )
+    const forgeName = getForgeDisplayName(
+      getKnownForge(this.props.endpoint).kind
+    )
 
     return (
       <>
@@ -84,7 +97,7 @@ export class AuthenticationForm extends React.Component<
           Sign in to <Ref>{new URL(htmlURL).host}</Ref> with a personal access
           token.{' '}
           <LinkButton uri={tokenSettingsURL}>
-            Generate a token in Gitea
+            Generate a token in {forgeName}
           </LinkButton>{' '}
           and paste it below.
         </p>

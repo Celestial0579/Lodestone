@@ -430,14 +430,14 @@ export class SelectedCommits extends React.Component<
       { type: 'separator' },
     ]
 
-    let viewOnGitHubLabel = 'View on Gitea'
+    let viewOnGitHubLabel = 'View in browser'
     const gitHubRepository = repository.gitHubRepository
 
     if (
       gitHubRepository &&
       gitHubRepository.endpoint !== getDotComAPIEndpoint()
     ) {
-      viewOnGitHubLabel = 'View on Gitea'
+      viewOnGitHubLabel = 'View in browser'
     }
 
     items.push({

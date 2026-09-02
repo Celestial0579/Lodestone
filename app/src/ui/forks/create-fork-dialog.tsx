@@ -41,7 +41,7 @@ export class CreateForkDialog extends React.Component<
     this.state = { loading: false }
   }
   /**
-   *  Starts fork process on Gitea!
+   *  Starts fork process on the forge!
    */
   private onSubmit = async () => {
     this.setState({ loading: true })
@@ -149,7 +149,7 @@ function renderCreateForkDialogError(
       <>
         {`You can try `}
         <LinkButton uri={repository.gitHubRepository.htmlURL}>
-          creating the fork manually on Gitea
+          creating the fork manually in the browser
         </LinkButton>
         .
       </>

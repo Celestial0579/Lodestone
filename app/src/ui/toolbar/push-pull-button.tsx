@@ -529,7 +529,7 @@ export class PushPullButton extends React.Component<
       <ToolbarButton
         {...this.defaultButtonProps()}
         title="Publish repository"
-        description="Publish this repository to Gitea"
+        description="Publish this repository to a remote"
         className="push-pull-button"
         icon={octicons.upload}
         style={ToolbarButtonStyle.Subtitle}

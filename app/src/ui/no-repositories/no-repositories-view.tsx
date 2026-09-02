@@ -64,7 +64,7 @@ interface INoRepositoriesState {
    */
   readonly selectedRepository: IAPIRepository | null
   /**
-   * The current filter text in the Gitea clone tab
+   * The current filter text in the server clone tab
    */
   readonly filterText: string
 }

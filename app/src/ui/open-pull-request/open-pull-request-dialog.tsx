@@ -254,7 +254,7 @@ export class OpenPullRequestDialog extends React.Component<IOpenPullRequestDialo
       gitHubRepository && gitHubRepository.endpoint !== getDotComAPIEndpoint()
 
     const viewCreate = currentBranchHasPullRequest ? 'View' : ' Create'
-    const buttonTitle = `${viewCreate} pull request on Gitea${
+    const buttonTitle = `${viewCreate} pull request in browser${
       isEnterprise ? ' Enterprise' : ''
     }.`
 

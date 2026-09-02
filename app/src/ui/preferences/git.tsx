@@ -197,9 +197,10 @@ export class Git extends React.Component<IGitProps> {
         />
 
         <p id="default-branch-description" className="settings-description">
-          Gitea's default branch name is <Ref>main</Ref>. You may want to change
-          it due to different workflows, or because your integrations still
-          require the historical default branch name of <Ref>master</Ref>.
+          Most Git hosts now create new repositories with <Ref>main</Ref> as the
+          default branch. You may want to change it due to different workflows,
+          or because your integrations still require the historical default
+          branch name of <Ref>master</Ref>.
         </p>
 
         {this.renderEditGlobalGitConfigInfo()}

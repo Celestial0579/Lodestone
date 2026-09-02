@@ -11,7 +11,7 @@ interface ICommitAttributionProps {
 /**
  * A component used for listing the authors involved in
  * a commit, formatting the content as close to what
- * Gitea does as possible.
+ * forges do as possible.
  */
 export class CommitAttribution extends React.Component<
   ICommitAttributionProps,

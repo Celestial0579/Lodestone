@@ -116,8 +116,11 @@ export class CopilotPreferences extends React.Component<ICopilotPreferencesProps
       <div className="copilot-tab-content">
         <div className="copilot-settings-scroll">
           <div className="copilot-section copilot-account-snapshot-groups">
-            {this.renderAccountSnapshotCardGroup('Gitea', dotComAccounts)}
-            {this.renderAccountSnapshotCardGroup('Gitea', enterpriseAccounts)}
+            {this.renderAccountSnapshotCardGroup('GitHub.com', dotComAccounts)}
+            {this.renderAccountSnapshotCardGroup(
+              'GitHub Enterprise',
+              enterpriseAccounts
+            )}
           </div>
         </div>
       </div>

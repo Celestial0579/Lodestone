@@ -8,7 +8,7 @@ import { ThrottledScheduler } from '../lib/throttled-scheduler'
 /** The interval we should use to throttle the issues update. */
 const UpdateIssuesThrottleInterval = 1000 * 60
 
-/** The autocompletion provider for issues in a Gitea repository. */
+/** The autocompletion provider for issues in a forge repository. */
 export class IssuesAutocompletionProvider
   implements IAutocompletionProvider<IIssueHit>
 {

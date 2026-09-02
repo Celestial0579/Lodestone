@@ -405,7 +405,7 @@ export function getNumberOfDigits(val: number): number {
 
 /**
  * The longest line for which we'd try to calculate a line diff, this matches
- * Gitea's behavior.
+ * the behaviour of forge diff views.
  **/
 export const MaxIntraLineDiffStringLength = 1024
 

@@ -5,10 +5,10 @@ import { LinkButton } from '../lib/link-button'
 import { isWindowsOpenSSHAvailable } from '../../lib/ssh/ssh'
 import { TextBox } from '../lib/text-box'
 import {
-  getGiteaUpdateSourceURL,
-  parseGiteaUpdateSource,
-  setGiteaUpdateSourceURL,
-} from '../../lib/gitea/gitea-updates'
+  getUpdateSourceURL,
+  parseUpdateSource,
+  setUpdateSourceURL,
+} from '../../lib/forges/update-source'
 
 interface IAdvancedPreferencesProps {
   readonly useWindowsOpenSSH: boolean
@@ -39,7 +39,7 @@ export class Advanced extends React.Component<
       optOutOfUsageTracking: this.props.optOutOfUsageTracking,
       canUseWindowsSSH: false,
       useExternalCredentialHelper: this.props.useExternalCredentialHelper,
-      updateSourceURL: getGiteaUpdateSourceURL(),
+      updateSourceURL: getUpdateSourceURL(),
     }
   }
 
@@ -53,7 +53,7 @@ export class Advanced extends React.Component<
 
   private onUpdateSourceChanged = (updateSourceURL: string) => {
     this.setState({ updateSourceURL })
-    setGiteaUpdateSourceURL(updateSourceURL)
+    setUpdateSourceURL(updateSourceURL)
   }
 
   /**
@@ -65,14 +65,14 @@ export class Advanced extends React.Component<
    */
   private renderUpdateSource() {
     const { updateSourceURL } = this.state
-    const parsed = parseGiteaUpdateSource(updateSourceURL)
+    const parsed = parseUpdateSource(updateSourceURL)
     const unusable = updateSourceURL.trim().length > 0 && parsed === null
 
     return (
       <div className="advanced-section">
         <h2>Updates</h2>
         <TextBox
-          label="Gitea repository publishing releases"
+          label="Repository publishing releases"
           value={updateSourceURL}
           onValueChanged={this.onUpdateSourceChanged}
           placeholder="https://git.example.com/team/lodestone"
@@ -196,7 +196,7 @@ export class Advanced extends React.Component<
               <LinkButton uri="https://gh.io/gcm">
                 Git Credential Manager{' '}
               </LinkButton>{' '}
-              for private repositories outside of Gitea. This feature is
+              for private repositories outside GitHub. This feature is
               experimental and subject to change.
             </p>
           </div>

@@ -155,19 +155,19 @@ export class About extends React.Component<IAboutProps> {
       )
     }
 
-    const { status, lastSuccessfulCheck, giteaRelease } = this.props.updateState
+    const { status, lastSuccessfulCheck, forgeRelease } = this.props.updateState
 
     switch (status) {
       case UpdateStatus.CheckingForUpdates:
         return <UpdateInfo message="Checking for updates…" loading={true} />
       case UpdateStatus.UpdateAvailable:
-        // A release found on a Gitea instance is a file to download, not a
+        // A release found on a forge is a file to download, not a
         // Squirrel package we can install, so send the user to the release.
-        if (giteaRelease !== null) {
+        if (forgeRelease !== null) {
           return (
             <p>
-              <LinkButton uri={giteaRelease.htmlURL}>
-                {giteaRelease.name}
+              <LinkButton uri={forgeRelease.htmlURL}>
+                {forgeRelease.name}
               </LinkButton>{' '}
               is available for download.
             </p>

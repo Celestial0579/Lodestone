@@ -19,7 +19,7 @@ interface ISignInProps {
 }
 
 /**
- * The sign in flow for Gitea.
+ * The sign in flow, for whichever forge the user points it at.
  *
  * Provide `children` elements to render additional buttons in the active form.
  */

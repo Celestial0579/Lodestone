@@ -7956,8 +7956,8 @@ export class AppStore extends TypedBaseStore<IAppState> {
     return this.signInStore.beginDotComSignIn(resultCallback)
   }
 
-  public _beginGiteaSignIn(resultCallback?: (result: SignInResult) => void) {
-    return this.signInStore.beginGiteaSignIn(resultCallback)
+  public _beginSignIn(resultCallback?: (result: SignInResult) => void) {
+    return this.signInStore.beginSignIn(resultCallback)
   }
 
   public _setSignInEndpoint(url: string): Promise<void> {
@@ -8551,7 +8551,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       isForkedRepositoryContributingToParent(repository)
 
     // Both sides of a cross-repository comparison are qualified as
-    // `owner/repo:branch` on Gitea, where GitHub writes `owner:repo:branch`.
+    // `owner/repo:branch` on the forge, where GitHub writes `owner:repo:branch`.
     const baseForkPreface =
       isForkContributingToParent && parent !== null
         ? `${parent.owner.login}/${parent.name}:`
@@ -8575,7 +8575,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
     const compareString = `${encodedBaseBranch}${encodedCompareBranch}`
 
-    // Gitea opens the new pull request form from the compare view. GitHub's
+    // The forge opens the new pull request form from the compare view. GitHub's
     // /pull/new/ path does not exist there, so this used to land on a 404.
     const baseURL = `${htmlURL}/compare/${compareString}`
 

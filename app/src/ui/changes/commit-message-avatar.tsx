@@ -66,7 +66,7 @@ interface ICommitMessageAvatarProps {
   /** Whether or not the user's account is a GHE account. */
   readonly isEnterpriseAccount: boolean
 
-  /** Email addresses available in the relevant Gitea (Enterprise) account. */
+  /** Email addresses available in the relevant forge (Enterprise) account. */
   readonly accountEmails: ReadonlyArray<string>
 
   /** Preferred email address from the user's account. */
@@ -338,9 +338,9 @@ export class CommitMessageAvatar extends React.Component<
         <>
           <Row>
             <div>
-              {sharedHeader} doesn't match your Gitea account{userName}. Add it
-              under Settings, Account on your instance for commits to be
-              attributed to you.
+              {sharedHeader} doesn't match your account{userName}. Add it under
+              Settings, Account on your instance for commits to be attributed to
+              you.
             </div>
           </Row>
           {sharedFooter}

@@ -1,3 +1,5 @@
+import { ForgeKind } from '../../../src/lib/forges/forge-type'
+import { setForgeOAuthClientId } from '../../../src/lib/forges/forge-oauth'
 import assert from 'node:assert'
 import { describe, it } from 'node:test'
 import * as React from 'react'
@@ -11,7 +13,7 @@ import type {
 import { SignInStep } from '../../../src/lib/stores/sign-in-store'
 import type { Dispatcher } from '../../../src/ui/dispatcher'
 import { ConfigureGit } from '../../../src/ui/welcome/configure-git'
-import { SignInGitea } from '../../../src/ui/welcome/sign-in-gitea'
+import { SignInInstance } from '../../../src/ui/welcome/sign-in-instance'
 import { SignIn } from '../../../src/ui/lib/sign-in'
 import { fireEvent, render, screen } from '../../helpers/ui/render'
 
@@ -47,6 +49,8 @@ function createAuthenticationState(endpoint: string): IAuthenticationState {
   return {
     kind: SignInStep.Authentication,
     endpoint,
+    forgeKind: ForgeKind.Gitea,
+    htmlURL: 'https://git.example.com',
     error: null,
     loading: false,
     resultCallback: noopResultCallback,
@@ -57,6 +61,8 @@ function createExistingAccountWarningState(): IExistingAccountWarning {
   return {
     kind: SignInStep.ExistingAccountWarning,
     endpoint: 'https://api.github.com',
+    forgeKind: ForgeKind.DotCom,
+    htmlURL: 'https://github.com',
     existingAccount: new Account(
       'mona',
       'https://api.github.com',
@@ -85,7 +91,7 @@ describe('welcome and sign-in wrappers', () => {
       </SignIn>
     )
 
-    const input = screen.getByLabelText('Gitea instance address')
+    const input = screen.getByLabelText('Instance address')
     const continueButton = screen.getByRole('button', { name: 'Continue' })
 
     fireEvent.change(input, {
@@ -111,16 +117,17 @@ describe('welcome and sign-in wrappers', () => {
     )
 
     assert.ok(screen.getByText("You're already signed in to", { exact: false }))
-    assert.ok(screen.getByText('github.com', { exact: false }))
+    // The host is named both in the warning and in the sign-in instructions
+    // below it.
+    assert.ok(screen.getAllByText('github.com', { exact: false }).length > 0)
     assert.ok(screen.getByText('mona'))
 
-    const browserLink = screen.getByRole('link', {
-      name: 'Sign in using your browser',
-    })
-
-    fireEvent.click(browserLink)
-
-    assert.equal(dispatcher.browserSignInCount, 1)
+    // No OAuth application is registered for this endpoint, so browser sign-in
+    // is not on offer. That is the same answer for every provider.
+    assert.equal(
+      screen.queryByRole('link', { name: 'Sign in using your browser' }),
+      null
+    )
 
     view.rerender(
       <SignIn
@@ -135,6 +142,31 @@ describe('welcome and sign-in wrappers', () => {
     assert.equal(view.container.textContent, '')
   })
 
+  it('offers browser sign-in once an OAuth application is registered', () => {
+    const endpoint = 'https://git.example.com/api/v1'
+    setForgeOAuthClientId(endpoint, 'a-registered-client-id')
+
+    try {
+      const dispatcher = new TestDispatcher()
+      render(
+        <SignIn
+          signInState={createAuthenticationState(endpoint)}
+          dispatcher={toDispatcher(dispatcher)}
+        />
+      )
+
+      const browserLink = screen.getByRole('link', {
+        name: 'Sign in using your browser',
+      })
+
+      fireEvent.click(browserLink)
+
+      assert.equal(dispatcher.browserSignInCount, 1)
+    } finally {
+      setForgeOAuthClientId(endpoint, '')
+    }
+  })
+
   it('renders the enterprise welcome step only when sign-in state exists and its cancel button returns to start', () => {
     const dispatcher = new TestDispatcher()
     const advancedSteps = new Array<string>()
@@ -144,7 +176,7 @@ describe('welcome and sign-in wrappers', () => {
     }
 
     const view = render(
-      <SignInGitea
+      <SignInInstance
         dispatcher={toDispatcher(dispatcher)}
         advance={advance}
         signInState={null}
@@ -154,14 +186,14 @@ describe('welcome and sign-in wrappers', () => {
     assert.equal(view.container.textContent, '')
 
     view.rerender(
-      <SignInGitea
+      <SignInInstance
         dispatcher={toDispatcher(dispatcher)}
         advance={advance}
         signInState={createAuthenticationState('https://api.github.com')}
       />
     )
 
-    assert.ok(screen.getByText('Sign in to your Gitea instance'))
+    assert.ok(screen.getByText('Sign in to your instance'))
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
 
     assert.deepEqual(advancedSteps, ['Start'])

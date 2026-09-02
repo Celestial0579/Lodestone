@@ -12,7 +12,7 @@ import { getHTMLURL } from '../../lib/api'
 interface IAccountsProps {
   readonly accounts: ReadonlyArray<Account>
 
-  readonly onGiteaSignIn: () => void
+  readonly onSignIn: () => void
   readonly onLogout: (account: Account) => void
 }
 
@@ -22,7 +22,7 @@ export class Accounts extends React.Component<IAccountsProps, {}> {
 
     return (
       <DialogContent className="accounts-tab">
-        <h2>Gitea</h2>
+        <h2>Accounts</h2>
         {accounts.length === 0
           ? this.renderSignIn()
           : this.renderAccounts(accounts)}
@@ -36,7 +36,7 @@ export class Accounts extends React.Component<IAccountsProps, {}> {
         {accounts.map((account, index) =>
           this.renderAccount(account, index === 0)
         )}
-        <Button onClick={this.props.onGiteaSignIn}>Add Gitea account</Button>
+        <Button onClick={this.props.onSignIn}>Add account</Button>
       </>
     )
   }
@@ -76,12 +76,13 @@ export class Accounts extends React.Component<IAccountsProps, {}> {
   private renderSignIn() {
     return (
       <CallToAction
-        actionTitle={__DARWIN__ ? 'Sign Into Gitea' : 'Sign into Gitea'}
-        onAction={this.props.onGiteaSignIn}
+        actionTitle={__DARWIN__ ? 'Sign In' : 'Sign in'}
+        onAction={this.props.onSignIn}
         buttonClassName={DialogPreferredFocusClassName}
       >
         <div>
-          Sign in to your Gitea instance to get access to your repositories.
+          Sign in to a Gitea, Forgejo, GitHub or other Git host to get access to
+          your repositories.
         </div>
       </CallToAction>
     )

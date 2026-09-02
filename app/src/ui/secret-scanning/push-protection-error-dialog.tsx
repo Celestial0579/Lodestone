@@ -17,15 +17,15 @@ export interface ISecretLocation {
   lineNumber: number
 }
 
-/** Represents secret detected by Gitea's Secret Scanning feature on push. */
+/** Represents secret detected by the forge's Secret Scanning feature on push. */
 export interface ISecretScanResult {
   /** The id used in the bypassURL to unique identify this secret */
   id: string
-  /** The name of the secret - e.g "Gitea Access Token" */
+  /** The name of the secret - e.g "GitHub Access Token" */
   description: string
   /** The location of the secret, given as a commitSha, file path, and line number */
   locations: ReadonlyArray<ISecretLocation>
-  /** The URL to use to get to Gitea's dialog for bypassing blocking the push of the secret  */
+  /** The URL to use to get to the forge's dialog for bypassing blocking the push of the secret  */
   bypassURL: string
   /** The user cannot bypass themselves, but can request a bypass */
   requiresApproval: boolean
@@ -52,7 +52,7 @@ interface IPushProtectionErrorDialogState {
 }
 
 /**
- * The dialog shown when a push is denied by Gitea's push protection feature of secret scanning.
+ * The dialog shown when a push is denied by the forge's push protection feature of secret scanning.
  */
 export class PushProtectionErrorDialog extends React.Component<
   IPushProtectionErrorDialogProps,

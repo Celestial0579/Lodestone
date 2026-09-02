@@ -12,7 +12,7 @@ interface IPullRequestBadgeProps {
 
   readonly dispatcher: Dispatcher
 
-  /** The Gitea repository to use when looking up commit status. */
+  /** The forge repository to use when looking up commit status. */
   readonly repository: GitHubRepository
 
   /** Whether or not the check runs popover is open */
@@ -20,7 +20,7 @@ interface IPullRequestBadgeProps {
 
   readonly onBadgeRef?: (ref: HTMLButtonElement | null) => void
 
-  /** The Gitea repository to use when looking up commit status. */
+  /** The forge repository to use when looking up commit status. */
   readonly onBadgeClick?: () => void
 
   /** When the bottom edge of the pull request badge position changes. For

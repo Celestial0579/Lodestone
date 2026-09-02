@@ -222,7 +222,7 @@ export class TutorialPanel extends React.Component<
             </p>
           </TutorialStepInstructions>
           <TutorialStepInstructions
-            summaryText="Publish to Gitea"
+            summaryText="Publish your repository"
             isComplete={this.isStepComplete}
             isNextStepTodo={this.isStepNextTodo}
             sectionId={TutorialStep.PushBranch}
@@ -231,8 +231,8 @@ export class TutorialPanel extends React.Component<
           >
             <p className="description">
               Publishing will “push”, or upload, your commits to this branch of
-              your repository on Gitea. Publish using the third button in the
-              top bar.
+              your repository on the remote. Publish using the third button in
+              the top bar.
             </p>
             <div className="action">
               <KeyboardShortcut darwinKeys={['⌘', 'P']} keys={['Ctrl', 'P']} />

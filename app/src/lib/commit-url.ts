@@ -24,7 +24,7 @@ export function createCommitURL(
 /**
  * The url for viewing a pull request.
  *
- * Gitea serves pull requests from `/pulls/{index}`; the `/pull/{number}` path
+ * The forge serves pull requests from `/pulls/{index}`; the `/pull/{number}` path
  * GitHub uses does not exist there.
  */
 export function createPullRequestURL(
@@ -39,7 +39,7 @@ export function createPullRequestURL(
 /**
  * The url for browsing the files on a branch.
  *
- * Gitea serves these from `/src/branch/{name}`, where GitHub uses
+ * The forge serves these from `/src/branch/{name}`, where GitHub uses
  * `/tree/{name}`.
  */
 export function createBranchURL(

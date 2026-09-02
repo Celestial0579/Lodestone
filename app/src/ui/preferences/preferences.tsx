@@ -469,9 +469,9 @@ export class Preferences extends React.Component<
     return `preferences-tab-${suffix}`
   }
 
-  private onGiteaSignIn = () => {
+  private onSignIn = () => {
     this.props.onDismissed()
-    this.props.dispatcher.showGiteaSignInDialog()
+    this.props.dispatcher.showSignInDialog()
   }
 
   private onCopilotSignIn = () => {
@@ -530,7 +530,7 @@ export class Preferences extends React.Component<
         View = (
           <Accounts
             accounts={this.props.accounts}
-            onGiteaSignIn={this.onGiteaSignIn}
+            onSignIn={this.onSignIn}
             onLogout={this.onLogout}
           />
         )

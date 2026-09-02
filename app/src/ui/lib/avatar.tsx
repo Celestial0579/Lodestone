@@ -266,7 +266,7 @@ function getAvatarUrlCandidates(
   // behind private mode.
   if (!isGHES(ep) && avatarURL !== undefined) {
     // The avatar urls returned by the API doesn't come with a size parameter,
-    // they default to the biggest size we need on Gitea which is usually
+    // they default to the biggest size we need on the forge which is usually
     // much bigger than what desktop needs so we'll set a size explicitly.
     try {
       const url = new URL(avatarURL)

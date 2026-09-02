@@ -22,7 +22,6 @@ import { revealInFileManager } from '../../lib/app-shell'
 import { clipboard } from 'electron'
 import { IConstrainedValue } from '../../lib/app-state'
 import { clamp } from '../../lib/clamp'
-import { getDotComAPIEndpoint } from '../../lib/api'
 import { createCommitURL } from '../../lib/commit-url'
 import { DiffOptions } from '../diff/diff-options'
 
@@ -212,11 +211,9 @@ export class PullRequestFilesChanged extends React.Component<
 
     const { nonLocalCommitSHA } = this.props
     const { gitHubRepository } = repository
-    const isEnterprise =
-      gitHubRepository && gitHubRepository.endpoint !== getDotComAPIEndpoint()
 
     items.push({
-      label: `View on Gitea${isEnterprise ? ' Enterprise' : ''}`,
+      label: 'View in browser',
       action: () => this.onViewOnGitHub(file),
       enabled: nonLocalCommitSHA !== null && gitHubRepository !== null,
     })

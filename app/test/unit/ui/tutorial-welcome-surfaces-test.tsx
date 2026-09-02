@@ -54,7 +54,7 @@ describe('tutorial welcome surfaces', () => {
     assert.ok(screen.getByText('Welcome to Lodestone'))
     assert.ok(
       screen.getByText(
-        'Use this tutorial to get comfortable with Git, Gitea and Lodestone.'
+        'Use this tutorial to get comfortable with Git, your Git host and Lodestone.'
       )
     )
     assert.equal(definitions.length, 3)

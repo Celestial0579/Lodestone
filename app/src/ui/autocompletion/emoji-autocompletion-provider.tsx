@@ -17,7 +17,7 @@ export interface IEmojiHit {
   /**
    * The unicode string of the emoji if emoji is part of
    * the unicode specification. If missing this emoji is
-   * a Gitea custom emoji such as :shipit:
+   * a custom emoji such as :shipit:
    */
   readonly emoji?: string
 

@@ -57,7 +57,7 @@ function userToHit(
   }
 }
 
-/** The autocompletion provider for user mentions in a Gitea repository. */
+/** The autocompletion provider for user mentions in a forge repository. */
 export class UserAutocompletionProvider
   implements IAutocompletionProvider<UserHit>
 {

@@ -36,7 +36,7 @@ import memoizeOne from 'memoize-one'
  * The tabs the clone dialog offers.
  *
  * Upstream has a third, GitHub.com tab. Every account in Lodestone lives on
- * a Gitea instance, so that tab could never hold anything; the enum value is
+ * a forge, so that tab could never hold anything; the enum value is
  * kept so the rest of the upstream branching still compiles.
  */
 const visibleCloneTabs = [
@@ -102,13 +102,13 @@ interface ICloneRepositoryState {
 
   /**
    * The persisted state of the CloneGitHubRepository component for
-   * the Gitea account.
+   * the account.
    */
   readonly dotComTabState: IGitHubTabState
 
   /**
    * The persisted state of the CloneGitHubRepository component for
-   * the Gitea account.
+   * the account.
    */
   readonly enterpriseTabState: IGitHubTabState
 
@@ -289,7 +289,7 @@ export class CloneRepository extends React.Component<
             visibleCloneTabs.indexOf(this.props.selectedTab)
           )}
         >
-          <span id="enterprise-tab">Gitea</span>
+          <span id="enterprise-tab">Server</span>
           <span id="url-tab">URL</span>
         </TabBar>
 
@@ -535,9 +535,7 @@ export class CloneRepository extends React.Component<
       case CloneRepositoryTab.DotCom:
         return (
           <CallToAction actionTitle={signInTitle} onAction={this.signInDotCom}>
-            <div>
-              Sign in to your Gitea account to access your repositories.
-            </div>
+            <div>Sign in to access your repositories.</div>
           </CallToAction>
         )
       case CloneRepositoryTab.Enterprise:
@@ -547,8 +545,8 @@ export class CloneRepository extends React.Component<
             onAction={this.signInEnterprise}
           >
             <div>
-              If you are using Gitea at work, sign in to it to get access to
-              your repositories.
+              If you use a Git host at work, sign in to it to get access to your
+              repositories.
             </div>
           </CallToAction>
         )
@@ -564,7 +562,7 @@ export class CloneRepository extends React.Component<
   }
 
   private signInEnterprise = () => {
-    this.props.dispatcher.showGiteaSignInDialog()
+    this.props.dispatcher.showSignInDialog()
   }
 
   private onFilterTextChanged = (filterText: string) => {

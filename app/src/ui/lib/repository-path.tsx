@@ -9,9 +9,9 @@ import { showOpenDialog } from '../main-process-proxy'
 import { InputWarning } from './input-description/input-warning'
 
 // We use this instead of sanitizedRepositoryName because it deals with
-// valid repository names on Gitea but here we only care about whether
+// valid repository names on the forge but here we only care about whether
 // we'll be able to create a directory with the given name. If a user
-// creates a repository with a name that Gitea doesn't like here it'll
+// creates a repository with a name the forge doesn't like here it'll
 // get sanitized in the Publish dialog later on.
 //
 // Note that we don't sanitize `\` or `/` here since we use `Path.join` to

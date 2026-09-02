@@ -9,11 +9,14 @@ import {
 
 import {
   fetchUser,
+  getHTMLURL,
   getDotComAPIEndpoint,
   requestOAuthToken,
   getOAuthAuthorizationURL,
 } from '../../lib/api'
-import { getGiteaAPIURL } from '../gitea/gitea-endpoint'
+import { IResolvedInstance, resolveInstance } from '../forges/detect-forge'
+import { ForgeKind } from '../forges/forge-type'
+import { recordApiEndpointForOrigin } from '../forges/forge-registry'
 
 import { TypedBaseStore } from './base-store'
 import { IOAuthAction } from '../parse-app-url'
@@ -78,15 +81,17 @@ export interface ISignInState {
  */
 export interface IExistingAccountWarning extends ISignInState {
   readonly kind: SignInStep.ExistingAccountWarning
-  /**
-   * The URL to the host which we're currently authenticating
-   * against. This will be either https://api.github.com when
-   * signing in against GitHub.com or a user-specified
-   * URL when signing in against a GitHub Enterprise
-   * instance.
-   */
+
   readonly existingAccount: Account
+
+  /** The API endpoint we are authenticating against. */
   readonly endpoint: string
+
+  /** Which product runs there, so the UI can name it accurately. */
+  readonly forgeKind: ForgeKind
+
+  /** The web address of the instance, for links and browser sign-in. */
+  readonly htmlURL: string
 
   readonly resultCallback: (result: SignInResult) => void
 }
@@ -102,23 +107,22 @@ export interface IEndpointEntryState extends ISignInState {
 }
 
 /**
- * State interface representing the Authentication step where
- * the user provides credentials and/or initiates a browser
- * OAuth sign in process. This step occurs as the first step
- * when signing in to GitHub.com and as the second step when
- * signing in to a GitHub Enterprise instance.
+ * The step where the user proves who they are, once the instance behind the
+ * address is known. Which methods are on offer depends on that instance: a
+ * personal access token works everywhere, browser sign-in wherever an OAuth
+ * application has been registered.
  */
 export interface IAuthenticationState extends ISignInState {
   readonly kind: SignInStep.Authentication
 
-  /**
-   * The URL to the host which we're currently authenticating
-   * against. This will be either https://api.github.com when
-   * signing in against GitHub.com or a user-specified
-   * URL when signing in against a GitHub Enterprise
-   * instance.
-   */
+  /** The API endpoint we are authenticating against. */
   readonly endpoint: string
+
+  /** Which product runs there, so the UI can name it accurately. */
+  readonly forgeKind: ForgeKind
+
+  /** The web address of the instance, for links and browser sign-in. */
+  readonly htmlURL: string
 
   readonly resultCallback: (result: SignInResult) => void
 
@@ -158,7 +162,16 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
 
   private accounts: ReadonlyArray<Account> = []
 
-  public constructor(private readonly accountStore: AccountsStore) {
+  /**
+   * @param resolve How an address is turned into a known instance. Injectable
+   *                so that tests can describe an instance without a network.
+   */
+  public constructor(
+    private readonly accountStore: AccountsStore,
+    private readonly resolve: (
+      address: string
+    ) => Promise<IResolvedInstance | null> = resolveInstance
+  ) {
     super()
 
     this.accountStore.getAll().then(accounts => {
@@ -236,6 +249,8 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       this.setState({
         kind: SignInStep.ExistingAccountWarning,
         endpoint,
+        forgeKind: ForgeKind.DotCom,
+        htmlURL: getHTMLURL(endpoint),
         existingAccount,
         error: null,
         loading: false,
@@ -245,6 +260,8 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       this.setState({
         kind: SignInStep.Authentication,
         endpoint,
+        forgeKind: ForgeKind.DotCom,
+        htmlURL: getHTMLURL(endpoint),
         error: null,
         loading: false,
         resultCallback: resultCallback ?? noop,
@@ -284,11 +301,13 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
     const csrfToken = crypto.randomUUID()
 
     new Promise<Account>((resolve, reject) => {
-      const { endpoint, resultCallback } = currentState
+      const { endpoint, forgeKind, htmlURL, resultCallback } = currentState
       log.info('[SignInStore] initializing OAuth flow')
       this.setState({
         kind: SignInStep.Authentication,
         endpoint,
+        forgeKind,
+        htmlURL,
         resultCallback,
         error: null,
         loading: true,
@@ -330,12 +349,11 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
   }
 
   /**
-   * Complete the sign in process using a Gitea personal access token.
+   * Complete the sign in process using a personal access token.
    *
-   * Gitea has no equivalent of the OAuth application Lodestone ships with,
-   * and registering one is a per-instance administrative task. A personal
-   * access token works against every instance without any setup, so it is the
-   * way Lodestone signs in.
+   * This is the one method every forge supports without any setup, so it is
+   * always offered. Browser sign-in is offered alongside it where an OAuth
+   * application has been registered for the instance.
    *
    * This method must only be called while the store is in the authentication
    * step or an error will be thrown.
@@ -411,10 +429,10 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
   }
 
   /**
-   * Initiate a sign in flow for a Gitea instance. This will put the store in
-   * the EndpointEntry step ready to receive the url of the instance.
+   * Start signing in. The store moves to the EndpointEntry step, ready for the
+   * address of whichever instance the user wants to connect to.
    */
-  public beginGiteaSignIn(resultCallback?: (result: SignInResult) => void) {
+  public beginSignIn(resultCallback?: (result: SignInResult) => void) {
     if (this.state !== null) {
       this.reset()
     }
@@ -453,21 +471,6 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       )
     }
 
-    /**
-     * Lodestone talks to Gitea instances only. Point the user at the right
-     * tool rather than letting them run into a confusing API error.
-     */
-    if (/^(?:https:\/\/)?(?:api\.)?github\.com($|\/)/.test(url)) {
-      this.setState({
-        ...currentState,
-        loading: false,
-        error: new Error(
-          'Lodestone connects to Gitea and Forgejo instances. Use GitHub Desktop to sign in to GitHub.com.'
-        ),
-      })
-      return
-    }
-
     this.setState({ ...currentState, loading: true })
 
     let validUrl: string
@@ -477,11 +480,11 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       let error = e
       if (e.name === InvalidURLErrorName) {
         error = new Error(
-          `The Gitea instance address doesn't appear to be a valid URL. We're expecting something like https://git.example.com.`
+          `That address doesn't look like a URL. We're expecting something like https://git.example.com.`
         )
       } else if (e.name === InvalidProtocolErrorName) {
         error = new Error(
-          'Unsupported protocol. Only https is supported when authenticating with a Gitea instance, except on localhost.'
+          'Unsupported protocol. Only https is supported, except on localhost.'
         )
       }
 
@@ -489,7 +492,27 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       return
     }
 
-    const endpoint = getGiteaAPIURL(validUrl)
+    // No forge is assumed. The address is probed to find out what runs there
+    // and where its API lives, so Gitea, Forgejo, GitHub Enterprise and
+    // github.com all arrive here the same way.
+    const instance = await this.resolve(validUrl)
+
+    if (instance === null) {
+      this.setState({
+        ...currentState,
+        loading: false,
+        error: new Error(
+          `Couldn't find a Gitea, Forgejo or GitHub API at that address. Check the URL, and that the instance is reachable from this machine.`
+        ),
+      })
+      return
+    }
+
+    const endpoint = instance.endpoint
+
+    // Git asks the credential helper about the web origin, not the API path,
+    // so remember which belongs to which.
+    recordApiEndpointForOrigin(instance.htmlURL, endpoint)
 
     const existingAccount = this.accounts.find(x => x.endpoint === endpoint)
 
@@ -497,6 +520,8 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       this.setState({
         kind: SignInStep.ExistingAccountWarning,
         endpoint,
+        forgeKind: instance.kind,
+        htmlURL: instance.htmlURL,
         existingAccount,
         error: null,
         loading: false,
@@ -506,6 +531,8 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       this.setState({
         kind: SignInStep.Authentication,
         endpoint,
+        forgeKind: instance.kind,
+        htmlURL: instance.htmlURL,
         error: null,
         loading: false,
         resultCallback: currentState.resultCallback,
@@ -529,7 +556,7 @@ function toTokenSignInError(error: any): Error {
 
   if (status === 404) {
     return new Error(
-      "Couldn't find the Gitea API at that address. Check the instance URL and try again."
+      "Couldn't find an API at that address. Check the instance URL and try again."
     )
   }
 

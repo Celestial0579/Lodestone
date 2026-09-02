@@ -26,12 +26,12 @@ import { getVersion } from './app-proxy'
 import { getUserAgent } from '../../lib/http'
 import { Account } from '../../models/account'
 import {
-  fetchLatestGiteaRelease,
-  getGiteaUpdateSourceURL,
-  IGiteaRelease,
+  fetchLatestRelease,
+  getUpdateSourceURL,
+  IForgeRelease,
   isNewerRelease,
-  parseGiteaUpdateSource,
-} from '../../lib/gitea/gitea-updates'
+  parseUpdateSource,
+} from '../../lib/forges/update-source'
 
 /** The last version a showcase was seen. */
 export const lastShowCaseVersionSeen = 'version-of-last-showcase'
@@ -68,7 +68,7 @@ export interface IUpdateState {
    * as a Squirrel feed, so there is nothing to install automatically; the user
    * is pointed at the release page instead.
    */
-  giteaRelease: IGiteaRelease | null
+  forgeRelease: IForgeRelease | null
 }
 
 /** A store which contains the current state of the auto updater. */
@@ -78,7 +78,7 @@ class UpdateStore {
   private lastSuccessfulCheck: Date | null = null
   private newReleases: ReadonlyArray<ReleaseSummary> | null = null
   private isX64ToARM64ImmediateAutoUpdate: boolean = false
-  private giteaRelease: IGiteaRelease | null = null
+  private forgeRelease: IForgeRelease | null = null
 
   /** Is the most recent update check user initiated? */
   private userInitiatedUpdate = true
@@ -202,7 +202,7 @@ class UpdateStore {
       isX64ToARM64ImmediateAutoUpdate: this.isX64ToARM64ImmediateAutoUpdate,
       prioritizeUpdate: this.prioritizeUpdate,
       prioritizeUpdateInfoUrl: this.prioritizeUpdateInfoUrl,
-      giteaRelease: this.giteaRelease,
+      forgeRelease: this.forgeRelease,
     }
   }
 
@@ -235,7 +235,7 @@ class UpdateStore {
     // A Gitea instance the user pointed us at takes precedence: it is the only
     // update source Lodestone has unless someone stood up a Squirrel feed
     // of their own at build time.
-    if (await this.checkGiteaForUpdates(accounts)) {
+    if (await this.checkForgeForUpdates(accounts)) {
       return
     }
 
@@ -255,16 +255,16 @@ class UpdateStore {
   }
 
   /**
-   * Ask the configured Gitea repository whether a newer release exists.
+   * Ask the configured forge repository whether a newer release exists.
    *
    * Returns true when a source is configured and was checked, in which case the
    * caller should not fall through to the Squirrel updater. Returns false when
    * no update source has been set up, which is the default.
    */
-  private async checkGiteaForUpdates(
+  private async checkForgeForUpdates(
     accounts: ReadonlyArray<Account>
   ): Promise<boolean> {
-    const source = parseGiteaUpdateSource(getGiteaUpdateSourceURL())
+    const source = parseUpdateSource(getUpdateSourceURL())
 
     if (source === null) {
       return false
@@ -273,13 +273,13 @@ class UpdateStore {
     this.status = UpdateStatus.CheckingForUpdates
     this.emitDidChange()
 
-    const release = await fetchLatestGiteaRelease(source, accounts)
+    const release = await fetchLatestRelease(source, accounts)
 
     if (release !== null && isNewerRelease(release, getVersion())) {
-      this.giteaRelease = release
+      this.forgeRelease = release
       this.status = UpdateStatus.UpdateAvailable
     } else {
-      this.giteaRelease = null
+      this.forgeRelease = null
       this.status = UpdateStatus.UpdateNotAvailable
     }
 

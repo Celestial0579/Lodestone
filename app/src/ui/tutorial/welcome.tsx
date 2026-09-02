@@ -19,7 +19,8 @@ export class TutorialWelcome extends React.Component {
         <div className="header">
           <h1>Welcome to Lodestone</h1>
           <p>
-            Use this tutorial to get comfortable with Git, Gitea and Lodestone.
+            Use this tutorial to get comfortable with Git, your Git host and
+            Lodestone.
           </p>
         </div>
         <ul className="definitions">
@@ -35,14 +36,14 @@ export class TutorialWelcome extends React.Component {
               alt="People with discussion bubbles overhead"
             />
             <p>
-              <strong>Gitea</strong> is where you store your code and
-              collaborate with others.
+              <strong>Your Git host</strong> — Gitea, Forgejo, GitHub or another
+              — is where you store your code and collaborate with others.
             </p>
           </li>
           <li>
             <img src={CloudServerImage} alt="Server stack with cloud" />
             <p>
-              <strong>Lodestone</strong> helps you work with Gitea locally.
+              <strong>Lodestone</strong> helps you work with it locally.
             </p>
           </li>
         </ul>

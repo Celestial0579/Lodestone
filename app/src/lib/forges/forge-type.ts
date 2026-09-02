@@ -116,3 +116,20 @@ export function getForgeDisplayName(kind: ForgeKind): string {
       return 'the server'
   }
 }
+
+/**
+ * Where a user creates a personal access token on this forge.
+ *
+ * The path differs by family: Gitea and Forgejo keep tokens under the
+ * applications page, GitHub under its own token settings.
+ */
+export function getTokenSettingsURL(
+  htmlURL: string,
+  family: ForgeFamily
+): string {
+  const base = htmlURL.replace(/\/+$/, '')
+
+  return family === ForgeFamily.GitHub
+    ? `${base}/settings/tokens`
+    : `${base}/user/settings/applications`
+}

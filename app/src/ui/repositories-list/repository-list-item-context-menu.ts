@@ -51,7 +51,7 @@ export const generateRepositoryListContextMenu = (
     },
     { type: 'separator' },
     {
-      label: 'View on Gitea',
+      label: 'View in browser',
       action: () => config.onViewOnGitHub(repository),
       enabled: github,
     },

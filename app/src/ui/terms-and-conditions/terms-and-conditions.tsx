@@ -48,18 +48,19 @@ export class TermsAndConditions extends React.Component<
 
           <p>
             Lodestone is not affiliated with, endorsed by or supported by{' '}
-            <LinkButton uri={gitea}>Gitea Ltd</LinkButton> or GitHub, Inc.
-            Gitea, GitHub and Git are trademarks of their respective owners and
-            are named here only to say what this software works with.
+            <LinkButton uri={gitea}>Gitea Ltd</LinkButton>, the Forgejo project
+            or GitHub, Inc. Gitea, Forgejo, GitHub and Git are trademarks of
+            their respective owners and are named here only to say what this
+            software works with.
           </p>
 
           <h2>Your data</h2>
 
           <p>
-            Lodestone talks to the Gitea instances you sign in to and to nothing
-            else. It collects no usage data and sends no telemetry anywhere.
-            Your access tokens are held in the credential store your operating
-            system provides.
+            Lodestone talks to the instances you sign in to and to nothing else.
+            It collects no usage data and sends no telemetry anywhere. Your
+            access tokens are held in the credential store your operating system
+            provides.
           </p>
         </DialogContent>
 

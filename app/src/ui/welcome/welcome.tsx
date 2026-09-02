@@ -7,7 +7,7 @@ import { Account } from '../../models/account'
 import { SignInState, SignInStep } from '../../lib/stores'
 import { assertNever } from '../../lib/fatal-error'
 import { Start } from './start'
-import { SignInGitea } from './sign-in-gitea'
+import { SignInInstance } from './sign-in-instance'
 import { ConfigureGit } from './configure-git'
 import { UiView } from '../ui-view'
 import { getGlobalConfigValue } from '../../lib/git'
@@ -15,7 +15,7 @@ import { getGlobalConfigValue } from '../../lib/git'
 /** The steps along the Welcome flow. */
 export enum WelcomeStep {
   Start = 'Start',
-  SignInToGitea = 'SignInToGitea',
+  SignIn = 'SignIn',
   ConfigureGit = 'ConfigureGit',
 }
 
@@ -96,7 +96,7 @@ export class Welcome extends React.Component<IWelcomeProps, IWelcomeState> {
    * currently in the sign in step.
    */
   private get inSignInStep() {
-    return this.state.currentStep === WelcomeStep.SignInToGitea
+    return this.state.currentStep === WelcomeStep.SignIn
   }
 
   /**
@@ -154,9 +154,9 @@ export class Welcome extends React.Component<IWelcomeProps, IWelcomeState> {
           />
         )
 
-      case WelcomeStep.SignInToGitea:
+      case WelcomeStep.SignIn:
         return (
-          <SignInGitea
+          <SignInInstance
             dispatcher={this.props.dispatcher}
             advance={this.advanceToStep}
             signInState={signInState}
@@ -181,8 +181,8 @@ export class Welcome extends React.Component<IWelcomeProps, IWelcomeState> {
 
   private advanceToStep = (step: WelcomeStep) => {
     log.info(`[Welcome] advancing to step: ${step}`)
-    if (step === WelcomeStep.SignInToGitea) {
-      this.props.dispatcher.beginGiteaSignIn()
+    if (step === WelcomeStep.SignIn) {
+      this.props.dispatcher.beginSignIn()
     }
 
     // Refresh the global user name and email if we're moving to the

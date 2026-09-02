@@ -36,7 +36,7 @@ interface IEnterpriseServerEntryState {
   readonly serverAddress: string
 }
 
-/** An entry form for the address of a Gitea instance. */
+/** An entry form for the address of a forge. */
 export class EnterpriseServerEntry extends React.Component<
   IEnterpriseServerEntryProps,
   IEnterpriseServerEntryState
@@ -54,7 +54,7 @@ export class EnterpriseServerEntry extends React.Component<
     return (
       <Form onSubmit={this.onSubmit}>
         <TextBox
-          label="Gitea instance address"
+          label="Instance address"
           autoFocus={true}
           disabled={disableEntry}
           onValueChanged={this.onServerAddressChanged}

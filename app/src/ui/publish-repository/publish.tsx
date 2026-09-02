@@ -94,7 +94,7 @@ export class Publish extends React.Component<IPublishProps, IPublishState> {
   public constructor(props: IPublishProps) {
     super(props)
 
-    // Every account is an account on a Gitea instance, so there is only one
+    // Every account is an account on a forge, so there is only one
     // kind of destination to publish to and no tab to choose between them.
     const startingTab = PublishTab.Enterprise
 
@@ -264,9 +264,7 @@ export class Publish extends React.Component<IPublishProps, IPublishState> {
       case PublishTab.DotCom:
         return (
           <CallToAction actionTitle={signInTitle} onAction={this.signInDotCom}>
-            <div>
-              Sign in to your Gitea account to access your repositories.
-            </div>
+            <div>Sign in to access your repositories.</div>
           </CallToAction>
         )
       case PublishTab.Enterprise:
@@ -276,8 +274,8 @@ export class Publish extends React.Component<IPublishProps, IPublishState> {
             onAction={this.signInEnterprise}
           >
             <div>
-              If you are using Gitea at work, sign in to it to get access to
-              your repositories.
+              If you use a Git host at work, sign in to it to get access to your
+              repositories.
             </div>
           </CallToAction>
         )
@@ -312,7 +310,7 @@ export class Publish extends React.Component<IPublishProps, IPublishState> {
   }
 
   private signInEnterprise = () => {
-    this.props.dispatcher.showGiteaSignInDialog()
+    this.props.dispatcher.showSignInDialog()
   }
 
   private publishRepository = async () => {

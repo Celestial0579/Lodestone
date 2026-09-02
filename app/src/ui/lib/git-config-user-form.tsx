@@ -68,7 +68,7 @@ export class GitConfigUserForm extends React.Component<
           .filter(x => x.verified)
           .map(x => x.email)
 
-        // For Gitea we always include the stealth email, see
+        // For GitHub we always include the stealth email, see
         // https://github.com/desktop/desktop/pull/19968
         const emails = isDotComAccount(account)
           ? [...verifiedEmails, getStealthEmailForAccount(account)]
@@ -166,7 +166,7 @@ export class GitConfigUserForm extends React.Component<
     }
 
     // Upstream distinguishes a GitHub.com account from an Enterprise one here.
-    // Every account is a Gitea account, so when there is more than one the
+    // Every account is an account, so when there is more than one the
     // thing that tells them apart is the instance they belong to.
     const shouldShowAccountType = this.props.accounts.length > 1
 

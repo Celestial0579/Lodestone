@@ -14,7 +14,7 @@ interface ICIStatusProps {
 
   readonly dispatcher: Dispatcher
 
-  /** The Gitea repository to use when looking up commit status. */
+  /** The forge repository to use when looking up commit status. */
   readonly repository: GitHubRepository
 
   /** The commit ref (can be a SHA or a Git ref) for which to fetch status. */

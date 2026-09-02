@@ -114,7 +114,7 @@ export interface IAppState {
    * and SignInStore for more details. Null if no current sign in flow
    * is active. Sign in flows are initiated through the dispatcher methods
    * beginDotComSignIn and beginEnterpriseSign in or via the
-   * showDotcomSignInDialog and showGiteaSignInDialog methods.
+   * showDotcomSignInDialog and showSignInDialog methods.
    */
   readonly signInState: SignInState | null
 

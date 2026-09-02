@@ -40,7 +40,7 @@ export class CloneGenericRepository extends React.Component<
             autoFocus={true}
             label={
               <div className="clone-url-textbox-label">
-                <p>Repository URL or Gitea username and repository</p>
+                <p>Repository URL, or owner and repository name</p>
                 <p>
                   (<Ref>hubot/cool-repo</Ref>)
                 </p>

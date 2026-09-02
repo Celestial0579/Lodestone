@@ -13,7 +13,7 @@ const isLoopback = (host: string) =>
   loopbackHosts.some(x => host === x || host.startsWith(`${x}:`))
 
 /**
- * Validate the URL for a Gitea instance.
+ * Validate the URL for a forge.
  *
  * Returns the validated URL, or throws if the URL cannot be validated.
  */

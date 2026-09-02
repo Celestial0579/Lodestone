@@ -1,13 +1,14 @@
 /**
- * Checking a Gitea instance for new releases of Lodestone.
+ * Checking a repository for new releases of Lodestone.
  *
  * The upstream app updates itself from GitHub's Squirrel infrastructure, which
- * only serves GitHub Desktop. Lodestone ships with no update source at all,
- * so nothing is configured until someone points it at a repository they publish
- * releases to. Once they do, we ask that repository's release API whether there
- * is a newer version and, if there is, hand the user a link to it.
+ * only serves GitHub Desktop. Lodestone instead asks a repository's release API
+ * whether there is a newer version and, if there is, hands the user a link to
+ * it. Any forge will do: the releases endpoint has the same shape on Gitea,
+ * Forgejo and GitHub, and anything that needs translating is translated a layer
+ * below this one.
  *
- * We deliberately don't download or install anything. Gitea releases are plain
+ * We deliberately don't download or install anything. A release is a set of
  * file attachments rather than a Squirrel feed, so there is nothing to hand the
  * auto updater. Telling the user that a new version exists and taking them to
  * it is the honest version of this feature.
@@ -15,15 +16,16 @@
 
 import { SemVer, parse as parseSemVer, gt } from 'semver'
 import { Account } from '../../models/account'
-import { getGiteaAPIURL } from './gitea-endpoint'
+import { GiteaAPIPath } from './forge-type'
+import { getKnownApiEndpointForOrigin } from './forge-registry'
 import { ProjectRepositoryURL } from '../project-links'
 import { request, parsedResponse } from '../http'
 
 /** localStorage key holding the repository releases are published to. */
 const UpdateSourceKey = 'gitea-update-source-url'
 
-/** A repository on a Gitea instance that publishes Lodestone releases. */
-export interface IGiteaUpdateSource {
+/** A repository that publishes Lodestone releases. */
+export interface IUpdateSource {
   /** The API endpoint of the instance, e.g. https://git.example.com/api/v1 */
   readonly endpoint: string
   /** The repository owner, user or organisation. */
@@ -34,8 +36,8 @@ export interface IGiteaUpdateSource {
   readonly htmlURL: string
 }
 
-/** A release as published on a Gitea instance. */
-export interface IGiteaRelease {
+/** A release, as published on a forge. */
+export interface IForgeRelease {
   readonly version: SemVer
   /** The human readable release name, falling back to the tag. */
   readonly name: string
@@ -43,8 +45,8 @@ export interface IGiteaRelease {
   readonly htmlURL: string
 }
 
-/** The raw shape of a Gitea release, as far as we care about it. */
-interface IAPIGiteaRelease {
+/** The raw shape of a release, as far as we care about it. */
+interface IAPIForgeRelease {
   readonly tag_name: string
   readonly name: string | null
   readonly html_url: string
@@ -60,12 +62,12 @@ interface IAPIGiteaRelease {
  * string is kept rather than removed, so it is not mistaken for "never
  * configured" on the next launch.
  */
-export function getGiteaUpdateSourceURL(): string {
+export function getUpdateSourceURL(): string {
   return localStorage.getItem(UpdateSourceKey) ?? ProjectRepositoryURL
 }
 
 /** Store the repository to check for updates. Pass an empty string to unset. */
-export function setGiteaUpdateSourceURL(url: string): void {
+export function setUpdateSourceURL(url: string): void {
   localStorage.setItem(UpdateSourceKey, url.trim())
 }
 
@@ -78,7 +80,7 @@ export function setGiteaUpdateSourceURL(url: string): void {
  * Returns null if the URL isn't a usable repository address, which is what the
  * settings UI uses to tell the user their input won't work.
  */
-export function parseGiteaUpdateSource(url: string): IGiteaUpdateSource | null {
+export function parseUpdateSource(url: string): IUpdateSource | null {
   const trimmed = url.trim()
 
   if (trimmed === '') {
@@ -96,7 +98,7 @@ export function parseGiteaUpdateSource(url: string): IGiteaUpdateSource | null {
   }
 
   // Everything up to the last two path segments belongs to the instance, which
-  // lets this work for Gitea installations hosted under a sub path.
+  // lets this work for installations hosted under a sub path.
   const segments = parsed.pathname.split('/').filter(x => x.length > 0)
 
   if (segments.length < 2) {
@@ -113,11 +115,37 @@ export function parseGiteaUpdateSource(url: string): IGiteaUpdateSource | null {
   }
 
   return {
-    endpoint: getGiteaAPIURL(base),
+    endpoint: getUpdateAPIEndpoint(base),
     owner,
     name,
     htmlURL: `${base}/${owner}/${name}`,
   }
+}
+
+/**
+ * Where the API lives for an instance we only know the web address of.
+ *
+ * This has to answer without a network round trip, because the settings UI
+ * validates as the user types. Three sources, in order of confidence: the
+ * pairing recorded when the user signed in to this instance, github.com being
+ * the one host whose API sits on a different name, and otherwise the path that
+ * Gitea and Forgejo both use. Getting it wrong only costs a failed update
+ * check, which the settings UI reports.
+ */
+function getUpdateAPIEndpoint(base: string): string {
+  const known = getKnownApiEndpointForOrigin(base)
+
+  if (known !== undefined) {
+    return known
+  }
+
+  const { hostname } = new URL(base)
+
+  if (hostname === 'github.com' || hostname === 'www.github.com') {
+    return 'https://api.github.com'
+  }
+
+  return `${base}${GiteaAPIPath}`
 }
 
 /**
@@ -128,7 +156,7 @@ export function parseGiteaUpdateSource(url: string): IGiteaUpdateSource | null {
  * account's token when the hosts line up.
  */
 function findTokenForSource(
-  source: IGiteaUpdateSource,
+  source: IUpdateSource,
   accounts: ReadonlyArray<Account>
 ): string | null {
   return accounts.find(a => a.endpoint === source.endpoint)?.token ?? null
@@ -144,10 +172,10 @@ const parseReleaseVersion = (tag: string) => parseSemVer(tag.replace(/^v/, ''))
  * reached, or when the latest release doesn't carry a version number we can
  * compare against.
  */
-export async function fetchLatestGiteaRelease(
-  source: IGiteaUpdateSource,
+export async function fetchLatestRelease(
+  source: IUpdateSource,
   accounts: ReadonlyArray<Account>
-): Promise<IGiteaRelease | null> {
+): Promise<IForgeRelease | null> {
   const token = findTokenForSource(source, accounts)
   const path = `repos/${source.owner}/${source.name}/releases/latest`
 
@@ -161,7 +189,7 @@ export async function fetchLatestGiteaRelease(
       return null
     }
 
-    const release = await parsedResponse<IAPIGiteaRelease>(response)
+    const release = await parsedResponse<IAPIForgeRelease>(response)
 
     if (release.draft || release.prerelease) {
       return null
@@ -189,7 +217,7 @@ export async function fetchLatestGiteaRelease(
 
 /** Whether the given release is newer than the version we're running. */
 export function isNewerRelease(
-  release: IGiteaRelease,
+  release: IForgeRelease,
   currentVersion: string
 ): boolean {
   const current = parseSemVer(currentVersion)

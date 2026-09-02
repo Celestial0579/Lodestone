@@ -119,3 +119,99 @@ export async function detectForge(
 
   return kind
 }
+
+/** What an address turned out to be, and where its API lives. */
+export interface IResolvedInstance {
+  readonly kind: ForgeKind
+  readonly family: ForgeFamily
+  /** The API endpoint to store on the account. */
+  readonly endpoint: string
+  /** The web address, for links shown to the user. */
+  readonly htmlURL: string
+  readonly version: string | null
+}
+
+/**
+ * Work out what forge runs at an address the user typed.
+ *
+ * No forge is privileged here. The same probe decides between all of them:
+ * `/api/v1/version` answers on Gitea and Forgejo, `/api/v3/meta` on GitHub
+ * Enterprise Server, and github.com is recognised by name because its API
+ * lives on a different host entirely.
+ *
+ * Returns null when nothing recognisable answers, which the sign-in flow
+ * reports rather than guessing an endpoint that will fail later.
+ */
+export async function resolveInstance(
+  address: string
+): Promise<IResolvedInstance | null> {
+  let base: string
+
+  try {
+    const url = new URL(
+      /^https?:\/\//.test(address) ? address : `https://${address}`
+    )
+    base = `${url.origin}${url.pathname.replace(/\/+$/, '')}`
+  } catch {
+    return null
+  }
+
+  const { hostname } = new URL(base)
+
+  // github.com serves its API from another host, so it cannot be probed the
+  // same way. It is recognised by name, not treated as a default.
+  if (hostname === 'github.com' || hostname === 'api.github.com') {
+    return {
+      kind: ForgeKind.DotCom,
+      family: ForgeFamily.GitHub,
+      endpoint: 'https://api.github.com',
+      htmlURL: 'https://github.com',
+      version: null,
+    }
+  }
+
+  // Gitea and Forgejo first: they answer on a path GitHub Enterprise does not
+  // serve, so a positive answer is unambiguous.
+  const giteaVersion = await fetchJson(`${base}/api/v1/version`, null)
+
+  if (typeof giteaVersion?.version === 'string') {
+    const endpoint = `${base}/api/v1`
+    const kind = await detectForge(endpoint)
+
+    return {
+      kind: kind === ForgeKind.Unknown ? ForgeKind.Gitea : kind,
+      family: ForgeFamily.Gitea,
+      endpoint,
+      htmlURL: base,
+      version: giteaVersion.version,
+    }
+  }
+
+  // GitHub Enterprise Server. `/api/v3/meta` needs no authentication and is
+  // the same probe upstream uses.
+  const ghesMeta = await fetchJson(`${base}/api/v3/meta`, null)
+
+  if (ghesMeta !== null) {
+    const endpoint = `${base}/api/v3`
+    const version =
+      typeof ghesMeta?.installed_version === 'string'
+        ? ghesMeta.installed_version
+        : null
+
+    recordForge(endpoint, {
+      kind: ForgeKind.GHES,
+      version,
+      verified: true,
+    })
+
+    return {
+      kind: ForgeKind.GHES,
+      family: ForgeFamily.GitHub,
+      endpoint,
+      htmlURL: base,
+      version,
+    }
+  }
+
+  return null
+}

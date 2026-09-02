@@ -61,9 +61,10 @@ describe('GitEmailNotFoundWarning', () => {
     )
     assert.notEqual(warning, null)
     assert.ok(
-      warning?.textContent?.includes('does not match your Gitea account')
+      warning?.textContent?.includes('does not match your account')
     )
-    // Gitea has no equivalent of GitHub's commit attribution article, so the
+    // Other forges have no equivalent of GitHub's commit attribution article,
+    // so the
     // warning tells the user what to do instead of linking somewhere useless.
     assert.ok(warning?.textContent?.includes('Add it under Settings, Account'))
     assert.equal(
@@ -75,7 +76,7 @@ describe('GitEmailNotFoundWarning', () => {
     assert.equal(srOnly?.getAttribute('aria-live'), 'polite')
     assert.ok(
       srOnly?.textContent?.startsWith(
-        'This email address does not match your Gitea account.'
+        'This email address does not match your account.'
       )
     )
   })
@@ -91,7 +92,7 @@ describe('GitEmailNotFoundWarning', () => {
     const warning = view.container.querySelector('.git-email-not-found-warning')
 
     assert.notEqual(warning?.querySelector('.green-circle .check-icon'), null)
-    assert.ok(warning?.textContent?.includes('matches your Gitea account'))
+    assert.ok(warning?.textContent?.includes('matches your account'))
     assert.equal(
       screen.queryByRole('link', {
         name: 'Learn more about commit attribution',

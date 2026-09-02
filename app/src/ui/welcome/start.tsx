@@ -23,13 +23,14 @@ export class Start extends React.Component<IStartProps, {}> {
             Welcome to <span>Lodestone</span>
           </h1>
           <p id="start-description" className="welcome-text">
-            Lodestone is a seamless way to contribute to projects on your Gitea
-            instance. Sign in below to get started with your existing projects.
+            Lodestone is a seamless way to contribute to projects on Gitea,
+            Forgejo, GitHub and other Git hosts. Sign in below to get started
+            with your existing projects.
           </p>
 
           <div className="welcome-main-buttons">
-            <Button type="submit" onClick={this.signInToGitea} autoFocus={true}>
-              Sign in to Gitea
+            <Button type="submit" onClick={this.signIn} autoFocus={true}>
+              Sign in
             </Button>
           </div>
           <div className="skip-action-container">
@@ -41,17 +42,17 @@ export class Start extends React.Component<IStartProps, {}> {
 
         <div className="start-footer">
           <p>
-            Lodestone talks to your Gitea instance and nothing else. It sends no
-            usage data anywhere.
+            Lodestone talks to the instance you sign in to and nothing else. It
+            sends no usage data anywhere.
           </p>
         </div>
       </section>
     )
   }
 
-  private signInToGitea = (event?: React.MouseEvent<HTMLButtonElement>) => {
+  private signIn = (event?: React.MouseEvent<HTMLButtonElement>) => {
     event?.preventDefault()
-    this.props.advance(WelcomeStep.SignInToGitea)
+    this.props.advance(WelcomeStep.SignIn)
   }
 
   private skip = () => {

@@ -27,7 +27,7 @@ export function buildAutocompletionProviders(
     new EmojiAutocompletionProvider(emoji),
   ]
 
-  // Issues autocompletion is only available for Gitea repositories.
+  // Issues autocompletion is only available for forge repositories.
   const gitHubRepository = isRepositoryWithGitHubRepository(repository)
     ? getNonForkGitHubRepository(repository)
     : null

@@ -78,7 +78,7 @@ describe('rulesets and publish surfaces', () => {
 
     assert.notEqual(dialogContent, null)
     assert.ok(
-      screen.getByText('Publish your repository to Gitea. Need help?', {
+      screen.getByText('Publish your repository. Need help?', {
         exact: false,
       })
     )

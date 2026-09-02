@@ -738,7 +738,7 @@ export class App extends React.Component<IAppProps, IAppState> {
 
     const branchName = tip.branch.upstreamWithoutRemote
 
-    // Gitea needs both sides of a comparison, so fall back to the branch
+    // The forge needs both sides of a comparison, so fall back to the branch
     // itself when we have no default branch to compare against.
     const url =
       view === 'compare'
@@ -1344,12 +1344,12 @@ export class App extends React.Component<IAppProps, IAppState> {
 
   /**
    * Opens a browser to the issue creation page
-   * of the current Gitea repository.
+   * of the current forge repository.
    */
   private openIssueCreationOnGitHub() {
     const repository = this.getRepository()
     // this will likely never be null since we disable the
-    // issue creation menu item for non-Gitea repositories
+    // issue creation menu item for non-forge repositories
     if (repository instanceof Repository) {
       this.props.dispatcher.openIssueCreationPage(repository)
     }

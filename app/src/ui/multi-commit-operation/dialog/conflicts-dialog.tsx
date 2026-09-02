@@ -55,7 +55,7 @@ interface IConflictsDialogProps {
    */
   readonly onResolveWithCopilot?: () => void
   /**
-   * Authenticated Gitea accounts. Used to determine whether the
+   * Authenticated forge accounts. Used to determine whether the
    * "Resolve with Copilot" button should be shown — the button is only
    * available when at least one account has Copilot for Desktop enabled.
    */

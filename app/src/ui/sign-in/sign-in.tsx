@@ -16,7 +16,12 @@ import { OkCancelButtonGroup } from '../dialog/ok-cancel-button-group'
 import { Ref } from '../lib/ref'
 import { LinkButton } from '../lib/link-button'
 import { getHTMLURL } from '../../lib/api'
-import { isGiteaEndpoint } from '../../lib/gitea/gitea-endpoint'
+import { supportsForgeOAuth } from '../../lib/forges/forge-oauth'
+import {
+  getForgeDisplayName,
+  getForgeFamily,
+  getTokenSettingsURL,
+} from '../../lib/forges/forge-type'
 import { formatTokenScopes } from '../../lib/gitea/gitea-token-scopes'
 
 interface ISignInProps {
@@ -103,10 +108,10 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
           .then(() => this.props.dispatcher.setSignInEndpoint(state.endpoint))
         break
       case SignInStep.Authentication:
-        if (isGiteaEndpoint(state.endpoint)) {
-          this.props.dispatcher.signInWithToken(this.state.token)
-        } else {
+        if (supportsForgeOAuth(state.endpoint)) {
           this.props.dispatcher.requestBrowserAuthentication()
+        } else {
+          this.props.dispatcher.signInWithToken(this.state.token)
         }
         break
       case SignInStep.Success:
@@ -146,16 +151,16 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
         primaryButtonText = 'Continue'
         break
       case SignInStep.ExistingAccountWarning:
-        primaryButtonText = isGiteaEndpoint(state.endpoint)
-          ? 'Continue'
-          : continueWithBrowserLabel
+        primaryButtonText = supportsForgeOAuth(state.endpoint)
+          ? continueWithBrowserLabel
+          : 'Continue'
         break
       case SignInStep.Authentication:
-        if (isGiteaEndpoint(state.endpoint)) {
+        if (supportsForgeOAuth(state.endpoint)) {
+          primaryButtonText = continueWithBrowserLabel
+        } else {
           disableSubmit = this.state.token.trim().length === 0
           primaryButtonText = 'Sign in'
-        } else {
-          primaryButtonText = continueWithBrowserLabel
         }
         break
       default:
@@ -183,7 +188,7 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
           <Ref>{state.existingAccount.login}</Ref>. If you continue, you will
           first be signed out.
         </p>
-        {isGiteaEndpoint(state.endpoint) ? null : browserSignInInfoContent}
+        {supportsForgeOAuth(state.endpoint) ? browserSignInInfoContent : null}
       </DialogContent>
     )
   }
@@ -193,7 +198,7 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
       <DialogContent>
         <Row>
           <TextBox
-            label="Gitea instance address"
+            label="Instance address"
             value={this.state.endpoint}
             onValueChanged={this.onEndpointChanged}
             placeholder="https://git.example.com"
@@ -212,7 +217,7 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
         </p>
       ) : undefined
 
-    if (isGiteaEndpoint(state.endpoint)) {
+    if (!supportsForgeOAuth(state.endpoint)) {
       return this.renderTokenStep(state, credentialHelperInfo)
     }
 
@@ -225,16 +230,20 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
   }
 
   /**
-   * The Gitea flavour of the authentication step. Gitea instances don't share
-   * a registered OAuth application the way Gitea does, so we ask for a
-   * personal access token instead, which works against any instance.
+   * Sign in with a personal access token.
+   *
+   * This is what is offered when no OAuth application is registered for the
+   * instance, which is the normal case for a self-hosted forge. It needs no
+   * setup on the server and works the same on every provider.
    */
   private renderTokenStep(
     state: IAuthenticationState,
     credentialHelperInfo: JSX.Element | undefined
   ) {
-    const htmlURL = getHTMLURL(state.endpoint)
-    const tokenSettingsURL = `${htmlURL}/user/settings/applications`
+    const htmlURL = state.htmlURL
+    const family = getForgeFamily(state.endpoint)
+    const tokenSettingsURL = getTokenSettingsURL(htmlURL, family)
+    const forgeName = getForgeDisplayName(state.forgeKind)
 
     return (
       <DialogContent>
@@ -243,7 +252,7 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
           Sign in to <Ref>{new URL(htmlURL).host}</Ref> with a personal access
           token.{' '}
           <LinkButton uri={tokenSettingsURL}>
-            Generate a token in Gitea
+            Generate a token in {forgeName}
           </LinkButton>{' '}
           and paste it below.
         </p>
@@ -300,9 +309,9 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
 
     const title =
       state.kind === SignInStep.Authentication
-        ? isGiteaEndpoint(state.endpoint)
-          ? SignInWithTokenTitle
-          : SignInWithBrowserTitle
+        ? supportsForgeOAuth(state.endpoint)
+          ? SignInWithBrowserTitle
+          : SignInWithTokenTitle
         : DefaultTitle
 
     return (

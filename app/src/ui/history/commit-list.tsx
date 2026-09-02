@@ -33,7 +33,7 @@ import * as octicons from '../octicons/octicons.generated'
 const RowHeight = 50
 
 interface ICommitListProps {
-  /** The Gitea repository associated with this commit (if found) */
+  /** The forge repository associated with this commit (if found) */
   readonly gitHubRepository: GitHubRepository | null
 
   /** The list of commits SHAs to display, in order. */
@@ -86,7 +86,7 @@ interface ICommitListProps {
 
   readonly onAmendCommit?: (commit: Commit, isLocalCommit: boolean) => void
 
-  /** Callback to fire to open a given commit on Gitea */
+  /** Callback to fire to open a given commit on the forge */
   readonly onViewCommitOnGitHub?: (sha: string) => void
 
   /** Callback to fire to cancel a keyboard reordering operation */
@@ -739,14 +739,14 @@ export class CommitList extends React.Component<
       this.props.canResetToCommits === true && isResettableCommit
     const canBeCheckedOut = row > 0 //Cannot checkout the current commit
 
-    let viewOnGitHubLabel = 'View on Gitea'
+    let viewOnGitHubLabel = 'View in browser'
     const gitHubRepository = this.props.gitHubRepository
 
     if (
       gitHubRepository &&
       gitHubRepository.endpoint !== getDotComAPIEndpoint()
     ) {
-      viewOnGitHubLabel = 'View on Gitea'
+      viewOnGitHubLabel = 'View in browser'
     }
 
     const items: IMenuItem[] = []

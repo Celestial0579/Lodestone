@@ -45,7 +45,7 @@ export interface IPullRequestListItemProps {
 
   readonly dispatcher: Dispatcher
 
-  /** The Gitea repository to use when looking up commit status. */
+  /** The forge repository to use when looking up commit status. */
   readonly repository: GitHubRepository
 
   /** When a drag element has landed on a pull request */

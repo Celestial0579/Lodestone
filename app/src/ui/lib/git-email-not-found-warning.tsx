@@ -15,7 +15,7 @@ interface IGitEmailNotFoundWarningProps {
 
 /**
  * A component which just displays a warning to the user if their git config
- * email doesn't match any of the emails in their Gitea (Enterprise) account.
+ * email doesn't match any of the emails in their forge (Enterprise) account.
  */
 export class GitEmailNotFoundWarning extends React.Component<IGitEmailNotFoundWarningProps> {
   private buildMessage(isAttributableEmail: boolean) {
@@ -27,7 +27,7 @@ export class GitEmailNotFoundWarning extends React.Component<IGitEmailNotFoundWa
       </span>
     )
 
-    // Upstream links to GitHub's article on commit attribution. Gitea has no
+    // Upstream links to GitHub's article on commit attribution. Other forges have no
     // equivalent page, so say what to do instead of pointing somewhere useless.
     const learnMore = !isAttributableEmail
       ? 'Add it under Settings, Account on your instance.'
@@ -83,10 +83,10 @@ export class GitEmailNotFoundWarning extends React.Component<IGitEmailNotFoundWa
 
   private getAccountTypeDescription() {
     // Upstream distinguishes GitHub.com from Enterprise accounts here. Every
-    // account is a Gitea account, so the only thing that varies is whether the
+    // account is an account, so the only thing that varies is whether the
     // user has one or several.
     return this.props.accounts.length === 1
-      ? 'your Gitea account'
-      : 'any of your Gitea accounts'
+      ? 'your account'
+      : 'any of your accounts'
   }
 }

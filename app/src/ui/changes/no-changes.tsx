@@ -286,7 +286,7 @@ export class NoChanges extends React.Component<
 
     return this.renderMenuBackedAction(
       'view-repository-on-github',
-      `Open the repository page on Gitea in your browser`,
+      `Open the repository page in your browser`,
       undefined,
       this.onViewOnGitHubClicked
     )
@@ -473,8 +473,8 @@ export class NoChanges extends React.Component<
     return (
       <MenuBackedSuggestedAction
         key="publish-repository-action"
-        title="Publish your repository to Gitea"
-        description="This repository is currently only available on your local machine. By publishing it on Gitea you can share it, and collaborate with others."
+        title="Publish your repository"
+        description="This repository is currently only available on your local machine. By publishing it you can share it, and collaborate with others."
         discoverabilityContent={discoverabilityContent}
         buttonText="Publish repository"
         menuItemId={itemId}
@@ -506,8 +506,8 @@ export class NoChanges extends React.Component<
     const description = (
       <>
         The current branch (<Ref>{tip.branch.name}</Ref>) hasn't been published
-        to the remote yet. By publishing it {isGitHub ? 'to Gitea' : ''} you can
-        share it, {isGitHub ? 'open a pull request, ' : ''}
+        to the remote yet. By publishing it you can share it,{' '}
+        {isGitHub ? 'open a pull request, ' : ''}
         and collaborate with others.
       </>
     )
@@ -550,13 +550,10 @@ export class NoChanges extends React.Component<
       return null
     }
 
-    const isGitHub = this.props.repository.gitHubRepository !== null
-
     const description = (
       <>
         The current branch (<Ref>{tip.branch.name}</Ref>) has{' '}
-        {aheadBehind.behind === 1 ? 'a commit' : 'commits'} on{' '}
-        {isGitHub ? 'Gitea' : 'the remote'} that{' '}
+        {aheadBehind.behind === 1 ? 'a commit' : 'commits'} on the remote that{' '}
         {aheadBehind.behind === 1 ? 'does not' : 'do not'} exist on your
         machine.
       </>
@@ -603,8 +600,6 @@ export class NoChanges extends React.Component<
       return null
     }
 
-    const isGitHub = this.props.repository.gitHubRepository !== null
-
     const itemsToPushTypes = []
     const itemsToPushDescriptions = []
 
@@ -628,7 +623,7 @@ export class NoChanges extends React.Component<
 
     const description = `You have ${itemsToPushDescriptions.join(
       ' and '
-    )} waiting to be pushed to ${isGitHub ? 'Gitea' : 'the remote'}.`
+    )} waiting to be pushed to the remote.`
 
     const discoverabilityContent = (
       <>
@@ -673,7 +668,7 @@ export class NoChanges extends React.Component<
     const description = (
       <>
         The current branch (<Ref>{tip.branch.name}</Ref>) is already published
-        to Gitea. Create a pull request to propose and collaborate on your
+        to the remote. Create a pull request to propose and collaborate on your
         changes.
       </>
     )
@@ -706,7 +701,7 @@ export class NoChanges extends React.Component<
       description: (
         <>
           The current branch (<Ref>{tip.branch.name}</Ref>) is already published
-          to Gitea. Preview the changes this pull request will have before
+          to the remote. Preview the changes this pull request will have before
           proposing your changes.
         </>
       ),

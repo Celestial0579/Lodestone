@@ -2275,7 +2275,7 @@ export function getEndpointForRepository(url: string): string {
   if (parsed.hostname === 'github.com') {
     return getDotComAPIEndpoint()
   } else {
-    // Anything that isn't GitHub.com is assumed to be a Gitea instance, which
+    // Anything that isn't GitHub.com is assumed to be a forge, which
     // serves its API from `/api/v1` on the same origin as the web UI.
     return getGiteaAPIURL(url)
   }

@@ -48,7 +48,7 @@ interface ICICheckRunListItemProps {
   /** Callback for when a check run is clicked */
   readonly onCheckRunExpansionToggleClick: (checkRun: IRefCheck) => void
 
-  /** Callback to opens check runs target url (maybe Gitea, maybe third party) */
+  /** Callback to opens check runs target url (maybe the forge, maybe third party) */
   readonly onViewCheckExternally?: (checkRun: IRefCheck) => void
 
   /** Callback to open a job steps link on dotcom*/

@@ -8,7 +8,7 @@
 
 /** The repository this build is published from. */
 export const ProjectRepositoryURL =
-  'https://git.firestrike.de/tim.heyne/Gitea_Desktop'
+  'https://git.firestrike.de/tim.heyne/Lodestone'
 
 /** Where users report problems with this build. */
 export const ProjectIssuesURL = `${ProjectRepositoryURL}/issues`

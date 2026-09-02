@@ -17,7 +17,10 @@
 import { SemVer, parse as parseSemVer, gt } from 'semver'
 import { Account } from '../../models/account'
 import { GiteaAPIPath } from './forge-type'
-import { getKnownApiEndpointForOrigin } from './forge-registry'
+import {
+  getKnownApiEndpointForOrigin,
+  recordApiEndpointForOrigin,
+} from './forge-registry'
 import { ProjectRepositoryURL } from '../project-links'
 import { request, parsedResponse } from '../http'
 
@@ -149,6 +152,24 @@ function getUpdateAPIEndpoint(base: string): string {
 }
 
 /**
+ * The same instance addressed as the other dialect.
+ *
+ * Used only after the first guess came back 404, to cover a host whose product
+ * we could not know without signing in to it.
+ */
+function getAlternateAPIEndpoint(endpoint: string): string | null {
+  if (endpoint.endsWith(GiteaAPIPath)) {
+    return `${endpoint.slice(0, -GiteaAPIPath.length)}/api/v3`
+  }
+
+  if (endpoint.endsWith('/api/v3')) {
+    return `${endpoint.slice(0, -'/api/v3'.length)}${GiteaAPIPath}`
+  }
+
+  return null
+}
+
+/**
  * The token to use when asking about releases.
  *
  * Update repositories on an internal instance are frequently private, and the
@@ -180,7 +201,24 @@ export async function fetchLatestRelease(
   const path = `repos/${source.owner}/${source.name}/releases/latest`
 
   try {
-    const response = await request(source.endpoint, token, 'GET', path)
+    let response = await request(source.endpoint, token, 'GET', path)
+
+    // The endpoint was guessed without a network round trip, so it can be the
+    // wrong dialect for a host nobody has signed in to - a GitHub Enterprise
+    // server guessed as Gitea, or the reverse. A 404 is what that looks like,
+    // and it is cheap to try the other one rather than report no updates.
+    if (response.status === 404) {
+      const alternate = getAlternateAPIEndpoint(source.endpoint)
+
+      if (alternate !== null) {
+        const retry = await request(alternate, token, 'GET', path)
+
+        if (retry.ok) {
+          recordApiEndpointForOrigin(source.htmlURL, alternate)
+          response = retry
+        }
+      }
+    }
 
     if (!response.ok) {
       log.warn(

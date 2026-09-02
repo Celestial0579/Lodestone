@@ -119,13 +119,19 @@ function packageWindows() {
   }
 
   // Squirrel records this in the NuGet metadata, refuses an empty value, and
-  // Squirrel.Windows downloads it to app.ico in the install directory to use as
-  // the Add/Remove Programs icon. It therefore declares this package's own
-  // identity and must not point at anyone else's mark. Set LODESTONE_ICON_URL
-  // to a reachable copy of the Lodestone mark when publishing your own builds.
+  // Squirrel.Windows downloads whatever it finds there to app.ico, to use as
+  // the Add/Remove Programs icon. So it has to be an actual .ico, reachable
+  // without signing in, and it must be this package's own mark rather than
+  // anyone else's.
+  //
+  // The default points at the icon in the project repository. That repository
+  // is private, so the download fails and Windows falls back to the icon
+  // embedded in the executable - which is the same artwork, so nothing looks
+  // wrong. Set LODESTONE_ICON_URL to a publicly reachable .ico to have the
+  // downloaded copy work as intended.
   const iconUrl =
     process.env.LODESTONE_ICON_URL ??
-    `${ProjectRepositoryURL}/raw/branch/main/app/static/logos/lodestone-mark.svg`
+    `${ProjectRepositoryURL}/raw/branch/main/app/static/logos/prod/icon-logo.ico`
 
   const nugetPkgName = getWindowsIdentifierName()
   const options: electronInstaller.Options = {

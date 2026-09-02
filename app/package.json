@@ -9,7 +9,7 @@
     "type": "git",
     "url": ""
   },
-  "description": "Lodestone, a desktop client for Gitea",
+  "description": "Lodestone, a desktop client for Gitea, Forgejo, GitHub and other Git hosts",
   "author": {
     "name": "Firestrike",
     "email": "",

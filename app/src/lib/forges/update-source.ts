@@ -184,7 +184,7 @@ export async function fetchLatestRelease(
 
     if (!response.ok) {
       log.warn(
-        `[gitea-updates] ${source.htmlURL} returned ${response.status} when asked for its latest release`
+        `[updates] ${source.htmlURL} returned ${response.status} when asked for its latest release`
       )
       return null
     }
@@ -199,7 +199,7 @@ export async function fetchLatestRelease(
 
     if (version === null) {
       log.warn(
-        `[gitea-updates] release tag '${release.tag_name}' is not a version number`
+        `[updates] release tag '${release.tag_name}' is not a version number`
       )
       return null
     }
@@ -210,7 +210,7 @@ export async function fetchLatestRelease(
       htmlURL: release.html_url,
     }
   } catch (e) {
-    log.warn(`[gitea-updates] failed checking ${source.htmlURL}`, e)
+    log.warn(`[updates] failed checking ${source.htmlURL}`, e)
     return null
   }
 }

@@ -23,6 +23,15 @@ jobs:
       # but PWD - no PATH. Naming bash gives the tests the kind of login shell
       # any desktop would have.
       SHELL: /bin/bash
+      # Every check appends here as well as to the console, so that a failure
+      # can be reported somewhere readable. See "Report the failure" below.
+      CI_LOG: ci.log
+
+    defaults:
+      run:
+        # pipefail matters: without it `cmd | tee` reports tee's exit code, and
+        # a failing check would quietly pass.
+        shell: bash -eo pipefail {0}
 
     steps:
       - uses: actions/checkout@v4
@@ -39,20 +48,61 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libsecret-1-dev libsecret-1-0
 
-      # postinstall tries to fetch the data submodules from the hosts named in
-      # .gitmodules. This job does not need them - they are only bundled when
-      # packaging - so it warns and carries on if the runner cannot reach them.
+      # postinstall fetches the data submodules from the hosts named in
+      # .gitmodules, which are mirrors on this instance. This job does not need
+      # them - they are only bundled when packaging - so it warns and carries
+      # on if they cannot be reached.
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile 2>&1 | tee -a "$CI_LOG"
 
       - name: Check formatting
-        run: yarn prettier
+        run: yarn prettier 2>&1 | tee -a "$CI_LOG"
 
       - name: Typecheck
-        run: yarn tsc --noEmit -p tsconfig.json
+        run: yarn tsc --noEmit -p tsconfig.json 2>&1 | tee -a "$CI_LOG"
 
-      - name: Test the Gitea translation layer
-        run: node script/test.mjs app/test/unit/gitea
+      - name: Test the forge translation layer
+        run: node script/test.mjs app/test/unit/gitea 2>&1 | tee -a "$CI_LOG"
 
       - name: Test
-        run: yarn test:unit
+        run: yarn test:unit 2>&1 | tee -a "$CI_LOG"
+
+      # This instance runs Forgejo 15.0.7, whose API has no endpoint for
+      # workflow logs and whose web routes accept neither basic auth nor an API
+      # token. A failing run therefore cannot be read programmatically at all.
+      # Posting the tail of the log as a comment is what makes one diagnosable
+      # without downloading it by hand.
+      #
+      # Delete this step to switch that off; nothing else depends on it.
+      - name: Report the failure
+        if: failure()
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
+          RUN_NUMBER: ${{ github.run_number }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          # Comments have a size limit, and the interesting part is the end.
+          tail -c 40000 "$CI_LOG" > tail.txt || echo '(no output captured)' > tail.txt
+
+          python3 - <<'PY' > comment.json
+          import json, os
+
+          tail = open('tail.txt', encoding='utf-8', errors='replace').read()
+          # A fence inside the log would end the block early.
+          tail = tail.replace('```', '`​``')
+
+          body = (
+              f"Run **#{os.environ['RUN_NUMBER']}** failed on "
+              f"`{os.environ['COMMIT'][:9]}`.\n\n"
+              "Tail of the combined output:\n\n"
+              f"```\n{tail}\n```\n"
+          )
+          print(json.dumps({'body': body}))
+          PY
+
+          curl -sS -X POST "$API/issues/1/comments" \
+            -H "Authorization: token $TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary @comment.json \
+            -o /dev/null -w 'reported to issue #1: HTTP %{http_code}\n'

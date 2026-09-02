@@ -60,9 +60,7 @@ describe('GitEmailNotFoundWarning', () => {
       '#git-email-not-found-warning-for-screen-readers.sr-only'
     )
     assert.notEqual(warning, null)
-    assert.ok(
-      warning?.textContent?.includes('does not match your account')
-    )
+    assert.ok(warning?.textContent?.includes('does not match your account'))
     // Other forges have no equivalent of GitHub's commit attribution article,
     // so the
     // warning tells the user what to do instead of linking somewhere useless.

@@ -15,6 +15,7 @@
  * merged without conflicting with the Gitea support.
  */
 
+import { canRefresh, refreshAccessToken } from '../forges/forge-token-refresh'
 import { coreRequest, HTTPMethod } from '../http-core'
 import { getGiteaHTMLURL } from './gitea-endpoint'
 
@@ -402,19 +403,32 @@ export async function giteaRequest(
     ...(customHeaders as Record<string, string> | undefined),
   }
 
-  if (token) {
-    headers['Authorization'] = `token ${token}`
-  }
+  const send = (bearer: string | null) =>
+    coreRequest(
+      endpoint,
+      null,
+      method,
+      translatedPath,
+      jsonBody,
+      bearer === null
+        ? headers
+        : { ...headers, Authorization: `token ${bearer}` },
+      reloadCache
+    )
 
-  const response = await coreRequest(
-    endpoint,
-    null,
-    method,
-    translatedPath,
-    jsonBody,
-    headers,
-    reloadCache
-  )
+  let response = await send(token)
+
+  // An OAuth2 access token from a browser sign-in expires, typically after an
+  // hour, where a personal access token never does. When one has, renew it and
+  // send the request again - once. Anything else 401 means is not something a
+  // second attempt fixes.
+  if (response.status === 401 && canRefresh(token)) {
+    const renewed = await refreshAccessToken(token as string)
+
+    if (renewed !== null) {
+      response = await send(renewed)
+    }
+  }
 
   const transform =
     resolved?.transform ??

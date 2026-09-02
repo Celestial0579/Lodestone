@@ -69,21 +69,30 @@ The client ID is not a secret. Lodestone proves itself with
 [PKCE](https://datatracker.ietf.org/doc/html/rfc7636) instead, generating a
 fresh verifier for every sign-in.
 
+Gitea and Forgejo issue access tokens that expire — an hour by default — and a
+refresh token alongside. Lodestone renews in the background when a request
+comes back unauthorised, so a browser sign-in lasts as long as the refresh
+token does. Both are kept in the credential store your operating system
+provides, and both are deleted when you sign out.
+
 Plain `http://` is accepted for `localhost` only. Everywhere else TLS is
 required, because the token is sent to that host.
 
 ## Updates
 
-Lodestone ships with **no update source configured**. Nothing is checked and
-nothing is reported anywhere until you point it at a repository yourself.
+By default Lodestone checks **this project's own repository** for new
+releases, and nothing else. That is one request to
+`git.firestrike.de` on startup, asking for the latest release tag. No
+identifying information is sent with it beyond what any HTTP request carries.
 
-To enable update checks, open **Preferences -> Advanced -> Updates** and enter
-the repository that publishes your releases, e.g.
-`https://git.example.com/team/lodestone`. Any host works; the app asks that
-repository's release API whether a newer version exists and links you to it.
-Releases are downloaded by hand; the app never installs anything on its own.
-If the repository is private, the account you are signed in to on that same
-instance is used to read it.
+To check somewhere else — your own mirror, or a fork you build yourself — open
+**Preferences -> Advanced -> Updates** and enter that repository, e.g.
+`https://git.example.com/team/lodestone`. Any host works. **Clear the field to
+turn update checks off entirely**, and nothing is contacted at all.
+
+Releases are downloaded by hand; the app never installs anything on its own,
+and prereleases are not offered as updates. If the repository is private, the
+account you are signed in to on that same instance is used to read it.
 
 If you run a Squirrel-compatible update feed, set `LODESTONE_UPDATES_URL` at
 build time to use the built-in auto updater instead.

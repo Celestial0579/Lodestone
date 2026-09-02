@@ -272,7 +272,7 @@ export class SignIn extends React.Component<ISignInProps, ISignInState> {
         </p>
         <p className="token-scopes">
           Select these scopes when creating the token:{' '}
-          <Ref>{formatTokenScopes()}</Ref>
+          <Ref>{formatTokenScopes(family)}</Ref>
         </p>
         <Row>
           <TextBox

@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { getHTMLURL } from '../../lib/api'
 import { Commit } from '../../models/commit'
 import { lookupPreferredEmail } from '../../lib/email'
 import { setGlobalConfigValue } from '../../lib/git/config'
@@ -207,12 +208,16 @@ export class ConfigureGitUser extends React.Component<
       return
     }
 
-    const accountTypeSuffix = isDotComAccount(account) ? '' : ' Enterprise'
+    // Which account, named as the user knows it: the instance host tells
+    // them apart far better than "Enterprise" ever did.
+    const accountName = isDotComAccount(account)
+      ? 'GitHub'
+      : new URL(getHTMLURL(account.endpoint)).host
 
     return (
       <div>
         <RadioButton
-          label={`Use my ${accountTypeSuffix} account name and email address`}
+          label={`Use my ${accountName} account name and email address`}
           checked={this.state.useGitHubAuthorInfo}
           onSelected={this.onUseGitHubInfoSelected}
           value="github-account"

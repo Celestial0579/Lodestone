@@ -4,9 +4,7 @@ import { parseUpdateSource } from '../../../src/lib/forges/update-source'
 
 describe('parseUpdateSource', () => {
   it('splits a repository URL into instance, owner and name', () => {
-    const source = parseUpdateSource(
-      'https://git.example.com/team/lodestone'
-    )
+    const source = parseUpdateSource('https://git.example.com/team/lodestone')
 
     assert.deepEqual(source, {
       endpoint: 'https://git.example.com/api/v1',

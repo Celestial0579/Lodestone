@@ -59,9 +59,10 @@ export class Advanced extends React.Component<
   /**
    * Where to look for new versions of the app.
    *
-   * Lodestone ships without an update source. Point it at a repository on
-   * any Gitea instance that publishes releases and the app will check that
-   * repository instead of phoning home to anyone.
+   * Defaults to this project's own repository. Point it at any other
+   * repository that publishes releases to check that instead, or clear the
+   * field to stop checking at all - an empty value is stored rather than
+   * removed, so "off" survives a restart.
    */
   private renderUpdateSource() {
     const { updateSourceURL } = this.state
@@ -85,9 +86,10 @@ export class Advanced extends React.Component<
             </p>
           ) : (
             <p>
-              Lodestone checks this repository for newer releases. Leave it
-              empty to turn update checks off. Releases are downloaded from the
-              instance by hand, the app never installs anything on its own.
+              Lodestone checks this repository for newer releases, and contacts
+              nothing else. Clear the field to turn update checks off entirely.
+              Releases are downloaded by hand; the app never installs anything
+              on its own.
             </p>
           )}
         </div>
@@ -196,8 +198,8 @@ export class Advanced extends React.Component<
               <LinkButton uri="https://gh.io/gcm">
                 Git Credential Manager{' '}
               </LinkButton>{' '}
-              for private repositories outside GitHub. This feature is
-              experimental and subject to change.
+              for private repositories on hosts you have not signed in to. This
+              feature is experimental and subject to change.
             </p>
           </div>
         </div>

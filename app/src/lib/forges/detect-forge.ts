@@ -148,10 +148,20 @@ export async function resolveInstance(
   let base: string
 
   try {
+    const trimmed = address.trim()
     const url = new URL(
-      /^https?:\/\//.test(address) ? address : `https://${address}`
+      /^https?:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`
     )
-    base = `${url.origin}${url.pathname.replace(/\/+$/, '')}`
+
+    // Resolving an address must give the same answer when the answer is fed
+    // back in. Sign-in does exactly that: re-authenticating an existing
+    // account passes its stored API endpoint here, and users paste whatever
+    // they were handed, which is often already an API URL. Without this, the
+    // probes go to `<base>/api/v1/api/v1/version` and the instance is
+    // reported unreachable.
+    base = `${url.origin}${url.pathname
+      .replace(/\/+$/, '')
+      .replace(/\/api\/v[13]$/, '')}`
   } catch {
     return null
   }

@@ -1,5 +1,12 @@
 import { IDataStore, ISecureStore } from './stores'
 import { getKeyForAccount } from '../auth'
+import {
+  forgetRefreshMaterial,
+  getRefreshMaterial,
+  IRefreshMaterial,
+  rememberRefreshMaterial,
+  setTokenRefreshedCallback,
+} from '../forges/forge-token-refresh'
 import { Account, isDotComAccount } from '../../models/account'
 import { fetchUser, EmailVisibility, getEnterpriseAPIURL } from '../api'
 import { fatalError } from '../fatal-error'
@@ -77,6 +84,11 @@ export class AccountsStore extends TypedBaseStore<ReadonlyArray<Account>> {
 
     this.dataStore = dataStore
     this.secureStore = secureStore
+
+    // How a token renewed deep in the request layer gets written back.
+    setTokenRefreshedCallback((previous, next, material) =>
+      this.applyRefreshedToken(previous, next, material)
+    )
     this.loadingPromise = this.loadFromStore()
   }
 
@@ -98,6 +110,7 @@ export class AccountsStore extends TypedBaseStore<ReadonlyArray<Account>> {
     try {
       const key = getKeyForAccount(account)
       await this.secureStore.setItem(key, account.login, account.token)
+      await this.saveRefreshMaterial(account.login, key, account.token)
     } catch (e) {
       log.error(`Error adding account '${account.login}'`, e)
 
@@ -162,10 +175,17 @@ export class AccountsStore extends TypedBaseStore<ReadonlyArray<Account>> {
     await this.loadingPromise
 
     try {
-      await this.secureStore.deleteItem(
-        getKeyForAccount(account),
-        account.login
-      )
+      const key = getKeyForAccount(account)
+
+      await this.secureStore.deleteItem(key, account.login)
+
+      // Signing out has to take the means of getting back in with it.
+      forgetRefreshMaterial(account.token)
+      await this.secureStore
+        .deleteItem(AccountsStore.refreshKey(key), account.login)
+        .catch(() => {
+          // Nothing was stored for an account that signed in with a token.
+        })
     } catch (e) {
       log.error(`Error removing account '${account.login}'`, e)
       this.emitError(e)
@@ -231,6 +251,7 @@ export class AccountsStore extends TypedBaseStore<ReadonlyArray<Account>> {
       const key = getKeyForAccount(accountWithoutToken)
       try {
         const token = await this.secureStore.getItem(key, account.login)
+        await this.loadRefreshMaterial(account.login, key, token || '')
         accountsWithTokens.push(accountWithoutToken.withToken(token || ''))
       } catch (e) {
         log.error(`Error getting token for '${key}'. Skipping.`, e)
@@ -246,6 +267,98 @@ export class AccountsStore extends TypedBaseStore<ReadonlyArray<Account>> {
     } else {
       this.emitUpdate(this.accounts)
     }
+  }
+
+  /** Where an account's refresh token lives, beside its access token. */
+  private static refreshKey(key: string) {
+    return `${key} (refresh)`
+  }
+
+  /**
+   * Persist the refresh material for a token that has some.
+   *
+   * Silent when there is none: personal access tokens do not expire and have
+   * nothing to renew with, which is the common case.
+   */
+  private async saveRefreshMaterial(
+    login: string,
+    key: string,
+    token: string
+  ): Promise<void> {
+    const material = getRefreshMaterial(token)
+
+    if (material === undefined) {
+      return
+    }
+
+    await this.secureStore.setItem(
+      AccountsStore.refreshKey(key),
+      login,
+      JSON.stringify(material)
+    )
+  }
+
+  /** Re-register refresh material stored by an earlier run. */
+  private async loadRefreshMaterial(
+    login: string,
+    key: string,
+    token: string
+  ): Promise<void> {
+    if (token.length === 0) {
+      return
+    }
+
+    try {
+      const raw = await this.secureStore.getItem(
+        AccountsStore.refreshKey(key),
+        login
+      )
+
+      if (raw === null || raw.length === 0) {
+        return
+      }
+
+      const material: IRefreshMaterial = JSON.parse(raw)
+
+      if (typeof material?.refreshToken === 'string') {
+        rememberRefreshMaterial(token, material)
+      }
+    } catch (e) {
+      // Losing this only costs the user a fresh sign-in when the token
+      // expires, so it is not worth failing account loading over.
+      log.warn(`Could not read refresh material for '${key}'`, e)
+    }
+  }
+
+  /**
+   * Take a renewed access token and put it everywhere the old one was: the
+   * secure store, the in-memory accounts, and anyone listening for updates.
+   */
+  private async applyRefreshedToken(
+    previousToken: string,
+    nextToken: string,
+    material: IRefreshMaterial
+  ): Promise<void> {
+    const account = this.accounts.find(a => a.token === previousToken)
+
+    if (account === undefined) {
+      return
+    }
+
+    const key = getKeyForAccount(account)
+
+    await this.secureStore.setItem(key, account.login, nextToken)
+    await this.secureStore.setItem(
+      AccountsStore.refreshKey(key),
+      account.login,
+      JSON.stringify(material)
+    )
+
+    this.accounts = this.accounts.map(a =>
+      a.token === previousToken ? a.withToken(nextToken) : a
+    )
+
+    this.emitUpdate(this.accounts)
   }
 
   private save() {

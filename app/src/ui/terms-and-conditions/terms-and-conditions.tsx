@@ -57,10 +57,12 @@ export class TermsAndConditions extends React.Component<
           <h2>Your data</h2>
 
           <p>
-            Lodestone talks to the instances you sign in to and to nothing else.
-            It collects no usage data and sends no telemetry anywhere. Your
-            access tokens are held in the credential store your operating system
-            provides.
+            Lodestone talks to the instances you sign in to, and asks one
+            repository whether a newer version exists — by default this
+            project's own, changeable or switched off entirely under
+            Preferences. It collects no usage data and sends no telemetry
+            anywhere. Your access tokens are held in the credential store your
+            operating system provides.
           </p>
         </DialogContent>
 

@@ -42,8 +42,9 @@ export class Start extends React.Component<IStartProps, {}> {
 
         <div className="start-footer">
           <p>
-            Lodestone talks to the instance you sign in to and nothing else. It
-            sends no usage data anywhere.
+            Lodestone talks to the instance you sign in to, and checks its own
+            project repository for new versions. It sends no usage data
+            anywhere, and the update check can be turned off.
           </p>
         </div>
       </section>

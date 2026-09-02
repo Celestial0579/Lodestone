@@ -1,3 +1,5 @@
+import { ForgeFamily } from '../forges/forge-type'
+
 /**
  * The scopes a Gitea personal access token needs for Lodestone to work.
  *
@@ -24,5 +26,21 @@ export const RequiredTokenScopes = [
   'write:organization',
 ]
 
-/** The scope list as shown to the user. */
-export const formatTokenScopes = () => RequiredTokenScopes.join(', ')
+/**
+ * The scopes a GitHub personal access token needs.
+ *
+ * A different vocabulary entirely: GitHub grants by area rather than by verb,
+ * and none of the Gitea scope names above exists there. These are the same
+ * three the app asks for over OAuth.
+ */
+export const RequiredGitHubTokenScopes = ['repo', 'user', 'workflow']
+
+/**
+ * The scope list to show somebody creating a token, for the provider they are
+ * actually creating it on.
+ */
+export const formatTokenScopes = (family: ForgeFamily) =>
+  (family === ForgeFamily.GitHub
+    ? RequiredGitHubTokenScopes
+    : RequiredTokenScopes
+  ).join(', ')

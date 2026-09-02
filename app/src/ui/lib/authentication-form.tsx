@@ -103,7 +103,7 @@ export class AuthenticationForm extends React.Component<
         </p>
         <p className="token-scopes">
           Select these scopes when creating the token:{' '}
-          <Ref>{formatTokenScopes()}</Ref>
+          <Ref>{formatTokenScopes(getForgeFamily(this.props.endpoint))}</Ref>
         </p>
         <TextBox
           label="Personal access token"

@@ -9,7 +9,10 @@ import { MenuLabelsEvent } from '../../models/menu-labels'
 import * as ipcWebContents from '../ipc-webcontents'
 import { mkdir } from 'fs/promises'
 import { buildTestMenu } from './build-test-menu'
-import { ProjectNewIssueURL } from '../../lib/project-links'
+import {
+  ProjectNewIssueURL,
+  ProjectRepositoryURL,
+} from '../../lib/project-links'
 
 const createPullRequestLabel = __DARWIN__
   ? 'Create Pull Request'
@@ -535,12 +538,16 @@ export function buildDefaultMenuTemplate({
     },
   }
 
-  const giteaDocumentation: Electron.MenuItemConstructorOptions = {
-    label: __DARWIN__ ? 'Gitea Documentation' : 'Gitea &documentation',
+  // The menu is built in the main process, which cannot see which instance
+  // the user signed in to, so it cannot sensibly offer one host's
+  // documentation. It offers this project's own instead, which is true
+  // whichever forge is in use.
+  const documentation: Electron.MenuItemConstructorOptions = {
+    label: __DARWIN__ ? 'Lodestone Documentation' : 'Lodestone &documentation',
     click() {
       shell
-        .openExternal('https://docs.gitea.com/')
-        .catch(err => log.error('Failed opening the Gitea documentation', err))
+        .openExternal(ProjectRepositoryURL)
+        .catch(err => log.error('Failed opening the documentation', err))
     },
   }
 
@@ -560,7 +567,7 @@ export function buildDefaultMenuTemplate({
     },
   }
 
-  const helpItems = [giteaDocumentation, reportIssue, showLogsItem]
+  const helpItems = [documentation, reportIssue, showLogsItem]
 
   helpItems.push(...buildTestMenu())
 

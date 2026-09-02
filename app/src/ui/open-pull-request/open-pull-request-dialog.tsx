@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { IConstrainedValue, IPullRequestState } from '../../lib/app-state'
-import { getDotComAPIEndpoint } from '../../lib/api'
 import { Branch } from '../../models/branch'
 import { ImageDiffType } from '../../models/diff'
 import { Repository } from '../../models/repository'
@@ -246,17 +245,10 @@ export class OpenPullRequestDialog extends React.Component<IOpenPullRequestDialo
   }
 
   private renderFooter() {
-    const { currentBranchHasPullRequest, pullRequestState, repository } =
-      this.props
+    const { currentBranchHasPullRequest, pullRequestState } = this.props
     const { mergeStatus, commitSHAs } = pullRequestState
-    const gitHubRepository = repository.gitHubRepository
-    const isEnterprise =
-      gitHubRepository && gitHubRepository.endpoint !== getDotComAPIEndpoint()
-
     const viewCreate = currentBranchHasPullRequest ? 'View' : ' Create'
-    const buttonTitle = `${viewCreate} pull request in browser${
-      isEnterprise ? ' Enterprise' : ''
-    }.`
+    const buttonTitle = `${viewCreate} pull request in browser.`
 
     const okButton = (
       <>

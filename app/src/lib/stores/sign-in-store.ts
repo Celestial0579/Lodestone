@@ -485,8 +485,6 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       )
     }
 
-    this.setState({ ...currentState, loading: true })
-
     let validUrl: string
     try {
       validUrl = validateURL(url)
@@ -506,10 +504,21 @@ export class SignInStore extends TypedBaseStore<SignInState | null> {
       return
     }
 
+    // Held on to so that what comes back from the network can be discarded if
+    // the user cancelled or started over in the meantime. Probing takes
+    // seconds, where this step used to be a string transform.
+    const probingState: SignInState = { ...currentState, loading: true }
+    this.setState(probingState)
+
     // No forge is assumed. The address is probed to find out what runs there
     // and where its API lives, so Gitea, Forgejo, GitHub Enterprise and
     // github.com all arrive here the same way.
     const instance = await this.resolve(validUrl)
+
+    if (this.state !== probingState) {
+      log.info('[SignInStore] endpoint resolved but session has changed')
+      return
+    }
 
     if (instance === null) {
       this.setState({

@@ -4,6 +4,7 @@ import {
   getForgeAuthorizationURL,
   getForgeTokenRequestBody,
 } from './forges/forge-oauth'
+import { rememberRefreshMaterial } from './forges/forge-token-refresh'
 import {
   ICopilotCommitMessage,
   parseCopilotCommitMessage,
@@ -676,6 +677,10 @@ interface IAPIAccessToken {
   readonly access_token: string
   readonly scope: string
   readonly token_type: string
+  /** Present on forges whose access tokens expire, e.g. Gitea and Forgejo. */
+  readonly refresh_token?: string
+  /** Seconds until the access token expires, where it does. */
+  readonly expires_in?: number
 }
 
 /** The response we receive from fetching mentionables. */
@@ -2428,6 +2433,21 @@ export async function requestOAuthToken(
     tryUpdateEndpointVersionFromResponse(endpoint, response)
 
     const result = await parsedResponse<IAPIAccessToken>(response)
+
+    // Gitea and Forgejo hand back a refresh token because their access tokens
+    // expire. Hold on to it, keyed by the access token, so the request layer
+    // can renew without knowing anything about accounts.
+    if (
+      typeof result.refresh_token === 'string' &&
+      result.refresh_token.length > 0
+    ) {
+      rememberRefreshMaterial(result.access_token, {
+        endpoint,
+        htmlURL: urlBase,
+        refreshToken: result.refresh_token,
+      })
+    }
+
     return result.access_token
   } catch (e) {
     log.warn(`requestOAuthToken: failed with endpoint ${endpoint}`, e)

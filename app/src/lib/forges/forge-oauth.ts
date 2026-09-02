@@ -80,11 +80,19 @@ export function setForgeOAuthClientId(endpoint: string, clientId: string) {
  * offered instead, which needs no registration anywhere.
  */
 export function supportsForgeOAuth(endpoint: string): boolean {
-  if (getForgeFamily(endpoint) === ForgeFamily.GitHub) {
-    return typeof __OAUTH_CLIENT_ID__ === 'string' && __OAUTH_CLIENT_ID__ !== ''
+  // An application registered for this particular instance wins regardless of
+  // which product runs there. Somebody went to the trouble of registering it,
+  // and a GitHub Enterprise instance behind an identity provider needs this
+  // just as much as a self-hosted Gitea does.
+  if (getForgeOAuthClientId(endpoint) !== null) {
+    return true
   }
 
-  return getForgeOAuthClientId(endpoint) !== null
+  return (
+    getForgeFamily(endpoint) === ForgeFamily.GitHub &&
+    typeof __OAUTH_CLIENT_ID__ === 'string' &&
+    __OAUTH_CLIENT_ID__ !== ''
+  )
 }
 
 const base64url = (buffer: Buffer) =>

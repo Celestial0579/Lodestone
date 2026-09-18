@@ -55,8 +55,17 @@ export async function getRemotes(
   for (const name of [...names].sort()) {
     // Unlike remote get-url, this also resolves globally configured remotes.
     // --get-url does not contact the remote.
+    // Match `remote -v` enumeration even when a URL contains credentials.
+    // Override the transfer policy only for this offline lookup, not transfers.
     const { stdout } = await git(
-      ['ls-remote', '--get-url', '--', name],
+      [
+        '-c',
+        'transfer.credentialsInUrl=allow',
+        'ls-remote',
+        '--get-url',
+        '--',
+        name,
+      ],
       repository.path,
       'getRemotes'
     )

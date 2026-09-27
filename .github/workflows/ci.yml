@@ -1,0 +1,65 @@
+name: CI
+
+# The upstream GitHub workflows were removed because they build signed releases
+# on hosted macOS and Windows runners with secrets that belong to GitHub
+# Desktop, none of which exists here. This checks what can be checked on a
+# plain Linux runner. Releases are built and attached by hand.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+# Nothing here writes to the repository.
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    env:
+      # getShellEnv asks the user's login shell what environment it hands to a
+      # program, and that environment is what git hooks run in. Name bash
+      # explicitly, so the tests get the kind of login shell any desktop would
+      # have rather than whatever the runner leaves in SHELL.
+      SHELL: /bin/bash
+
+    defaults:
+      run:
+        shell: bash -eo pipefail {0}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      # build-essential compiles the vendored native modules during postinstall.
+      # libsecret is the credential store on Linux; without it every test file
+      # that reaches the accounts store fails to load at all.
+      - name: Install build tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsecret-1-dev libsecret-1-0
+
+      # postinstall also fetches the data submodules from github.com. This job
+      # does not need them - they are only bundled when packaging - so it would
+      # warn and carry on if they could not be reached.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Check formatting
+        run: yarn prettier
+
+      - name: Typecheck
+        run: yarn tsc --noEmit -p tsconfig.json
+
+      - name: Test the forge translation layer
+        run: node script/test.mjs app/test/unit/gitea
+
+      - name: Test
+        run: yarn test:unit

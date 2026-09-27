@@ -124,14 +124,15 @@ function packageWindows() {
   // without signing in, and it must be this package's own mark rather than
   // anyone else's.
   //
-  // The default points at the icon in the project repository. That repository
-  // is private, so the download fails and Windows falls back to the icon
-  // embedded in the executable - which is the same artwork, so nothing looks
-  // wrong. Set LODESTONE_ICON_URL to a publicly reachable .ico to have the
-  // downloaded copy work as intended.
+  // The default points at the icon on the main branch of the project
+  // repository, in GitHub's raw file form (`/raw/<ref>/<path>`, which
+  // redirects to raw.githubusercontent.com). The repository is public, so no
+  // sign-in is needed. Should the download fail anyway, Windows falls back to
+  // the icon embedded in the executable - the same artwork, so nothing looks
+  // wrong. Set LODESTONE_ICON_URL to use a different .ico.
   const iconUrl =
     process.env.LODESTONE_ICON_URL ??
-    `${ProjectRepositoryURL}/raw/branch/main/app/static/logos/prod/icon-logo.ico`
+    `${ProjectRepositoryURL}/raw/main/app/static/logos/prod/icon-logo.ico`
 
   const nugetPkgName = getWindowsIdentifierName()
   const options: electronInstaller.Options = {

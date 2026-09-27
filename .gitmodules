@@ -1,20 +1,17 @@
 # These three hold data bundled into the app when packaging: the emoji
-# database, the gitignore templates and the licence texts. They point at
-# mirrors on git.firestrike.de rather than at github.com, so that building
-# this fork needs nothing from a service it does not otherwise depend on.
+# database, the gitignore templates and the licence texts. They point at the
+# upstream repositories on github.com, where this project itself is published,
+# so building it needs no host beyond the one it already comes from.
 #
-# The mirrors are Forgejo pull mirrors of the upstream repositories and
-# refresh themselves every eight hours. Upstream remains
-# github.com/github/{gemoji,gitignore,choosealicense.com}, all permissively
-# licensed: gemoji MIT, gitignore CC0-1.0, choosealicense.com MIT with its
-# licence texts under CC-BY-3.0.
+# All three are permissively licensed: gemoji MIT, gitignore CC0-1.0,
+# choosealicense.com MIT with its licence texts under CC-BY-3.0.
 
 [submodule "gemoji"]
 	path = gemoji
-	url = https://git.firestrike.de/tim.heyne/gemoji.git
+	url = https://github.com/github/gemoji.git
 [submodule "app/static/common/gitignore"]
 	path = app/static/common/gitignore
-	url = https://git.firestrike.de/tim.heyne/gitignore.git
+	url = https://github.com/github/gitignore.git
 [submodule "app/static/common/choosealicense.com"]
 	path = app/static/common/choosealicense.com
-	url = https://git.firestrike.de/tim.heyne/choosealicense.com.git
+	url = https://github.com/github/choosealicense.com.git

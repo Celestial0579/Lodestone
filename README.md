@@ -80,10 +80,11 @@ required, because the token is sent to that host.
 
 ## Updates
 
-By default Lodestone checks **this project's own repository** for new
-releases, and nothing else. That is one request to
-`git.firestrike.de` on startup, asking for the latest release tag. No
-identifying information is sent with it beyond what any HTTP request carries.
+By default Lodestone checks **this project's own repository**,
+<https://github.com/Celestial0579/Lodestone>, for new releases, and nothing
+else. That is one request to `api.github.com` on startup, asking for the latest
+release tag. No identifying information is sent with it beyond what any HTTP
+request carries.
 
 To check somewhere else — your own mirror, or a fork you build yourself — open
 **Preferences -> Advanced -> Updates** and enter that repository, e.g.
@@ -96,6 +97,14 @@ account you are signed in to on that same instance is used to read it.
 
 If you run a Squirrel-compatible update feed, set `LODESTONE_UPDATES_URL` at
 build time to use the built-in auto updater instead.
+
+Builds up to and including v1.0.0-beta.2 were published from
+`git.firestrike.de`, which has been retired, and they still ask there. They
+will not hear of a newer release on their own: install the new release by hand
+from <https://github.com/Celestial0579/Lodestone/releases>, or enter
+`https://github.com/Celestial0579/Lodestone` under **Preferences -> Advanced ->
+Updates**. Newer builds treat a stored `git.firestrike.de` address as the
+GitHub one.
 
 ## What was removed
 

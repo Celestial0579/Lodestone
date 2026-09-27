@@ -7,7 +7,7 @@ renamed, because renaming them would have made them say untrue things.
 
 ## Reporting something
 
-Open an issue at <https://git.firestrike.de/tim.heyne/Lodestone/issues>. A bug
+Open an issue at <https://github.com/Celestial0579/Lodestone/issues>. A bug
 report is most useful with the forge type and version (Gitea 1.27, Forgejo 12,
 GitHub Enterprise Server), what you did, and what happened instead. Logs are
 under Help, Show logs.

@@ -5,10 +5,10 @@ programme and no service level agreement.
 
 ## Reporting a vulnerability
 
-Please report privately rather than in a public issue: open a confidential
-issue on the project's repository at
-<https://git.firestrike.de/tim.heyne/Lodestone>, or contact the maintainer
-through the address listed there.
+Please report privately rather than in a public issue on
+<https://github.com/Celestial0579/Lodestone>. GitHub has no confidential
+issues, so write to the maintainer directly, at the address given in the
+imprint at <https://firestrike.de/impressum/>.
 
 Expect an acknowledgement within a week. Fixes ship in the next release; there
 is no separate security release channel.

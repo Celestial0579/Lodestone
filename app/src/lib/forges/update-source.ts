@@ -21,7 +21,10 @@ import {
   getKnownApiEndpointForOrigin,
   recordApiEndpointForOrigin,
 } from './forge-registry'
-import { ProjectRepositoryURL } from '../project-links'
+import {
+  ProjectRepositoryURL,
+  RetiredProjectRepositoryURLs,
+} from '../project-links'
 import { request, parsedResponse } from '../http'
 
 /** localStorage key holding the repository releases are published to. */
@@ -64,9 +67,45 @@ interface IAPIForgeRelease {
  * the field turns update checks off, and that choice sticks: the stored empty
  * string is kept rather than removed, so it is not mistaken for "never
  * configured" on the next launch.
+ *
+ * A stored address that names one of the project's former homes is read as
+ * the current one. The preferences fill the field with the default, so any
+ * edit to it - even one that ends where it started - stores that default as if
+ * someone had chosen it. Kept as it is, it would pin the installation to an
+ * address that no longer answers, and the user would never hear of an update
+ * again.
  */
 export function getUpdateSourceURL(): string {
-  return localStorage.getItem(UpdateSourceKey) ?? ProjectRepositoryURL
+  const stored = localStorage.getItem(UpdateSourceKey)
+
+  if (stored === null || isRetiredProjectRepositoryURL(stored)) {
+    return ProjectRepositoryURL
+  }
+
+  return stored
+}
+
+/**
+ * Whether the given address is one this project was published from before.
+ *
+ * Compared loosely - scheme, case, a trailing slash and a `.git` suffix are
+ * ignored - because the value may have been typed or pasted by hand.
+ */
+export function isRetiredProjectRepositoryURL(url: string): boolean {
+  const normalize = (u: string) =>
+    u
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/\/+$/, '')
+      .replace(/\.git$/, '')
+
+  const candidate = normalize(url)
+
+  return (
+    candidate !== '' &&
+    RetiredProjectRepositoryURLs.some(r => normalize(r) === candidate)
+  )
 }
 
 /** Store the repository to check for updates. Pass an empty string to unset. */

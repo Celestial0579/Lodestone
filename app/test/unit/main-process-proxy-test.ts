@@ -162,4 +162,67 @@ describe('showFolderContents', () => {
       reveals: 0,
     })
   })
+
+  it('reveals a non-directory without confirmation on macOS', async () => {
+    const { calls, dependencies } = createDependencies({
+      stat: async () => ({ isDirectory: () => false }),
+    })
+
+    await showFolderContents('/repository/file', dependencies)
+
+    assert.deepStrictEqual(calls, {
+      confirmations: 0,
+      opens: 0,
+      reveals: 1,
+    })
+  })
+
+  it('handles a failed reveal when file information is unavailable', async t => {
+    const error = new Error('Finder unavailable')
+    const logError = t.mock.method(log, 'error')
+    const { dependencies } = createDependencies({
+      stat: async () => {
+        throw new Error('file information unavailable')
+      },
+      revealItem: async () => {
+        throw error
+      },
+    })
+
+    await assert.doesNotReject(
+      showFolderContents('/unknown/repository', dependencies)
+    )
+    assert.deepStrictEqual(logError.mock.calls[1].arguments, [
+      "Unable to reveal folder '/unknown/repository'",
+      error,
+    ])
+  })
+
+  for (const isDarwin of [true, false]) {
+    it(`handles a failed non-directory reveal with isDarwin=${isDarwin}`, async t => {
+      const error = new Error('Finder unavailable')
+      const logError = t.mock.method(log, 'error')
+      const { calls, dependencies } = createDependencies({
+        isDarwin,
+        stat: async () => ({ isDirectory: () => false }),
+        revealItem: async () => {
+          calls.reveals++
+          throw error
+        },
+      })
+
+      await assert.doesNotReject(
+        showFolderContents('/repository/file', dependencies)
+      )
+      assert.deepStrictEqual(calls, {
+        confirmations: 0,
+        opens: 0,
+        reveals: 1,
+      })
+      assert.deepStrictEqual(logError.mock.calls[1].arguments, [
+        "Unable to reveal folder '/repository/file'",
+        error,
+      ])
+    })
+  }
 })

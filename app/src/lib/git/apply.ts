@@ -25,7 +25,7 @@ export async function applyPatchToIndex(
     // worst that could happen is that we re-stage a file already staged
     // by updateIndex.
     await git(
-      ['add', '--update', '--', file.status.oldPath],
+      ['--literal-pathspecs', 'add', '--update', '--', file.status.oldPath],
       repository.path,
       'applyPatchToIndex'
     )
@@ -33,7 +33,7 @@ export async function applyPatchToIndex(
     // Figure out the blob oid of the removed file
     // <mode> SP <type> SP <object> TAB <file>
     const oldFile = await git(
-      ['ls-tree', 'HEAD', '--', file.status.oldPath],
+      ['--literal-pathspecs', 'ls-tree', 'HEAD', '--', file.status.oldPath],
       repository.path,
       'applyPatchToIndex'
     )

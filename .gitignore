@@ -20,3 +20,7 @@ junit*.xml
 *.swp
 tslint-rules/
 playwright-videos/
+
+# Lokale Claude-Code-Dateien (Freigaben, ggf. mit Geheimnissen)
+.claude/settings.local.json
+CLAUDE.local.md

@@ -40,6 +40,16 @@ export type MenuLabelsEvent = {
   readonly contributionTargetDefaultBranch?: string
 
   /**
+   * The product the selected repository is hosted on, as shown to the user:
+   * "Gitea", "Forgejo", "GitHub". The menu item that opens the repository in
+   * the browser names it.
+   *
+   * Omit this value when the repository is not hosted anywhere the app knows,
+   * or when no repository is selected.
+   */
+  readonly repositoryHostName?: string
+
+  /**
    * Is the current branch in a state where it can be force pushed to the remote?
    */
   readonly isForcePushForCurrentRepository?: boolean

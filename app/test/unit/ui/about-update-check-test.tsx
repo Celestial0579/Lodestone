@@ -131,9 +131,39 @@ describe('About dialog after an update check', () => {
 
     assert.match(
       screen.getByRole('alert').textContent ?? '',
-      /The last update check failed\. github\.com could not be reached\. The repository to check is set under Preferences, Advanced, Updates\./
+      /The last update check failed\. github\.com could not be reached\. The repository to check is set under (Options|Settings), Advanced, Updates\./
     )
     assert.doesNotMatch(text(view), /You have the latest version/)
+  })
+
+  it('points at the settings by the name they have on this platform', () => {
+    // The menu item and the dialog are called Options on Windows and Settings
+    // on macOS, and "Preferences" on neither.
+    const wasDarwin = __DARWIN__
+    const failure = stateAfter(
+      { kind: 'failed', reason: 'github.com could not be reached.' },
+      null
+    )
+
+    try {
+      for (const [darwin, name] of [
+        [false, 'Options'],
+        [true, 'Settings'],
+      ] as const) {
+        Object.assign(globalThis, { __DARWIN__: darwin })
+        const view = renderAbout(failure)
+
+        assert.match(
+          screen.getByRole('alert').textContent ?? '',
+          new RegExp(`is set under ${name}, Advanced, Updates\\.`)
+        )
+        assert.doesNotMatch(text(view), /Preferences/)
+
+        view.unmount()
+      }
+    } finally {
+      Object.assign(globalThis, { __DARWIN__: wasDarwin })
+    }
   })
 
   it('does not call the version current after a failure, even if an earlier check worked', () => {

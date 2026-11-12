@@ -241,11 +241,16 @@ export class About extends React.Component<IAboutProps> {
 
     const { forgeCheck } = this.props.updateState
 
+    // Send the user to the dialog by the name its menu item and its title
+    // give it. Neither says "Preferences": it is Options on Windows, the one
+    // platform releases are built for, and Settings on macOS.
+    const settingsName = __DARWIN__ ? 'Settings' : 'Options'
+
     if (forgeCheck?.kind === 'failed') {
       return (
         <DialogError>
           The last update check failed. {forgeCheck.reason} The repository to
-          check is set under Preferences, Advanced, Updates.
+          check is set under {settingsName}, Advanced, Updates.
         </DialogError>
       )
     }
@@ -260,7 +265,7 @@ export class About extends React.Component<IAboutProps> {
       return (
         <DialogError>
           The last update check did not complete. Check your connection to the
-          instance configured under Preferences, Advanced, Updates.
+          instance configured under {settingsName}, Advanced, Updates.
         </DialogError>
       )
     }

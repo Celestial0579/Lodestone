@@ -25,7 +25,7 @@ import {
   ProjectRepositoryURL,
   RetiredProjectRepositoryURLs,
 } from '../project-links'
-import { request, parsedResponse } from '../http'
+import { request, parsedResponse, IAPIError } from '../http'
 
 /** localStorage key holding the repository releases are published to. */
 const UpdateSourceKey = 'gitea-update-source-url'
@@ -59,6 +59,37 @@ interface IAPIForgeRelease {
   readonly draft: boolean
   readonly prerelease: boolean
 }
+
+/**
+ * What asking a repository for its latest release came to.
+ *
+ * Three outcomes, because the user has to be told three different things: here
+ * is the newest release, there is none to offer, or we could not find out. The
+ * last two used to look the same - both came back as null and were shown as
+ * "you have the latest version" - which is how an update check that had never
+ * once worked went unnoticed.
+ */
+export type LatestReleaseResult =
+  | {
+      /** The repository has a published release. */
+      readonly kind: 'release'
+      readonly release: IForgeRelease
+    }
+  | {
+      /**
+       * The repository answered and has nothing to offer: no release at all, or
+       * only drafts and prereleases, which are never offered as updates.
+       */
+      readonly kind: 'no-published-release'
+    }
+  | {
+      /**
+       * We could not find out. `reason` is a complete sentence that can be
+       * shown to the user as it is.
+       */
+      readonly kind: 'failed'
+      readonly reason: string
+    }
 
 /**
  * The repository to check for updates.
@@ -171,8 +202,9 @@ export function parseUpdateSource(url: string): IUpdateSource | null {
  * validates as the user types. Three sources, in order of confidence: the
  * pairing recorded when the user signed in to this instance, github.com being
  * the one host whose API sits on a different name, and otherwise the path that
- * Gitea and Forgejo both use. Getting it wrong only costs a failed update
- * check, which the settings UI reports.
+ * Gitea and Forgejo both use. Getting it wrong costs the first check two more
+ * requests: `fetchLatestRelease` tries the other dialect and records the one
+ * that answered, which is then found here as the first source.
  */
 function getUpdateAPIEndpoint(base: string): string {
   const known = getKnownApiEndpointForOrigin(base)
@@ -193,8 +225,8 @@ function getUpdateAPIEndpoint(base: string): string {
 /**
  * The same instance addressed as the other dialect.
  *
- * Used only after the first guess came back 404, to cover a host whose product
- * we could not know without signing in to it.
+ * Used only after the repository was not found at the first guess, to cover a
+ * host whose product we could not know without signing in to it.
  */
 function getAlternateAPIEndpoint(endpoint: string): string | null {
   if (endpoint.endsWith(GiteaAPIPath)) {
@@ -209,86 +241,218 @@ function getAlternateAPIEndpoint(endpoint: string): string | null {
 }
 
 /**
- * The token to use when asking about releases.
+ * The web address of the instance a source lives on, sub path included.
+ *
+ * This is the key `getUpdateAPIEndpoint` looks a learned endpoint up under, so
+ * it is also the key one has to be recorded under.
+ */
+const getInstanceBase = (source: IUpdateSource) =>
+  source.htmlURL.slice(0, -`/${source.owner}/${source.name}`.length)
+
+/**
+ * The token to use when asking this endpoint about releases.
  *
  * Update repositories on an internal instance are frequently private, and the
  * user is normally already signed in to that same instance, so reuse that
- * account's token when the hosts line up.
+ * account's token when the endpoints line up.
+ *
+ * Chosen per endpoint rather than once per check: when the first guess at the
+ * dialect was wrong, the account belongs to the endpoint tried second, and a
+ * token picked for the first would leave both requests anonymous.
  */
-function findTokenForSource(
-  source: IUpdateSource,
+function findTokenForEndpoint(
+  endpoint: string,
   accounts: ReadonlyArray<Account>
 ): string | null {
-  return accounts.find(a => a.endpoint === source.endpoint)?.token ?? null
+  return accounts.find(a => a.endpoint === endpoint)?.token ?? null
 }
 
 /** Strip a leading `v` so that both `1.2.3` and `v1.2.3` tags work. */
 const parseReleaseVersion = (tag: string) => parseSemVer(tag.replace(/^v/, ''))
 
+const failed = (reason: string): LatestReleaseResult => ({
+  kind: 'failed',
+  reason,
+})
+
+/**
+ * Say what a response that is not OK amounted to, in the forge's own words
+ * where it has any - "API rate limit exceeded" explains itself far better than
+ * the bare 403 it arrives with.
+ */
+async function describeRefusal(
+  host: string,
+  response: Response
+): Promise<string> {
+  let message = ''
+
+  try {
+    const body = (await response.clone().json()) as IAPIError | null
+
+    if (typeof body?.message === 'string') {
+      message = body.message.trim().slice(0, 200)
+    }
+  } catch {
+    // No body, or not JSON. The status code has to do.
+  }
+
+  if (message === '') {
+    return `${host} answered with an error (${response.status}).`
+  }
+
+  // The reason is shown as one sentence among others, so close it as one -
+  // unless it already is, which includes GitHub's habit of ending on a
+  // sentence in brackets.
+  const sentence = /[.!?]["')\]]*$/.test(message) ? message : `${message}.`
+
+  return `${host} answered with an error (${response.status}): ${sentence}`
+}
+
+/**
+ * Ask for the latest release, at the endpoint the dialect was guessed to be and
+ * - only if the repository is not there - at the other one.
+ *
+ * Returns the response to read the release from, or the result if the answer
+ * was already clear without one. Throws when the host cannot be reached.
+ */
+async function requestLatestRelease(
+  source: IUpdateSource,
+  accounts: ReadonlyArray<Account>
+): Promise<Response | LatestReleaseResult> {
+  const host = new URL(source.htmlURL).host
+  const repositoryPath = `repos/${source.owner}/${source.name}`
+  const releasePath = `${repositoryPath}/releases/latest`
+
+  const get = (endpoint: string, path: string) =>
+    request(endpoint, findTokenForEndpoint(endpoint, accounts), 'GET', path)
+
+  const notFound = failed(
+    `${source.htmlURL} was not found. The address may be wrong, or the repository is private and none of the signed-in accounts can see it.`
+  )
+
+  const response = await get(source.endpoint, releasePath)
+
+  if (response.status !== 404) {
+    return response.ok
+      ? response
+      : failed(await describeRefusal(host, response))
+  }
+
+  // A 404 is what three different things look like: a repository with nothing
+  // published, since drafts and prereleases are left out of `latest`; an
+  // address that names no repository we are allowed to see; and an endpoint
+  // guessed in the wrong dialect. Asking for the repository itself tells the
+  // first apart from the other two.
+  const repository = await get(source.endpoint, repositoryPath)
+
+  if (repository.ok) {
+    return { kind: 'no-published-release' }
+  }
+
+  if (repository.status !== 404) {
+    return failed(await describeRefusal(host, repository))
+  }
+
+  // The endpoint was guessed without a network round trip, so it can be the
+  // wrong dialect for a host nobody has signed in to - a GitHub Enterprise
+  // server guessed as Gitea, or the reverse. Try the other one before
+  // concluding that the repository does not exist.
+  const alternate = getAlternateAPIEndpoint(source.endpoint)
+
+  if (alternate === null) {
+    return notFound
+  }
+
+  const retry = await get(alternate, releasePath)
+
+  if (retry.ok) {
+    recordApiEndpointForOrigin(getInstanceBase(source), alternate)
+    return retry
+  }
+
+  if (retry.status !== 404) {
+    return failed(await describeRefusal(host, retry))
+  }
+
+  if (!(await get(alternate, repositoryPath)).ok) {
+    return notFound
+  }
+
+  recordApiEndpointForOrigin(getInstanceBase(source), alternate)
+  return { kind: 'no-published-release' }
+}
+
 /**
  * Ask the configured repository for its most recent release.
  *
- * Returns null when no update source is configured, when the instance can't be
- * reached, or when the latest release doesn't carry a version number we can
- * compare against.
+ * Never throws and never answers with silence: an instance that cannot be
+ * reached, an error from the forge and a release whose tag is no version number
+ * all come back as `failed`, with a reason. Only a repository that was reached
+ * and has nothing published counts as `no-published-release`.
  */
 export async function fetchLatestRelease(
   source: IUpdateSource,
   accounts: ReadonlyArray<Account>
-): Promise<IForgeRelease | null> {
-  const token = findTokenForSource(source, accounts)
-  const path = `repos/${source.owner}/${source.name}/releases/latest`
+): Promise<LatestReleaseResult> {
+  const host = new URL(source.htmlURL).host
+  let answer: Response | LatestReleaseResult
 
   try {
-    let response = await request(source.endpoint, token, 'GET', path)
+    answer = await requestLatestRelease(source, accounts)
+  } catch (e) {
+    log.warn(`[updates] failed checking ${source.htmlURL}`, e)
+    return failed(`${host} could not be reached.`)
+  }
 
-    // The endpoint was guessed without a network round trip, so it can be the
-    // wrong dialect for a host nobody has signed in to - a GitHub Enterprise
-    // server guessed as Gitea, or the reverse. A 404 is what that looks like,
-    // and it is cheap to try the other one rather than report no updates.
-    if (response.status === 404) {
-      const alternate = getAlternateAPIEndpoint(source.endpoint)
-
-      if (alternate !== null) {
-        const retry = await request(alternate, token, 'GET', path)
-
-        if (retry.ok) {
-          recordApiEndpointForOrigin(source.htmlURL, alternate)
-          response = retry
-        }
-      }
+  if ('kind' in answer) {
+    if (answer.kind === 'failed') {
+      log.warn(`[updates] checking ${source.htmlURL} failed: ${answer.reason}`)
     }
 
-    if (!response.ok) {
-      log.warn(
-        `[updates] ${source.htmlURL} returned ${response.status} when asked for its latest release`
-      )
-      return null
-    }
+    return answer
+  }
 
-    const release = await parsedResponse<IAPIForgeRelease>(response)
+  const unreadable = failed(`${host} sent a reply that could not be read.`)
+  let release: IAPIForgeRelease | null
 
-    if (release.draft || release.prerelease) {
-      return null
-    }
+  try {
+    release = await parsedResponse<IAPIForgeRelease | null>(answer)
+  } catch (e) {
+    log.warn(`[updates] unreadable reply from ${source.htmlURL}`, e)
+    return unreadable
+  }
 
-    const version = parseReleaseVersion(release.tag_name ?? '')
+  // Valid JSON is not yet a release. A captive portal or a proxy can answer
+  // 200 with anything at all, and none of it is a reason to throw.
+  if (typeof release?.tag_name !== 'string') {
+    log.warn(`[updates] reply from ${source.htmlURL} is not a release`)
+    return unreadable
+  }
 
-    if (version === null) {
-      log.warn(
-        `[updates] release tag '${release.tag_name}' is not a version number`
-      )
-      return null
-    }
+  // `latest` leaves these out on every forge we know, so this is a guard
+  // against one that does not rather than a path anything takes today.
+  if (release.draft || release.prerelease) {
+    return { kind: 'no-published-release' }
+  }
 
-    return {
+  const version = parseReleaseVersion(release.tag_name)
+
+  if (version === null) {
+    log.warn(
+      `[updates] release tag '${release.tag_name}' is not a version number`
+    )
+    return failed(
+      `The latest release at ${source.htmlURL} is tagged "${release.tag_name}", which is not a version number.`
+    )
+  }
+
+  return {
+    kind: 'release',
+    release: {
       version,
       name: release.name || release.tag_name,
       htmlURL: release.html_url,
-    }
-  } catch (e) {
-    log.warn(`[updates] failed checking ${source.htmlURL}`, e)
-    return null
+    },
   }
 }
 

@@ -1,12 +1,10 @@
 import * as React from 'react'
 import { WelcomeStep } from './welcome'
 import { LinkButton } from '../lib/link-button'
-import { Dispatcher } from '../dispatcher'
 import { Button } from '../lib/button'
 
 interface IStartProps {
   readonly advance: (step: WelcomeStep) => void
-  readonly dispatcher: Dispatcher
 }
 
 /** The first step of the Welcome flow. */

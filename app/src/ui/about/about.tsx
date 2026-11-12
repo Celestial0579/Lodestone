@@ -155,7 +155,8 @@ export class About extends React.Component<IAboutProps> {
       )
     }
 
-    const { status, lastSuccessfulCheck, forgeRelease } = this.props.updateState
+    const { status, lastSuccessfulCheck, forgeRelease, forgeCheck } =
+      this.props.updateState
 
     switch (status) {
       case UpdateStatus.CheckingForUpdates:
@@ -176,14 +177,25 @@ export class About extends React.Component<IAboutProps> {
 
         return <UpdateInfo message="Downloading update…" loading={true} />
       case UpdateStatus.UpdateNotAvailable:
-        if (!lastSuccessfulCheck) {
+        // A check that failed has found out nothing, least of all that this
+        // is the latest version, and the time of an earlier check that worked
+        // would only dress the failure up as one. renderUpdateErrors says what
+        // went wrong.
+        if (forgeCheck?.kind === 'failed' || !lastSuccessfulCheck) {
           return null
         }
 
+        // A repository with nothing published is not the same as being up to
+        // date: it is also what a project looks like whose only releases are
+        // prereleases, and then a newer one is never going to be announced.
+        const finding =
+          forgeCheck?.kind === 'no-published-release'
+            ? 'The repository checked for updates has no published release'
+            : 'You have the latest version'
+
         const richMessage = (
           <p>
-            You have the latest version (last checked{' '}
-            <RelativeTime date={lastSuccessfulCheck} />)
+            {finding} (last checked <RelativeTime date={lastSuccessfulCheck} />)
           </p>
         )
 
@@ -194,7 +206,7 @@ export class About extends React.Component<IAboutProps> {
 
         return (
           <UpdateInfo
-            message={`You have the latest version (last checked ${absoluteDate})`}
+            message={`${finding} (last checked ${absoluteDate})`}
             richMessage={richMessage}
           />
         )
@@ -227,6 +239,22 @@ export class About extends React.Component<IAboutProps> {
       )
     }
 
+    const { forgeCheck } = this.props.updateState
+
+    // Send the user to the dialog by the name its menu item and its title
+    // give it. Neither says "Preferences": it is Options on Windows, the one
+    // platform releases are built for, and Settings on macOS.
+    const settingsName = __DARWIN__ ? 'Settings' : 'Options'
+
+    if (forgeCheck?.kind === 'failed') {
+      return (
+        <DialogError>
+          The last update check failed. {forgeCheck.reason} The repository to
+          check is set under {settingsName}, Advanced, Updates.
+        </DialogError>
+      )
+    }
+
     // Upstream treats "never checked" as an error worth a red banner. Here it
     // is simply the state after a fresh install, so say nothing until a check
     // has actually been attempted.
@@ -237,7 +265,7 @@ export class About extends React.Component<IAboutProps> {
       return (
         <DialogError>
           The last update check did not complete. Check your connection to the
-          instance configured under Preferences, Advanced, Updates.
+          instance configured under {settingsName}, Advanced, Updates.
         </DialogError>
       )
     }

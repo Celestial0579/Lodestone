@@ -32,6 +32,7 @@ import {
   isNewerRelease,
   parseUpdateSource,
 } from '../../lib/forges/update-source'
+import { assertNever } from '../../lib/fatal-error'
 
 /** The last version a showcase was seen. */
 export const lastShowCaseVersionSeen = 'version-of-last-showcase'
@@ -54,6 +55,28 @@ export enum UpdateStatus {
   UpdateNotChecked,
 }
 
+/**
+ * How the most recent check of the forge repository ended.
+ *
+ * Kept apart from `UpdateStatus`, which says what the updater is doing right
+ * now: "no update is available" is the status after all three of these, and
+ * only the first of them means the user is current.
+ */
+export type ForgeCheckOutcome =
+  | {
+      /** A published release was found and compared with this version. */
+      readonly kind: 'compared'
+    }
+  | {
+      /** The repository was reached and has no published release. */
+      readonly kind: 'no-published-release'
+    }
+  | {
+      /** The check could not find out. `reason` is fit to show the user. */
+      readonly kind: 'failed'
+      readonly reason: string
+    }
+
 export interface IUpdateState {
   status: UpdateStatus
   lastSuccessfulCheck: Date | null
@@ -69,6 +92,14 @@ export interface IUpdateState {
    * is pointed at the release page instead.
    */
   forgeRelease: IForgeRelease | null
+
+  /**
+   * How the most recent check of the forge repository ended, or null while
+   * one is running and before the first. Whether the user is told "you have
+   * the latest version" has to depend on this, because a check that failed has
+   * not found that out.
+   */
+  forgeCheck: ForgeCheckOutcome | null
 }
 
 /** A store which contains the current state of the auto updater. */
@@ -79,6 +110,7 @@ class UpdateStore {
   private newReleases: ReadonlyArray<ReleaseSummary> | null = null
   private isX64ToARM64ImmediateAutoUpdate: boolean = false
   private forgeRelease: IForgeRelease | null = null
+  private forgeCheck: ForgeCheckOutcome | null = null
 
   /** Is the most recent update check user initiated? */
   private userInitiatedUpdate = true
@@ -203,6 +235,7 @@ class UpdateStore {
       prioritizeUpdate: this.prioritizeUpdate,
       prioritizeUpdateInfoUrl: this.prioritizeUpdateInfoUrl,
       forgeRelease: this.forgeRelease,
+      forgeCheck: this.forgeCheck,
     }
   }
 
@@ -267,26 +300,52 @@ class UpdateStore {
     const source = parseUpdateSource(getUpdateSourceURL())
 
     if (source === null) {
+      // With update checks switched off there is no last check left to report
+      // on, least of all a failure from before they were.
+      if (this.forgeCheck !== null) {
+        this.forgeCheck = null
+        this.emitDidChange()
+      }
+
       return false
     }
 
+    // What the previous check came to says nothing about this one, and an old
+    // failure shown next to "Checking for updates" would read as a new one.
+    this.forgeCheck = null
     this.status = UpdateStatus.CheckingForUpdates
     this.emitDidChange()
 
-    const release = await fetchLatestRelease(source, accounts)
+    const result = await fetchLatestRelease(source, accounts)
 
-    if (release !== null && isNewerRelease(release, getVersion())) {
-      this.forgeRelease = release
-      this.status = UpdateStatus.UpdateAvailable
-    } else {
-      this.forgeRelease = null
-      this.status = UpdateStatus.UpdateNotAvailable
-    }
+    this.forgeRelease = null
+    this.status = UpdateStatus.UpdateNotAvailable
 
-    // A failed request leaves the version we know about unchanged, so only
-    // record a successful check when we actually heard back.
-    if (release !== null) {
-      this.touchLastChecked()
+    switch (result.kind) {
+      case 'release':
+        if (isNewerRelease(result.release, getVersion())) {
+          this.forgeRelease = result.release
+          this.status = UpdateStatus.UpdateAvailable
+        }
+
+        this.forgeCheck = { kind: 'compared' }
+        this.touchLastChecked()
+        break
+      case 'no-published-release':
+        // The check itself worked - the repository answered. There is just
+        // nothing on it to compare this version against.
+        this.forgeCheck = { kind: 'no-published-release' }
+        this.touchLastChecked()
+        break
+      case 'failed':
+        // Nothing was learned, so the time of the last successful check stays
+        // where it was, and the reason is kept for the interface to show.
+        // "No update available" is only the status the button needs to become
+        // usable again; `forgeCheck` is what says the user was told nothing.
+        this.forgeCheck = { kind: 'failed', reason: result.reason }
+        break
+      default:
+        assertNever(result, `Unknown update check result: ${result}`)
     }
 
     this.emitDidChange()

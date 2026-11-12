@@ -55,6 +55,12 @@ jobs:
       - name: Check formatting
         run: yarn prettier
 
+      # The workflows this one replaced ran the linter; it was not carried over,
+      # and three findings then sat on main unnoticed. `lint:src` rather than
+      # `lint`, which would run Prettier a second time.
+      - name: Lint
+        run: yarn lint:src
+
       - name: Typecheck
         run: yarn tsc --noEmit -p tsconfig.json
 

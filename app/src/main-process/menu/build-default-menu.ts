@@ -18,9 +18,6 @@ import { ForgeKind, getForgeDisplayName } from '../../lib/forges/forge-type'
 const createPullRequestLabel = __DARWIN__
   ? 'Create Pull Request'
   : 'Create &pull request'
-const showPullRequestLabel = __DARWIN__
-  ? 'View Pull Request on Gitea'
-  : 'View &pull request on Gitea'
 const defaultBranchNameValue = __DARWIN__ ? 'Default Branch' : 'default branch'
 const confirmRepositoryRemovalLabel = __DARWIN__ ? 'Remove…' : '&Remove…'
 const repositoryRemovalLabel = __DARWIN__ ? 'Remove' : '&Remove'
@@ -66,6 +63,12 @@ export function buildDefaultMenuTemplate({
   const removeRepoLabel = askForConfirmationOnRepositoryRemoval
     ? confirmRepositoryRemovalLabel
     : repositoryRemovalLabel
+
+  // The items that open something in the browser name the product the
+  // repository is hosted on. They all said Gitea, whatever it was.
+  const showPullRequestLabel = __DARWIN__
+    ? `View Pull Request on ${repositoryHostName}`
+    : `View &pull request on ${repositoryHostName}`
 
   const pullRequestLabel = hasCurrentPullRequest
     ? showPullRequestLabel
@@ -389,7 +392,9 @@ export function buildDefaultMenuTemplate({
       separator,
       {
         id: 'create-issue-in-repository-on-github',
-        label: __DARWIN__ ? 'Create Issue on Gitea' : 'Create &issue on Gitea',
+        label: __DARWIN__
+          ? `Create Issue on ${repositoryHostName}`
+          : `Create &issue on ${repositoryHostName}`,
         accelerator: 'CmdOrCtrl+I',
         click: emit('create-issue-in-repository-on-github'),
       },
@@ -483,13 +488,19 @@ export function buildDefaultMenuTemplate({
     },
     separator,
     {
-      label: __DARWIN__ ? 'Compare on Gitea' : 'Compare on &Gitea',
+      // The access key used to be the G of Gitea. It is on a word that stays
+      // now, so that it does not move with the name of the host.
+      label: __DARWIN__
+        ? `Compare on ${repositoryHostName}`
+        : `Compare &on ${repositoryHostName}`,
       id: 'compare-on-github',
       accelerator: 'CmdOrCtrl+Shift+C',
       click: emit('compare-on-github'),
     },
     {
-      label: __DARWIN__ ? 'View Branch on Gitea' : 'View branch on Gitea',
+      label: __DARWIN__
+        ? `View Branch on ${repositoryHostName}`
+        : `View branch on ${repositoryHostName}`,
       id: 'branch-on-github',
       accelerator: 'CmdOrCtrl+Alt+B',
       click: emit('branch-on-github'),

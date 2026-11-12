@@ -83,8 +83,10 @@ required, because the token is sent to that host.
 By default Lodestone checks **this project's own repository**,
 <https://github.com/Celestial0579/Lodestone>, for new releases, and nothing
 else. That is one request to `api.github.com` on startup, asking for the latest
-release tag. No identifying information is sent with it beyond what any HTTP
-request carries.
+release tag. If the answer is that there is none, a second request to the same
+host asks whether the repository exists, so that a repository with nothing
+published is not mistaken for a wrong address. No identifying information is
+sent with either beyond what any HTTP request carries.
 
 To check somewhere else — your own mirror, or a fork you build yourself — open
 **Preferences -> Advanced -> Updates** and enter that repository, e.g.
@@ -94,6 +96,10 @@ turn update checks off entirely**, and nothing is contacted at all.
 Releases are downloaded by hand; the app never installs anything on its own,
 and prereleases are not offered as updates. If the repository is private, the
 account you are signed in to on that same instance is used to read it.
+
+The About dialog says what the last check came to: that you have the latest
+version, that the repository has no published release - which is also what it
+says while the only releases are prereleases - or why the check failed.
 
 If you run a Squirrel-compatible update feed, set `LODESTONE_UPDATES_URL` at
 build time to use the built-in auto updater instead.

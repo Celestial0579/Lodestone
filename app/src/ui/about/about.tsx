@@ -18,6 +18,7 @@ import { encodePathAsUrl } from '../../lib/path'
 import { isOSNoLongerSupportedByElectron } from '../../lib/get-os'
 import { AriaLiveContainer } from '../accessibility/aria-live-container'
 import { formatDate } from '../../lib/format-date'
+import { getSettingsDialogName } from '../../lib/settings-dialog-name'
 
 const logoPath = __DARWIN__
   ? 'static/logo-64x64@2x.png'
@@ -244,7 +245,7 @@ export class About extends React.Component<IAboutProps> {
     // Send the user to the dialog by the name its menu item and its title
     // give it. Neither says "Preferences": it is Options on Windows, the one
     // platform releases are built for, and Settings on macOS.
-    const settingsName = __DARWIN__ ? 'Settings' : 'Options'
+    const settingsName = getSettingsDialogName()
 
     if (forgeCheck?.kind === 'failed') {
       return (

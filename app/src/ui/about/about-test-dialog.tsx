@@ -33,6 +33,7 @@ export class AboutTestDialog extends React.Component<
       updateState: {
         status: UpdateStatus.UpdateNotAvailable,
         forgeRelease: null,
+        forgeCheck: null,
         lastSuccessfulCheck: new Date(Date.now() - 1000 * 60 * 60),
         isX64ToARM64ImmediateAutoUpdate: false,
         newReleases: [],

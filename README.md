@@ -89,7 +89,8 @@ published is not mistaken for a wrong address. No identifying information is
 sent with either beyond what any HTTP request carries.
 
 To check somewhere else — your own mirror, or a fork you build yourself — open
-**Preferences -> Advanced -> Updates** and enter that repository, e.g.
+**Options -> Advanced -> Updates** (**Settings** on macOS) and enter that
+repository, e.g.
 `https://git.example.com/team/lodestone`. Any host works. **Clear the field to
 turn update checks off entirely**, and nothing is contacted at all.
 
@@ -108,7 +109,7 @@ Builds up to and including v1.0.0-beta.2 were published from
 `git.firestrike.de`, which has been retired, and they still ask there. They
 will not hear of a newer release on their own: install the new release by hand
 from <https://github.com/Celestial0579/Lodestone/releases>, or enter
-`https://github.com/Celestial0579/Lodestone` under **Preferences -> Advanced ->
+`https://github.com/Celestial0579/Lodestone` under **Options -> Advanced ->
 Updates**. Newer builds treat a stored `git.firestrike.de` address as the
 GitHub one.
 

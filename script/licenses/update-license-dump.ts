@@ -25,6 +25,10 @@ const assertValidLicensesIn = async (dir: string) => {
     '0BSD',
     'BlueOak-1.0.0',
     'Python-2.0',
+    // The licence of Python itself from 2.0.1 on, and the part of Python-2.0
+    // that is the Python Software Foundation's own. argparse, a port of the
+    // Python module, declares it from 3.0 on; before that it said Python-2.0.
+    'PSF-2.0',
     'MPL-2.0',
     'CC0-1.0',
     copilotCLILicenseName,

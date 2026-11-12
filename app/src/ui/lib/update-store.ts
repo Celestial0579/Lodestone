@@ -1,5 +1,8 @@
 const lastSuccessfulCheckKey = 'last-successful-update-check'
 
+/** The version of the release whose notice in the main window was dismissed. */
+const dismissedForgeReleaseKey = 'dismissed-forge-release-version'
+
 import { Emitter, Disposable } from 'event-kit'
 
 import {
@@ -92,6 +95,13 @@ export interface IUpdateState {
    * is pointed at the release page instead.
    */
   forgeRelease: IForgeRelease | null
+
+  /**
+   * Whether the user has dismissed the notice about `forgeRelease`. That is
+   * remembered for the version it was about, so the notice stays away for
+   * this release, across restarts, and returns for the next one.
+   */
+  isForgeReleaseDismissed: boolean
 
   /**
    * How the most recent check of the forge repository ended, or null while
@@ -235,8 +245,29 @@ class UpdateStore {
       prioritizeUpdate: this.prioritizeUpdate,
       prioritizeUpdateInfoUrl: this.prioritizeUpdateInfoUrl,
       forgeRelease: this.forgeRelease,
+      isForgeReleaseDismissed:
+        this.forgeRelease !== null &&
+        localStorage.getItem(dismissedForgeReleaseKey) ===
+          this.forgeRelease.version.version,
       forgeCheck: this.forgeCheck,
     }
+  }
+
+  /**
+   * Remember that the user has seen the notice about the release that was
+   * found and does not want it in the main window any more. The About dialog
+   * goes on naming the release.
+   */
+  public dismissForgeRelease() {
+    if (this.forgeRelease === null) {
+      return
+    }
+
+    localStorage.setItem(
+      dismissedForgeReleaseKey,
+      this.forgeRelease.version.version
+    )
+    this.emitDidChange()
   }
 
   /**

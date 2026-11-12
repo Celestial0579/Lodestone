@@ -1,6 +1,7 @@
 import assert from 'node:assert'
 import { after, before, describe, it } from 'node:test'
 import * as React from 'react'
+import { SemVer } from 'semver'
 
 import { About } from '../../../src/ui/about/about'
 import { DialogStackContext } from '../../../src/ui/dialog/dialog'
@@ -42,6 +43,7 @@ const stateAfter = (
   prioritizeUpdate: false,
   prioritizeUpdateInfoUrl: undefined,
   forgeRelease: null,
+  isForgeReleaseDismissed: false,
   forgeCheck,
 })
 
@@ -164,6 +166,55 @@ describe('About dialog after an update check', () => {
     } finally {
       Object.assign(globalThis, { __DARWIN__: wasDarwin })
     }
+  })
+
+  describe('with a newer release found on a forge', () => {
+    const found: IUpdateState = {
+      ...stateAfter({ kind: 'compared' }),
+      status: UpdateStatus.UpdateAvailable,
+      forgeRelease: {
+        version: new SemVer('99.0.0'),
+        name: 'Lodestone v99.0.0',
+        htmlURL: 'https://github.com/team/lodestone/releases/tag/v99.0.0',
+      },
+    }
+
+    const checkButton = () =>
+      screen.getByRole('button', { name: 'Check for Updates' })
+
+    it('names the release and links to it', () => {
+      const view = renderAbout(found)
+
+      assert.match(
+        text(view),
+        /Lodestone v99\.0\.0 is available for download\./
+      )
+      assert.equal(
+        screen
+          .getByRole('link', { name: 'Lodestone v99.0.0' })
+          .getAttribute('href'),
+        'https://github.com/team/lodestone/releases/tag/v99.0.0'
+      )
+    })
+
+    it('still lets the user check again', () => {
+      // The button used to stay grey until the app was restarted, so changing
+      // the repository to check could not be followed by a check.
+      renderAbout(found)
+
+      assert.equal(checkButton().hasAttribute('disabled'), false)
+      assert.notEqual(checkButton().getAttribute('aria-disabled'), 'true')
+    })
+
+    it('keeps the button off while the Squirrel updater is downloading', () => {
+      renderAbout({ ...found, forgeRelease: null })
+
+      assert.equal(
+        checkButton().hasAttribute('disabled') ||
+          checkButton().getAttribute('aria-disabled') === 'true',
+        true
+      )
+    })
   })
 
   it('does not call the version current after a failure, even if an earlier check worked', () => {

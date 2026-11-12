@@ -66,6 +66,57 @@ describe('UpdateStore checking a forge', () => {
     assert.notEqual(state.lastSuccessfulCheck, null)
   })
 
+  describe('the notice in the main window', () => {
+    it('is wanted for a release that was just found', async () => {
+      stubForge({ [latest]: releaseTagged('v99.0.0') })
+
+      await check()
+
+      assert.equal(updateStore.state.isForgeReleaseDismissed, false)
+    })
+
+    it('stays away once dismissed, for that release', async () => {
+      stubForge({ [latest]: releaseTagged('v99.0.0') })
+      await check()
+
+      const seen = new Array<IUpdateState>()
+      const subscription = updateStore.onDidChange(state => seen.push(state))
+      updateStore.dismissForgeRelease()
+      subscription.dispose()
+
+      // Whoever shows the notice hears of it, and the release is still there
+      // for the About dialog to name.
+      assert.equal(seen.at(-1)?.isForgeReleaseDismissed, true)
+      assert.equal(seen.at(-1)?.forgeRelease?.name, 'Lodestone v99.0.0')
+
+      // The next check finds the same release again, as every start does.
+      await check()
+      assert.equal(updateStore.state.isForgeReleaseDismissed, true)
+    })
+
+    it('returns for the release after the one that was dismissed', async () => {
+      stubForge({ [latest]: releaseTagged('v99.0.0') })
+      await check()
+      updateStore.dismissForgeRelease()
+
+      stubForge({ [latest]: releaseTagged('v99.1.0') })
+      await check()
+
+      assert.equal(updateStore.state.forgeRelease?.name, 'Lodestone v99.1.0')
+      assert.equal(updateStore.state.isForgeReleaseDismissed, false)
+    })
+
+    it('is not wanted where there is no newer release', async () => {
+      stubForge({ [latest]: releaseTagged('v0.0.1') })
+      await check()
+
+      assert.equal(updateStore.state.isForgeReleaseDismissed, false)
+      // Dismissing nothing remembers nothing.
+      updateStore.dismissForgeRelease()
+      assert.equal(updateStore.state.isForgeReleaseDismissed, false)
+    })
+  })
+
   it('says the version is current when the latest release is not newer', async () => {
     stubForge({ [latest]: releaseTagged('v0.0.1') })
 

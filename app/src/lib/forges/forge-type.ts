@@ -75,10 +75,14 @@ export function getForgeFamily(endpoint: string): ForgeFamily {
 /**
  * Guess the product from a version string, without going back to the network.
  *
- * Forgejo brands its own major version (16.x while Gitea is on 1.x) and appends
- * the Gitea release it is compatible with, so `16.0.0-dev-714+gitea-1.22.0`
- * identifies itself. A bare `1.27.3` is Gitea. This is a hint, not proof: the
- * authoritative test is whether `/api/forgejo/v1/version` answers.
+ * Forgejo appends the Gitea release it is compatible with, so
+ * `16.0.0-dev-714+gitea-1.22.0` identifies itself. A bare `1.27.3` is Gitea.
+ *
+ * A higher major version on its own says nothing. It used to mean Forgejo,
+ * which numbered its releases 7 and up while Gitea was on 1.x, but Gitea has
+ * since renumbered: its release of November 2026 is 28.3.0. Such a version is
+ * left open, to be settled by the authoritative test, which is whether
+ * `/api/forgejo/v1/version` answers.
  */
 export function guessGiteaKindFromVersion(version: string | null): ForgeKind {
   if (version === null || version.length === 0) {
@@ -91,11 +95,7 @@ export function guessGiteaKindFromVersion(version: string | null): ForgeKind {
 
   const major = parseInt(version, 10)
 
-  return Number.isNaN(major)
-    ? ForgeKind.Unknown
-    : major >= 2
-    ? ForgeKind.Forgejo
-    : ForgeKind.Gitea
+  return major === 1 ? ForgeKind.Gitea : ForgeKind.Unknown
 }
 
 /** A name for the forge that can be shown to a user. */

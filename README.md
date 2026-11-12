@@ -113,6 +113,18 @@ from <https://github.com/Celestial0579/Lodestone/releases>, or enter
 Updates**. Newer builds treat a stored `git.firestrike.de` address as the
 GitHub one.
 
+## Uninstalling
+
+On Windows, uninstalling removes the app, its shortcuts, its `bin` folder from
+your PATH, its registration as the handler of `x-lodestone-…` links, and what
+it kept in the Windows credential store: the access tokens of the accounts you
+were signed in to, and any other password it had stored for a Git host. An
+installation made afterwards starts signed out.
+
+What stays is yours to keep or to delete: your repositories, and
+`%APPDATA%\Lodestone`, which holds the settings, the list of repositories and
+the logs. The installer itself leaves a few files in `%LOCALAPPDATA%\Lodestone`.
+
 ## What was removed
 
 The GitHub-specific parts of the upstream app are gone or inert:

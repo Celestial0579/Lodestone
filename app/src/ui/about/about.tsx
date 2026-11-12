@@ -115,11 +115,21 @@ export class About extends React.Component<IAboutProps> {
       case UpdateStatus.CheckingForUpdates:
       case UpdateStatus.UpdateAvailable:
       case UpdateStatus.UpdateNotChecked:
+        // A release found on a forge is not being downloaded: the check is
+        // over, and another one must be possible, for example after the
+        // repository to check was changed. Only the Squirrel updater is busy
+        // in this state.
+        const foundOnForge =
+          updateStatus === UpdateStatus.UpdateAvailable &&
+          this.props.updateState.forgeRelease !== null
+
         const disabled =
-          ![
-            UpdateStatus.UpdateNotChecked,
-            UpdateStatus.UpdateNotAvailable,
-          ].includes(updateStatus) || isOSNoLongerSupportedByElectron()
+          (!foundOnForge &&
+            ![
+              UpdateStatus.UpdateNotChecked,
+              UpdateStatus.UpdateNotAvailable,
+            ].includes(updateStatus)) ||
+          isOSNoLongerSupportedByElectron()
 
         const buttonTitle = 'Check for Updates'
 

@@ -12,10 +12,13 @@ describe('getShellEnv', () => {
   for (const shellKind of shellKinds) {
     const label = shellKind ?? 'default shell'
     it(`returns an env containing PATH (${label})`, async t => {
-      // PowerShell 7 does not come with Windows, and where it is not installed
-      // there is nothing to load an environment from.
-      if (shellKind === 'pwsh' && (await getShell('pwsh')) === undefined) {
-        t.skip('PowerShell 7 is not installed')
+      // Neither PowerShell 7 nor Git Bash comes with Windows, and where one
+      // is not installed there is nothing to load an environment from.
+      if (
+        (shellKind === 'pwsh' || shellKind === 'git-bash') &&
+        (await getShell(shellKind)) === undefined
+      ) {
+        t.skip(`${shellKind} is not installed`)
         return
       }
 

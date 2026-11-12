@@ -180,13 +180,13 @@ describe('main-process menu', () => {
       askForConfirmationOnRepositoryRemoval: false,
     }
 
-    /** The label of the item that opens the repository in the browser. */
-    const getViewOnLabel = (params: MenuLabelsEvent) => {
+    /** The label of a menu item, without its access key. */
+    const getLabel = (id: string, params: MenuLabelsEvent) => {
       const find = (
         items: ReadonlyArray<Electron.MenuItemConstructorOptions>
       ): string | undefined => {
         for (const item of items) {
-          if (item.id === 'view-repository-on-github') {
+          if (item.id === id) {
             return item.label
           }
 
@@ -205,18 +205,75 @@ describe('main-process menu', () => {
       return find(buildDefaultMenuTemplate(params))?.replace('&', '')
     }
 
-    it('names the host of the selected repository in "View on"', () => {
-      for (const name of ['Gitea', 'Forgejo', 'GitHub', 'GitHub Enterprise']) {
+    /** The products a repository can be hosted on, as the menu is told. */
+    const hostNames = ['Gitea', 'Forgejo', 'GitHub', 'GitHub Enterprise']
+
+    /** The items that open something in the browser, and what they say. */
+    const hostItems: ReadonlyArray<[string, string, Partial<MenuLabelsEvent>]> =
+      [
+        ['view-repository-on-github', 'View on', {}],
+        ['create-issue-in-repository-on-github', 'Create issue on', {}],
+        ['compare-on-github', 'Compare on', {}],
+        ['branch-on-github', 'View branch on', {}],
+        [
+          'create-pull-request',
+          'View pull request on',
+          { hasCurrentPullRequest: true },
+        ],
+      ]
+
+    it('names the host of the selected repository in every item that opens it', () => {
+      for (const name of hostNames) {
+        for (const [id, text, more] of hostItems) {
+          assert.equal(
+            getLabel(id, {
+              ...baseParams,
+              ...more,
+              repositoryHostName: name,
+            }),
+            `${text} ${name}`
+          )
+        }
+      }
+    })
+
+    it('names no product in those items where none is known', () => {
+      // They all said Gitea whatever the repository was hosted on.
+      for (const [id, text, more] of hostItems) {
         assert.equal(
-          getViewOnLabel({ ...baseParams, repositoryHostName: name }),
-          `View on ${name}`
+          getLabel(id, { ...baseParams, ...more }),
+          `${text} the server`
         )
       }
     })
 
-    it('names no product in "View on" where none is known', () => {
-      // It said "View on Gitea" whatever the repository was hosted on.
-      assert.equal(getViewOnLabel(baseParams), 'View on the server')
+    it('names Gitea nowhere in the menu for a repository on another host', () => {
+      const labels = new Array<string>()
+      const collect = (
+        items: ReadonlyArray<Electron.MenuItemConstructorOptions>
+      ) => {
+        for (const item of items) {
+          if (item.label !== undefined) {
+            labels.push(item.label)
+          }
+          if (Array.isArray(item.submenu)) {
+            collect(item.submenu)
+          }
+        }
+      }
+
+      collect(
+        buildDefaultMenuTemplate({
+          ...baseParams,
+          hasCurrentPullRequest: true,
+          repositoryHostName: 'Forgejo',
+        })
+      )
+
+      assert.deepEqual(
+        labels.filter(label => /Gitea/.test(label)),
+        []
+      )
     })
 
     it('has no duplicate access keys for any combination of label-affecting parameters', () => {
@@ -227,21 +284,26 @@ describe('main-process menu', () => {
           (key, i) => [key, !!(bits & (1 << i))] as [VariantKey, boolean]
         )
 
-        const params: MenuLabelsEvent = {
-          ...baseParams,
-          ...Object.fromEntries(variantEntries),
+        // The name of the host is part of several labels, so go through the
+        // names as well. `undefined` stands for a repository with no host.
+        for (const repositoryHostName of [undefined, ...hostNames]) {
+          const params: MenuLabelsEvent = {
+            ...baseParams,
+            ...Object.fromEntries(variantEntries),
+            repositoryHostName,
+          }
+
+          const template = buildDefaultMenuTemplate(params)
+          const duplicates = findDuplicateAccessKeys(template)
+
+          assert.deepStrictEqual(
+            duplicates,
+            [],
+            `Duplicate access keys found with params ${JSON.stringify(
+              params
+            )}: ${JSON.stringify(duplicates)}`
+          )
         }
-
-        const template = buildDefaultMenuTemplate(params)
-        const duplicates = findDuplicateAccessKeys(template)
-
-        assert.deepStrictEqual(
-          duplicates,
-          [],
-          `Duplicate access keys found with params ${JSON.stringify(
-            params
-          )}: ${JSON.stringify(duplicates)}`
-        )
       }
     })
   })

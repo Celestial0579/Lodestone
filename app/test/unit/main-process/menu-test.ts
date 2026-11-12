@@ -180,6 +180,45 @@ describe('main-process menu', () => {
       askForConfirmationOnRepositoryRemoval: false,
     }
 
+    /** The label of the item that opens the repository in the browser. */
+    const getViewOnLabel = (params: MenuLabelsEvent) => {
+      const find = (
+        items: ReadonlyArray<Electron.MenuItemConstructorOptions>
+      ): string | undefined => {
+        for (const item of items) {
+          if (item.id === 'view-repository-on-github') {
+            return item.label
+          }
+
+          const found = Array.isArray(item.submenu)
+            ? find(item.submenu)
+            : undefined
+
+          if (found !== undefined) {
+            return found
+          }
+        }
+
+        return undefined
+      }
+
+      return find(buildDefaultMenuTemplate(params))?.replace('&', '')
+    }
+
+    it('names the host of the selected repository in "View on"', () => {
+      for (const name of ['Gitea', 'Forgejo', 'GitHub', 'GitHub Enterprise']) {
+        assert.equal(
+          getViewOnLabel({ ...baseParams, repositoryHostName: name }),
+          `View on ${name}`
+        )
+      }
+    })
+
+    it('names no product in "View on" where none is known', () => {
+      // It said "View on Gitea" whatever the repository was hosted on.
+      assert.equal(getViewOnLabel(baseParams), 'View on the server')
+    })
+
     it('has no duplicate access keys for any combination of label-affecting parameters', () => {
       const combinationCount = 1 << variantKeys.length
 

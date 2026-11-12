@@ -64,7 +64,6 @@
     "legal-eagle/underscore": "^1.13.8",
     "**/@typescript-eslint/typescript-estree/minimatch": "^11.0.1",
     "**/markdownlint-cli/minimatch": "^11.0.1",
-    "**/@electron/universal/minimatch": "^11.0.1",
     "**/micromark-extension-math/katex": "^0.18.2"
   },
   "dependencies": {

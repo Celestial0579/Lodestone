@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { getShellEnv } from '../../src/lib/hooks/get-shell-env'
+import { getShell } from '../../src/lib/hooks/get-shell'
 import { SupportedHooksEnvShell } from '../../src/lib/hooks/config'
 import { getPrintenvzPath } from 'printenvz'
 
@@ -10,7 +11,14 @@ describe('getShellEnv', () => {
 
   for (const shellKind of shellKinds) {
     const label = shellKind ?? 'default shell'
-    it(`returns an env containing PATH (${label})`, async () => {
+    it(`returns an env containing PATH (${label})`, async t => {
+      // PowerShell 7 does not come with Windows, and where it is not installed
+      // there is nothing to load an environment from.
+      if (shellKind === 'pwsh' && (await getShell('pwsh')) === undefined) {
+        t.skip('PowerShell 7 is not installed')
+        return
+      }
+
       const result = await getShellEnv(undefined, shellKind, getPrintenvzPath())
 
       assert.equal(result.kind, 'success')

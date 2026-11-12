@@ -49,8 +49,13 @@ describe('forge type', () => {
       )
     })
 
-    it('recognises Forgejo by its major version', () => {
-      assert.equal(guessGiteaKindFromVersion('12.0.1'), ForgeKind.Forgejo)
+    it('does not take a high major version for Forgejo', () => {
+      // Gitea renumbered its releases. A Gitea for Windows downloaded on
+      // 2026-11-12 reported exactly this, and was taken for Forgejo.
+      assert.equal(guessGiteaKindFromVersion('28.3.0'), ForgeKind.Unknown)
+      // A Forgejo that reports a bare number is left open as well, for the
+      // probe to settle.
+      assert.equal(guessGiteaKindFromVersion('12.0.1'), ForgeKind.Unknown)
     })
 
     it('recognises Gitea', () => {

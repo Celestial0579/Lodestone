@@ -6,7 +6,11 @@ import { mkdir, readdir, readFile, writeFile } from 'fs/promises'
 import { spawn, getPathSegments, setPathSegments } from '../lib/process/win32'
 import { pathExists } from '../lib/path-exists'
 import { getKeyForEndpoint } from '../lib/auth'
-import { parseCredentialTargets } from '../lib/credential-targets'
+import {
+  parseCredentialTargets,
+  splitCredentialTarget,
+} from '../lib/credential-targets'
+import { TokenStore } from '../lib/stores/token-store'
 import {
   getBatchScriptCLITrampoline,
   getInstallationRepair,
@@ -248,6 +252,10 @@ function removeProtocolHandlers(
  * keytar can only look up an entry it is given the name of, and the names are
  * built from the accounts, which the renderer keeps. So this asks Windows for
  * the list and takes every entry carrying the app's prefix.
+ *
+ * cmdkey lists them but cannot delete them: it rejects a name with a space
+ * in it however it is quoted, and every name the app writes has two. keytar
+ * deletes what it is given the name of, so the two do the job between them.
  */
 async function removeStoredCredentials(): Promise<void> {
   const cmdkey = Path.join(
@@ -259,9 +267,13 @@ async function removeStoredCredentials(): Promise<void> {
   const targets = parseCredentialTargets(await spawn(cmdkey, ['/list']), prefix)
 
   for (const target of targets) {
-    await spawn(cmdkey, [`/delete:${target}`])
-      .catch(() => spawn(cmdkey, [`/delete:LegacyGeneric:target=${target}`]))
-      .catch(e => log.error('Failed removing a stored credential', e))
+    const parts = splitCredentialTarget(target)
+
+    if (parts !== null) {
+      await TokenStore.deleteItem(parts.key, parts.login).catch(e =>
+        log.error('Failed removing a stored credential', e)
+      )
+    }
   }
 }
 

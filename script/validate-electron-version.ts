@@ -18,8 +18,8 @@ type ChannelToValidate = 'production' | 'beta'
  * to a previous version of Lodestone without losing all settings.
  */
 const ValidElectronVersions: Record<ChannelToValidate, string> = {
-  production: '42.0.1',
-  beta: '42.0.1',
+  production: '42.11.16',
+  beta: '42.11.16',
 }
 
 // Only when we get a RELEASE_CHANNEL we know we're in the middle of a deployment.

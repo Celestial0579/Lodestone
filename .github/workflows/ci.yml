@@ -2,8 +2,9 @@ name: CI
 
 # The upstream GitHub workflows were removed because they build signed releases
 # on hosted macOS and Windows runners with secrets that belong to GitHub
-# Desktop, none of which exists here. This checks what can be checked on a
-# plain Linux runner. Releases are built and attached by hand.
+# Desktop, none of which exists here. This checks what can be checked without
+# them: everything on a plain Linux runner, and the unit suite a second time on
+# Windows. Releases are built and attached by hand.
 
 on:
   push:
@@ -66,6 +67,36 @@ jobs:
 
       - name: Test the forge translation layer
         run: node script/test.mjs app/test/unit/gitea
+
+      - name: Test
+        run: yarn test:unit
+
+  # Releases are built for Windows only, and until this job existed nothing in
+  # CI ran there. The unit suite has cases that exist only on Windows, the four
+  # shells of getShellEnv among them, and installing with the install scripts
+  # compiles the native modules the way a release build does. Formatting, the
+  # linter and the type check do not depend on the platform and stay with the
+  # job above.
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      # The runner's git turns line endings into CRLF on checkout. The fixtures
+      # are exempt through .gitattributes, the rest of the tree is not, and a
+      # test that reads a file from it should see it as the repository has it.
+      - name: Keep line endings as they are
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      # node-gyp finds the Visual Studio build tools and the Python the runner
+      # comes with.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
 
       - name: Test
         run: yarn test:unit

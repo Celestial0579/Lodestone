@@ -63,9 +63,6 @@ interface ICommitMessageAvatarProps {
    */
   readonly branch: string | null
 
-  /** Whether or not the user's account is a GHE account. */
-  readonly isEnterpriseAccount: boolean
-
   /** Email addresses available in the relevant forge (Enterprise) account. */
   readonly accountEmails: ReadonlyArray<string>
 

@@ -29,6 +29,7 @@ import {
 } from '../../../lib/status'
 import { revealInFileManager } from '../../../lib/app-shell'
 import { DialogPreferredFocusClassName } from '../../dialog'
+import { getSettingsDialogName } from '../../../lib/settings-dialog-name'
 
 const defaultConflictsResolvedMessage = 'No conflicts remaining'
 
@@ -524,17 +525,16 @@ function editorButtonString(editorName: string | null): string {
   return `Open in ${editorName || defaultEditorString}`
 }
 
-function editorButtonTooltip(editorName: string | null): string | undefined {
+export function editorButtonTooltip(
+  editorName: string | null
+): string | undefined {
   if (editorName !== null) {
     // no need to render a tooltip if we have a known editor
     return
   }
 
-  if (__DARWIN__) {
-    return `No editor configured in Preferences > Advanced`
-  } else {
-    return `No editor configured in Options > Advanced`
-  }
+  // The editor is chosen on the Integrations tab, on every platform.
+  return `No editor configured in ${getSettingsDialogName()} > Integrations`
 }
 
 const manualConflictString = 'Manual conflict'

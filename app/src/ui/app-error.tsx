@@ -274,7 +274,7 @@ export class AppError extends React.Component<IAppErrorProps, IAppErrorState> {
         <OkCancelButtonGroup
           okButtonText="Close"
           onOkButtonClick={this.onCloseButtonClick}
-          cancelButtonText={__DARWIN__ ? 'Open Preferences' : 'Open options'}
+          cancelButtonText={__DARWIN__ ? 'Open Settings' : 'Open options'}
           onCancelButtonClick={this.showPreferencesDialog}
         />
       </DialogFooter>

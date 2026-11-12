@@ -52,7 +52,7 @@ async function getGitHubCredential(cred: Credential, store: AccountsStore) {
   const endpoint = `${getCredentialUrl(cred)}`
   const account = await findGitHubTrampolineAccount(store, endpoint)
   if (account) {
-    info(`found GitHub credential for ${endpoint} in store`)
+    info(`found the credential of an account for ${endpoint} in store`)
   }
   return credWithAccount(cred, account)
 }

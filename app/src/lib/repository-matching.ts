@@ -4,7 +4,11 @@ import * as Path from 'path'
 import { Account } from '../models/account'
 import { IRemote } from '../models/remote'
 import { getHTMLURL } from './api'
-import { parseRemote, parseRepositoryIdentifier } from './remote-parsing'
+import {
+  IGitRemoteURL,
+  parseRemote,
+  parseRepositoryIdentifier,
+} from './remote-parsing'
 import { caseInsensitiveEquals } from './compare'
 import { GitHubRepository } from '../models/github-repository'
 
@@ -30,19 +34,80 @@ export function matchGitHubRepository(
   accounts: ReadonlyArray<Account>,
   remote: string
 ): IMatchedGitHubRepository | null {
-  for (const account of accounts) {
-    const htmlURL = getHTMLURL(account.endpoint)
-    const { hostname } = URL.parse(htmlURL)
-    const parsedRemote = parseRemote(remote)
+  const parsedRemote = parseRemote(remote)
 
-    if (parsedRemote !== null && hostname !== null) {
-      if (parsedRemote.hostname.toLowerCase() === hostname.toLowerCase()) {
-        return { name: parsedRemote.name, owner: parsedRemote.owner, account }
-      }
+  if (parsedRemote === null) {
+    return null
+  }
+
+  for (const account of accounts) {
+    if (remoteIsOnHostOf(remote, parsedRemote, getHTMLURL(account.endpoint))) {
+      return { name: parsedRemote.name, owner: parsedRemote.owner, account }
     }
   }
 
   return null
+}
+
+/** Split what a remote gives as its host into the name and the port. */
+function splitHost(host: string): { name: string; port: string | null } {
+  const match = /^(.*?)(?::(\d+))?$/.exec(host)
+  const name = match === null ? host : match[1]
+
+  return {
+    // `[::1]` in a URL is `::1` once parsed, so compare without the brackets.
+    name: name.replace(/^\[(.*)\]$/, '$1').toLowerCase(),
+    port: match?.[2] ?? null,
+  }
+}
+
+/**
+ * Whether a remote lives on the host a web address names.
+ *
+ * Over HTTP the port is part of the answer. Gitea and Forgejo listen on 3000
+ * unless told otherwise, and two instances can share a machine. `parseRemote`
+ * keeps the port in what it calls the hostname, and comparing that with the
+ * bare name of the account's host matched no account for any instance that has
+ * a port in its address.
+ *
+ * Over SSH the port is that of the SSH server, which says nothing about where
+ * the web interface is, so only the names are compared.
+ */
+function remoteIsOnHostOf(
+  remoteURL: string,
+  remote: IGitRemoteURL,
+  htmlURL: string
+): boolean {
+  const account = URL.parse(htmlURL)
+
+  if (account.hostname === null) {
+    return false
+  }
+
+  const host = splitHost(remote.hostname)
+
+  if (host.name !== account.hostname.toLowerCase()) {
+    return false
+  }
+
+  if (remote.protocol === 'ssh') {
+    return true
+  }
+
+  // With no port written on either side, do not hold `http` against `https`:
+  // an old remote often still says `http` for a host that moved on.
+  if (host.port === null && account.port === null) {
+    return true
+  }
+
+  const defaultPort = (protocol: string) =>
+    protocol === 'http:' ? '80' : '443'
+  const remoteProtocol = /^http:/i.test(remoteURL) ? 'http:' : 'https:'
+
+  return (
+    (host.port ?? defaultPort(remoteProtocol)) ===
+    (account.port ?? defaultPort(account.protocol ?? 'https:'))
+  )
 }
 
 /**

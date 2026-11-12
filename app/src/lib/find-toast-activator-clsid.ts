@@ -1,28 +1,12 @@
-import * as path from 'path'
-import * as os from 'os'
 import { shell } from 'electron'
+import { getSquirrelShortcutPaths } from '../main-process/squirrel-install-state'
 
 /**
  * Checks all Windows shortcuts created by Squirrel looking for the toast
  * activator CLSID needed to handle Windows notifications from the Action Center.
  */
 export function findToastActivatorClsid() {
-  const shortcutPaths = [
-    path.join(
-      os.homedir(),
-      'AppData',
-      'Roaming',
-      'Microsoft',
-      'Windows',
-      'Start Menu',
-      'Programs',
-      __APP_COMPANY__,
-      `${__APP_NAME__}.lnk`
-    ),
-    path.join(os.homedir(), 'Desktop', `${__APP_NAME__}.lnk`),
-  ]
-
-  for (const shortcutPath of shortcutPaths) {
+  for (const shortcutPath of getSquirrelShortcutPaths()) {
     const toastActivatorClsid = findToastActivatorClsidInShorcut(shortcutPath)
 
     if (toastActivatorClsid !== undefined) {

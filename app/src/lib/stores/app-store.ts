@@ -325,6 +325,8 @@ import {
 import { IStashEntry, StashedChangesLoadStates } from '../../models/stash-entry'
 import { arrayEquals } from '../equality'
 import { MenuLabelsEvent } from '../../models/menu-labels'
+import { getForgeDisplayName } from '../forges/forge-type'
+import { getKnownForge } from '../forges/forge-registry'
 import { findRemoteBranchName } from './helpers/find-branch-name'
 import { updateRemoteUrl } from './updates/update-remote-url'
 import {
@@ -2882,11 +2884,20 @@ export class AppStore extends TypedBaseStore<IAppState> {
       askForConfirmationOnForcePush,
     } = this
 
+    const gitHubRepository =
+      selectedRepository instanceof Repository
+        ? selectedRepository.gitHubRepository
+        : null
+
     const labels: MenuLabelsEvent = {
       selectedShell: useCustomShell ? null : selectedShell,
       selectedExternalEditor: useCustomEditor ? null : selectedExternalEditor,
       askForConfirmationOnRepositoryRemoval,
       askForConfirmationOnForcePush,
+      repositoryHostName:
+        gitHubRepository === null
+          ? undefined
+          : getForgeDisplayName(getKnownForge(gitHubRepository.endpoint).kind),
     }
 
     if (state === null) {

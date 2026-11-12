@@ -13,6 +13,7 @@ import {
   ProjectNewIssueURL,
   ProjectRepositoryURL,
 } from '../../lib/project-links'
+import { ForgeKind, getForgeDisplayName } from '../../lib/forges/forge-type'
 
 const createPullRequestLabel = __DARWIN__
   ? 'Create Pull Request'
@@ -55,6 +56,7 @@ export function buildDefaultMenuTemplate({
   isStashedChangesVisible = false,
   askForConfirmationWhenStashingAllChanges = true,
   isChangesFilterVisible = true,
+  repositoryHostName = getForgeDisplayName(ForgeKind.Unknown),
 }: MenuLabelsEvent): Electron.MenuItemConstructorOptions[] {
   contributionTargetDefaultBranch = truncateWithEllipsis(
     contributionTargetDefaultBranch,
@@ -346,7 +348,9 @@ export function buildDefaultMenuTemplate({
       separator,
       {
         id: 'view-repository-on-github',
-        label: __DARWIN__ ? 'View on Gitea' : '&View on Gitea',
+        label: __DARWIN__
+          ? `View on ${repositoryHostName}`
+          : `&View on ${repositoryHostName}`,
         accelerator: 'CmdOrCtrl+Shift+G',
         click: emit('view-repository-on-github'),
       },

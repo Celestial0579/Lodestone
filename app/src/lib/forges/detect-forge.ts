@@ -7,8 +7,10 @@
  *  - `GET <base>/api/forgejo/v1/version` answers 200 on Forgejo and 404 on
  *    Gitea. codeberg.org answered 200, gitea.com and a private Gitea 1.27.3
  *    both answered 404. This is the authoritative test.
- *  - The version string itself gives it away without a second request: Forgejo
- *    reports `16.0.0-dev-714-11075108+gitea-1.22.0`, Gitea reports `1.27.3`.
+ *  - The version string can give it away without a second request: Forgejo
+ *    reports `16.0.0-dev-714-11075108+gitea-1.22.0`. Only that suffix is taken
+ *    as proof. A number alone is not: Gitea reported `1.27.3` then and reports
+ *    `28.3.0` now, which a check of the major version took for Forgejo.
  *
  * There is deliberately no header check. Forgejo instances do send
  * `x-server-name` and `x-backend-name`, but those come from Codeberg's proxy,
@@ -88,9 +90,9 @@ export async function detectForge(
   const version = await fetchJson(`${base}/api/v1/version`, token)
   const reported = typeof version?.version === 'string' ? version.version : null
 
-  // The version alone usually settles it; only ask a second time when it does
-  // not, or when it says Gitea and we want to be sure it is not a Forgejo that
-  // reports a Gitea-shaped version.
+  // The version settles it only when it carries Forgejo's suffix. Otherwise
+  // ask a second time: it may be a Gitea of either numbering, or a Forgejo
+  // that reports a bare number.
   const guess = guessGiteaKindFromVersion(reported)
 
   if (guess === ForgeKind.Forgejo) {

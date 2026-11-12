@@ -147,12 +147,7 @@ export class Welcome extends React.Component<IWelcomeProps, IWelcomeState> {
 
     switch (step) {
       case WelcomeStep.Start:
-        return (
-          <Start
-            advance={this.advanceToStep}
-            dispatcher={this.props.dispatcher}
-          />
-        )
+        return <Start advance={this.advanceToStep} />
 
       case WelcomeStep.SignIn:
         return (

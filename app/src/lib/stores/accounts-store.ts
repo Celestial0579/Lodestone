@@ -71,6 +71,11 @@ interface IAccount {
 
 /** The store for logged in accounts. */
 export class AccountsStore extends TypedBaseStore<ReadonlyArray<Account>> {
+  /** Where an account's refresh token lives, beside its access token. */
+  private static refreshKey(key: string) {
+    return `${key} (refresh)`
+  }
+
   private dataStore: IDataStore
   private secureStore: ISecureStore
 
@@ -267,11 +272,6 @@ export class AccountsStore extends TypedBaseStore<ReadonlyArray<Account>> {
     } else {
       this.emitUpdate(this.accounts)
     }
-  }
-
-  /** Where an account's refresh token lives, beside its access token. */
-  private static refreshKey(key: string) {
-    return `${key} (refresh)`
   }
 
   /**

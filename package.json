@@ -60,7 +60,8 @@
     "yarn": ">= 1.9"
   },
   "resolutions": {
-    "@types/react-css-transition-replace/@types/react": "^16.14.62"
+    "@types/react-css-transition-replace/@types/react": "^16.14.62",
+    "legal-eagle/underscore": "^1.13.8"
   },
   "dependencies": {
     "@primer/octicons": "^19.28.1",

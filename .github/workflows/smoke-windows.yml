@@ -107,10 +107,10 @@ jobs:
           if ($line.Line -notmatch [regex]::Escape('https://github.com/Celestial0579/Lodestone')) {
             throw 'the update check went to another repository'
           }
-          if (-not (Select-String $proxyLog -SimpleMatch 'CONNECT api.github.com:443')) {
+          if (-not (Select-String -Path $proxyLog -SimpleMatch 'CONNECT api.github.com:443')) {
             throw 'the app did not ask api.github.com'
           }
-          if (Select-String $proxyLog -SimpleMatch 'firestrike') {
+          if (Select-String -Path $proxyLog -SimpleMatch 'firestrike') {
             throw 'the app asked git.firestrike.de'
           }
           'the update check asks https://github.com/Celestial0579/Lodestone, through api.github.com'

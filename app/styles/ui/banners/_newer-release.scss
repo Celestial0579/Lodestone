@@ -1,0 +1,7 @@
+#newer-release-banner {
+  // As in the banner of the updater, whose place this one takes.
+  .download-icon {
+    margin-right: var(--spacing);
+    color: var(--banner-warning-icon-color);
+  }
+}

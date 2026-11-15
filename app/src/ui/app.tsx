@@ -192,6 +192,7 @@ import { NotificationsDebugStore } from '../lib/stores/notifications-debug-store
 import { PullRequestComment } from './notifications/pull-request-comment'
 import { UnknownAuthors } from './unknown-authors/unknown-authors-dialog'
 import { UnsupportedOSBannerDismissedAtKey } from './banners/os-version-no-longer-supported-banner'
+import { NewerReleaseBanner } from './banners/newer-release-banner'
 import { offsetFromNow } from '../lib/offset-from'
 import { getNumber } from '../lib/local-storage'
 import { IconPreviewDialog } from './octicons/icon-preview-dialog'
@@ -3847,6 +3848,18 @@ export class App extends React.Component<IAppProps, IAppState> {
       this.state.isUpdateShowcaseVisible
     ) {
       banner = this.renderUpdateBanner()
+    } else {
+      const { forgeRelease, isForgeReleaseDismissed } = this.state.updateState
+
+      if (forgeRelease !== null && !isForgeReleaseDismissed) {
+        banner = (
+          <NewerReleaseBanner
+            release={forgeRelease}
+            onDismissed={this.onNewerReleaseDismissed}
+            key={'newer-release'}
+          />
+        )
+      }
     }
     return (
       <div role="alert" aria-atomic="false">
@@ -3881,6 +3894,8 @@ export class App extends React.Component<IAppProps, IAppState> {
       />
     )
   }
+
+  private onNewerReleaseDismissed = () => updateStore.dismissForgeRelease()
 
   private onBannerDismissed = () => {
     this.props.dispatcher.clearBanner()

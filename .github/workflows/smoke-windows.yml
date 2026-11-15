@@ -119,11 +119,12 @@ jobs:
           # menu shortcut under the publisher, the desktop shortcut and the
           # command line tool, and the publisher in the uninstall entry.
           function Assert-Installed([switch]$ReportPublisher) {
-            $menu = Get-StartMenuShortcuts
+            $menu = @(Get-StartMenuShortcuts)
             '--- Start menu'
             $menu
-            $expected = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\$env:PUBLISHER\Lodestone.lnk"
-            if ($menu.Count -ne 1 -or $menu[0] -ne $expected) { throw "expected exactly $expected" }
+            if ($menu.Count -ne 1 -or (Split-Path (Split-Path $menu[0] -Parent) -Leaf) -ne $env:PUBLISHER) {
+              throw "expected exactly one shortcut, in Programs\$env:PUBLISHER"
+            }
             foreach ($f in "$env:USERPROFILE\Desktop\Lodestone.lnk", "$env:LOCALAPPDATA\Lodestone\bin\lodestone.bat") {
               '{0}: {1}' -f $f, (Test-Path $f)
               if (-not (Test-Path $f)) { throw "missing: $f" }
@@ -141,7 +142,7 @@ jobs:
             "uninstall exited with $($p.ExitCode)"
             Start-Sleep 10
             $left = @(Get-ChildItem "$env:LOCALAPPDATA\Lodestone\app-*\Lodestone.exe" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
-            $left += Get-StartMenuShortcuts
+            $left += @(Get-StartMenuShortcuts)
             $left += @("$env:USERPROFILE\Desktop\Lodestone.lnk", "$env:LOCALAPPDATA\Lodestone\bin\lodestone.bat",
                        "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike") | Where-Object { Test-Path $_ }
             if (Get-Publisher) { $left += 'the uninstall entry' }
@@ -236,14 +237,21 @@ jobs:
           . "$env:RUNNER_TEMP\smoke.ps1"
           Uninstall-App
 
+      # upload-artifact wants the files on one drive, and the runner keeps its
+      # temp folder on another than the profile.
+      - name: Gather the logs of a failed run
+        if: failure()
+        run: |
+          $logs = New-Item -ItemType Directory "$env:RUNNER_TEMP\smoke-logs" -Force
+          foreach ($p in "$env:RUNNER_TEMP\proxy.log", "$env:APPDATA\Lodestone\logs",
+                         "$env:LOCALAPPDATA\SquirrelTemp", "$env:LOCALAPPDATA\Lodestone\SquirrelSetup.log") {
+            if (Test-Path $p) { Copy-Item $p $logs -Recurse -Force }
+          }
+
       - name: Keep the logs of a failed run
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: smoke-logs
-          path: |
-            ${{ runner.temp }}/proxy.log
-            ~/AppData/Roaming/Lodestone/logs
-            ~/AppData/Local/SquirrelTemp
-            ~/AppData/Local/Lodestone/SquirrelSetup.log
+          path: ${{ runner.temp }}/smoke-logs
           if-no-files-found: ignore

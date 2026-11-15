@@ -1,7 +1,6 @@
 import {
   exec,
   GitError as DugiteError,
-  parseError,
   IGitResult as DugiteResult,
   IGitExecutionOptions as DugiteExecutionOptions,
   parseBadConfigValueErrorInfo,
@@ -15,6 +14,7 @@ import { isErrnoException } from '../errno-exception'
 import { withTrampolineEnv } from '../trampoline/trampoline-environment'
 import { kStringMaxLength } from 'buffer'
 import { withHooksEnv } from '../hooks/with-hooks-env'
+import { parseGitError } from './parse-git-error'
 import { coerceToString } from './coerce-to-string'
 import { pushTerminalChunk } from './push-terminal-chunk'
 
@@ -326,9 +326,9 @@ export async function git(
             ? opts.successExitCodes.has(exitCode)
             : false
           if (!acceptableExitCode) {
-            gitError = parseError(coerceToString(result.stderr))
+            gitError = parseGitError(coerceToString(result.stderr))
             if (gitError === null) {
-              gitError = parseError(coerceToString(result.stdout))
+              gitError = parseGitError(coerceToString(result.stdout))
             }
           }
 

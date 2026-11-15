@@ -16,10 +16,12 @@ import { buildDefaultMenu, getAllMenuItems } from './menu'
 import { shellNeedsPatching, updateEnvironmentForProcess } from '../lib/shell'
 import { parseAppURL } from '../lib/parse-app-url'
 import {
+  finishInstallation,
   handleSquirrelEvent,
   installWindowsCLI,
   uninstallWindowsCLI,
 } from './squirrel-updater'
+import { squirrelAppUserModelId } from '../lib/toast-activator-clsid'
 import { fatalError } from '../lib/fatal-error'
 
 import { log as writeLog } from './log'
@@ -112,7 +114,7 @@ if (__DEV_SECRETS__) {
 // On Windows, in order to get notifications properly working for dev builds,
 // we'll want to set the right App User Model ID from production builds.
 if (__WIN32__ && __DEV__) {
-  app.setAppUserModelId('com.squirrel.Lodestone.Lodestone')
+  app.setAppUserModelId(squirrelAppUserModelId)
 }
 
 app.on('window-all-closed', () => {
@@ -134,7 +136,13 @@ process.on('uncaughtException', (error: Error) => {
 let handlingSquirrelEvent = false
 if (__WIN32__ && process.argv.length > 1) {
   const arg = process.argv[1]
-  const promise = handleSquirrelEvent(arg)
+  const promise = handleSquirrelEvent(
+    arg,
+    Array.from(possibleProtocols, protocol => ({
+      protocol,
+      args: [protocolLauncherArg],
+    }))
+  )
 
   if (promise) {
     handlingSquirrelEvent = true
@@ -146,9 +154,12 @@ if (__WIN32__ && process.argv.length > 1) {
 
 if (!handlingSquirrelEvent) {
   handleCommandLineArguments(process.argv)
-}
 
-initializeDesktopNotifications()
+  // Not while handling a Squirrel event: that run shows no notifications, has
+  // a few seconds to do its work in, and during installation would look for a
+  // toast activator in shortcuts which do not exist yet.
+  initializeDesktopNotifications()
+}
 
 function handleAppURL(url: string) {
   log.info('Processing protocol url')
@@ -327,6 +338,12 @@ app.on('ready', () => {
   possibleProtocols.forEach(protocol => setAsDefaultProtocolClient(protocol))
 
   createWindow()
+
+  if (__WIN32__ && !__DEV__) {
+    finishInstallation().catch(e =>
+      log.error('Failed finishing the installation', e)
+    )
+  }
 
   const orderedWebRequest = new OrderedWebRequest(
     session.defaultSession.webRequest

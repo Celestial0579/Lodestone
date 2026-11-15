@@ -18,7 +18,17 @@ import {
   guessGiteaKindFromVersion,
 } from './forge-type'
 
-const StorageKeyPrefix = 'forge-kind:'
+/**
+ * The prefix carries a number because what is stored under it is trusted.
+ *
+ * Builds up to v1.0.0-beta.2 kept their records under `forge-kind:`. They took
+ * any major version of 2 or more for Forgejo and stored that as verified, so a
+ * current Gitea, which reports 28.x, was a Forgejo for good. Nothing in such a
+ * record says how it was arrived at. So those are not read any more, and each
+ * instance is asked once again.
+ */
+const StorageKeyPrefix = 'forge-kind-2:'
+const RetiredStorageKeyPrefix = 'forge-kind:'
 const OriginKeyPrefix = 'forge-api-endpoint:'
 
 /** Written through to localStorage so a restart does not re-probe. */
@@ -26,6 +36,8 @@ const cache = new Map<string, IForgeInfo>()
 
 const readStored = (endpoint: string): IForgeInfo | undefined => {
   try {
+    localStorage.removeItem(`${RetiredStorageKeyPrefix}${endpoint}`)
+
     const raw = localStorage.getItem(`${StorageKeyPrefix}${endpoint}`)
 
     if (raw === null) {

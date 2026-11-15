@@ -99,6 +99,79 @@ describe('repository-matching', () => {
       assert.equal(repo.owner, 'someuser')
     })
 
+    describe('with a port in the address of the instance', () => {
+      const accountAt = (endpoint: string, login = 'alovelace') =>
+        new Account(login, endpoint, '', [], '', 1, '', 'free')
+
+      it('matches an HTTP remote on the same port', () => {
+        // Gitea and Forgejo listen on 3000 unless told otherwise.
+        const repo = matchGitHubRepository(
+          [accountAt('http://localhost:3000/api/v1')],
+          'http://localhost:3000/wt/repo.git'
+        )
+        assert(repo !== null)
+        assert.equal(repo.owner, 'wt')
+        assert.equal(repo.name, 'repo')
+      })
+
+      it('tells two instances on one machine apart', () => {
+        const gitea = accountAt('https://git.example.com:3000/api/v1', 'a')
+        const forgejo = accountAt('https://git.example.com:3001/api/v1', 'b')
+
+        const repo = matchGitHubRepository(
+          [gitea, forgejo],
+          'https://git.example.com:3001/team/app.git'
+        )
+        assert.equal(repo?.account, forgejo)
+      })
+
+      it(`doesn't match a remote on another port`, () => {
+        const accounts = [accountAt('http://localhost:3000/api/v1')]
+
+        assert.equal(
+          matchGitHubRepository(accounts, 'http://localhost:3001/wt/repo.git'),
+          null
+        )
+        assert.equal(
+          matchGitHubRepository(accounts, 'http://localhost/wt/repo.git'),
+          null
+        )
+      })
+
+      it('matches a default port that is written out', () => {
+        const repo = matchGitHubRepository(
+          [accountAt('https://git.example.com/api/v1')],
+          'https://git.example.com:443/team/app.git'
+        )
+        assert(repo !== null)
+      })
+
+      it('matches an SSH remote, whose port is not that of the web', () => {
+        const accounts = [accountAt('https://git.example.com:3000/api/v1')]
+
+        assert(
+          matchGitHubRepository(
+            accounts,
+            'git@git.example.com:team/app.git'
+          ) !== null
+        )
+        assert(
+          matchGitHubRepository(
+            accounts,
+            'ssh://git@git.example.com:2222/team/app.git'
+          ) !== null
+        )
+      })
+
+      it('does not hold http against https where neither names a port', () => {
+        const repo = matchGitHubRepository(
+          [accountAt('https://git.example.com/api/v1')],
+          'http://git.example.com/team/app.git'
+        )
+        assert(repo !== null)
+      })
+    })
+
     it(`doesn't match if there aren't any users with that endpoint`, () => {
       const accounts = [
         new Account(

@@ -8,6 +8,7 @@ import { getRepoHooks } from './get-repo-hooks'
 import { createHooksProxy } from './hooks-proxy'
 import { getShellEnv } from './get-shell-env'
 import memoizeOne from 'memoize-one'
+import { getGitConfigParameter } from './git-config-parameters'
 import {
   getCacheHooksEnv,
   getGitHookEnvShell,
@@ -88,9 +89,12 @@ export async function withHooksEnv<T>(
       existingGitEnvConfig.length > 0 ? `${existingGitEnvConfig} ` : ''
 
     return await fn({
-      // TODO: Do we need to escape tmpHooksDir? Could it possibly include a single quote?
-      // probably not?
-      GIT_CONFIG_PARAMETERS: `${gitEnvConfigPrefix}'core.hooksPath=${tmpHooksDir}'`,
+      // The folder is under the temp folder, which on Windows is inside the
+      // profile of the user, and an account can be called O'Brien.
+      GIT_CONFIG_PARAMETERS: `${gitEnvConfigPrefix}${getGitConfigParameter(
+        'core.hooksPath',
+        tmpHooksDir
+      )}`,
       PROCESS_PROXY_PORT: `${port}`,
       PROCESS_PROXY_TOKEN: token,
     })

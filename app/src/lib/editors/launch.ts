@@ -1,6 +1,7 @@
 import { spawn, SpawnOptions } from 'child_process'
 import { pathExists } from '../path-exists'
 import { ExternalEditorError, FoundEditor } from './shared'
+import { getSettingsDialogName } from '../settings-dialog-name'
 import {
   expandTargetPathArgument,
   ICustomIntegration,
@@ -14,7 +15,7 @@ async function launchEditor(
   spawnAsDarwinApp: boolean
 ) {
   const exists = await pathExists(editorPath)
-  const label = __DARWIN__ ? 'Settings' : 'Options'
+  const label = getSettingsDialogName()
   if (!exists) {
     throw new ExternalEditorError(
       `Could not find executable for ${editorName} at path '${editorPath}'. Please open ${label} and select an available editor.`,

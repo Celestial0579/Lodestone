@@ -5,6 +5,7 @@ import { bash, cmd, powershell } from './shell-escape'
 import { SupportedHooksEnvShell } from './config'
 import { assertNever } from '../fatal-error'
 import { enumerateValues, HKEY, RegistryValueType } from 'registry-js'
+import { findAppExecutionAlias } from './app-execution-alias'
 
 type Shell = {
   shell: string
@@ -85,7 +86,11 @@ const findCmdShell = async (): Promise<Shell> => {
 const findPowerShellShell = async (
   shellKind: Extract<SupportedHooksEnvShell, 'powershell' | 'pwsh'>
 ): Promise<Shell | undefined> => {
-  const pwshPath = await which(`${shellKind}.exe`, { nothrow: true })
+  // PowerShell 7 installed as a package is on the PATH only as an app
+  // execution alias, which `which` cannot see.
+  const pwshPath =
+    (await which(`${shellKind}.exe`, { nothrow: true })) ??
+    (await findAppExecutionAlias(`${shellKind}.exe`))
   if (!pwshPath) {
     return undefined
   }

@@ -11,6 +11,7 @@ import { promisify } from 'util'
 import memoizeOne from 'memoize-one'
 import which from 'which'
 import { createWriteStream } from 'fs'
+import { getSettingsDialogName } from '../settings-dialog-name'
 
 const execFileAsync = promisify(execFile)
 
@@ -218,7 +219,7 @@ export const createHooksProxy = (
         }
       }
 
-      errMsg += '\n\nConfigure the shell to use in Preferences > Git > Hooks.'
+      errMsg += `\n\nConfigure the shell to use in ${getSettingsDialogName()} > Git > Hooks.`
 
       return exitWithError(conn, errMsg)
     }

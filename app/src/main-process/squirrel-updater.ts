@@ -63,6 +63,9 @@ export function handleSquirrelEvent(
 
 async function handleInstalled(): Promise<void> {
   await createShortcut(['StartMenu', 'Desktop'])
+  // Running the setup of a newer release over an installed one is an install
+  // to Squirrel, not an update, so this is where an earlier shortcut is found.
+  await removeFormerShortcuts()
   await installWindowsCLI()
 }
 

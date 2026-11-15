@@ -118,7 +118,7 @@ jobs:
           # What an installation of the current build has to leave: one Start
           # menu shortcut under the publisher, the desktop shortcut and the
           # command line tool, and the publisher in the uninstall entry.
-          function Assert-Installed([switch]$ReportPublisher) {
+          function Assert-Installed {
             $menu = @(Get-StartMenuShortcuts)
             '--- Start menu'
             $menu
@@ -131,7 +131,7 @@ jobs:
             }
             $publisher = Get-Publisher
             "publisher in the uninstall entry: $publisher"
-            if (-not $ReportPublisher -and $publisher -ne $env:PUBLISHER) { throw "expected the publisher $env:PUBLISHER" }
+            if ($publisher -ne $env:PUBLISHER) { throw "expected the publisher $env:PUBLISHER" }
           }
 
           function Uninstall-App {
@@ -212,22 +212,13 @@ jobs:
           Get-StartMenuShortcuts
           "publisher in the uninstall entry: $(Get-Publisher)"
 
-      - name: Update to the build under test
+      # Lodestone installs no updates itself, so an update is the setup of the
+      # new release run over the installed one.
+      - name: Run the setup of the build under test over it
         run: |
           . "$env:RUNNER_TEMP\smoke.ps1"
-          $p = Start-Process "$env:LOCALAPPDATA\Lodestone\Update.exe" -ArgumentList "--update=$((Resolve-Path setup).Path)" -PassThru
-          $null = $p.Handle
-          $p.WaitForExit()
-          "update exited with $($p.ExitCode)"
-          $exe = "$env:LOCALAPPDATA\Lodestone\app-$env:VERSION\Lodestone.exe"
-          for ($i = 0; $i -lt 60 -and -not (Test-Path $exe); $i++) { Start-Sleep 2 }
-          if (-not (Test-Path $exe)) { throw "not updated: $exe" }
-          # Give the update hook of the new version the time to run.
-          Start-Sleep 20
-          Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
-          # Whether Squirrel rewrites the uninstall entry on an update is its
-          # business, so the publisher is only reported here.
-          Assert-Installed -ReportPublisher
+          Install-Setup setup\LodestoneSetup-x64.exe $env:VERSION
+          Assert-Installed
           $former = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike"
           if (Test-Path $former) { throw "the update left $former" }
           'the update moved the Start menu shortcut and left no second one'

@@ -27,6 +27,26 @@ against a repository on any supported host:
 - see issues and CI state from commit statuses
 - resolve conflicts, stash, rebase, cherry-pick, squash
 
+## Installing
+
+Download `LodestoneSetup-x64.exe` (or the `.msi`) from the
+[releases](https://github.com/Celestial0579/Lodestone/releases). Windows x64 is
+the only platform with published builds.
+
+**The builds are not signed.** Windows warns before the setup runs: either
+"Open File - Security Warning", because it cannot verify the publisher, or
+SmartScreen, where you choose *More info* and then *Run anyway*. Which one you
+see depends on the machine.
+
+Without a signature, the warning cannot tell you whether the file is the one
+published here. The checksums can: each release lists the SHA-256 sum of every
+file it carries, in its notes and in `SHA256SUMS.txt`. Compare before running
+the setup, for example in PowerShell:
+
+```powershell
+Get-FileHash .\LodestoneSetup-x64.exe -Algorithm SHA256
+```
+
 ## Signing in
 
 Enter the address of your instance — `https://git.example.com`,

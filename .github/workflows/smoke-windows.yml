@@ -3,7 +3,8 @@ name: Smoke test the Windows setup
 # Checks the setup on a Windows runner before a release is made from it: a
 # silent install, that the app starts, that its update check asks this
 # repository on GitHub, that an update from the last release leaves exactly
-# one Start menu shortcut, and that uninstalling takes the app back off again.
+# one Start menu shortcut, both by running the new setup over it and through
+# Update.exe, and that uninstalling takes the app back off again.
 #
 # Run by hand, it tests the installers "Build the Windows setup" left in a
 # given run. On a pull request that touches the setup, it builds them first.
@@ -224,6 +225,37 @@ jobs:
           'the update moved the Start menu shortcut and left no second one'
 
       - name: Uninstall after the update
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          Uninstall-App
+
+      # The way an app updates itself: Update.exe applies the package the
+      # RELEASES file in the feed names, here the folder of the build.
+      - name: Install the former release again
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          $formerVersion = $env:FORMER_RELEASE.TrimStart('v')
+          Install-Setup former\LodestoneSetup-x64.exe $formerVersion
+
+      - name: Update it with Update.exe
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          $p = Start-Process "$env:LOCALAPPDATA\Lodestone\Update.exe" -ArgumentList "--update=$((Resolve-Path setup).Path)" -PassThru
+          $null = $p.Handle
+          $p.WaitForExit()
+          "update exited with $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw 'Update.exe failed' }
+          $exe = "$env:LOCALAPPDATA\Lodestone\app-$env:VERSION\Lodestone.exe"
+          if (-not (Test-Path $exe)) { throw "not updated: $exe" }
+          # Give the update hook of the new version the time to run.
+          Start-Sleep 20
+          Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
+          Assert-Installed
+          $former = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike"
+          if (Test-Path $former) { throw "the update left $former" }
+          'Update.exe updated the app, moved the Start menu shortcut and left no second one'
+
+      - name: Uninstall after Update.exe
         run: |
           . "$env:RUNNER_TEMP\smoke.ps1"
           Uninstall-App

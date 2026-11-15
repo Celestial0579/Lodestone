@@ -1,5 +1,15 @@
 {
   "releases": {
+    "1.0.1": [
+      "[Fixed] Check for updates on GitHub, where the project moved, and say so when a check fails or finds nothing published",
+      "[New] Announce a newer release in the main window, with a link to it",
+      "[Fixed] Finish an installation cut short on its first start, and take shortcuts, the command line tool and stored credentials back on uninstall",
+      "[Fixed] Tell a current Gitea from Forgejo, and match instances whose address has a port",
+      "[Fixed] Name the host in menu items instead of always saying Gitea, and call the settings dialog Options on Windows",
+      "[Fixed] Run hooks with PowerShell 7 installed from winget, and with an apostrophe in the temp path",
+      "[Fixed] Stop asking Gitea and Forgejo for GitHub's feature flags and Copilot on every account refresh",
+      "[Security] Update Electron to 42.11.16 and take the patched releases of dependencies with open advisories"
+    ],
     "1.0.0": [
       "[New] Sign in to any Gitea instance with a personal access token",
       "[New] Talk to the Gitea REST API (/api/v1) instead of the GitHub API",

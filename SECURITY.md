@@ -5,10 +5,11 @@ programme and no service level agreement.
 
 ## Reporting a vulnerability
 
-Please report privately rather than in a public issue on
-<https://github.com/Celestial0579/Lodestone>. GitHub has no confidential
-issues, so write to the maintainer directly, at the address given in the
-imprint at <https://firestrike.de/impressum/>.
+Please report privately rather than in a public issue: open a report at
+<https://github.com/Celestial0579/Lodestone/security/advisories/new> (the
+repository's **Security** tab, then **Report a vulnerability**). Only the
+maintainer sees it, and the fix is prepared in a private fork before anything
+is published.
 
 Expect an acknowledgement within a week. Fixes ship in the next release; there
 is no separate security release channel.

@@ -7,7 +7,7 @@ import path from 'path'
 
 export const smokeRepoPath = path.join(
   os.tmpdir(),
-  'github-desktop-e2e-smoke-repository'
+  'lodestone-e2e-smoke-repository'
 )
 export const smokeRepoName = path.basename(smokeRepoPath)
 export const smokeRepoFileName = 'smoke-change.txt'
@@ -19,12 +19,12 @@ export function ensureSmokeTestRepository() {
   fs.mkdirSync(smokeRepoPath, { recursive: true })
 
   runGit(['init'], smokeRepoPath)
-  runGit(['config', 'user.name', 'GitHub Desktop E2E'], smokeRepoPath)
-  runGit(['config', 'user.email', 'desktop-e2e@example.com'], smokeRepoPath)
+  runGit(['config', 'user.name', 'Lodestone E2E'], smokeRepoPath)
+  runGit(['config', 'user.email', 'lodestone-e2e@example.com'], smokeRepoPath)
 
   fs.writeFileSync(
     path.join(smokeRepoPath, 'README.md'),
-    '# GitHub Desktop Smoke Repo\n'
+    '# Lodestone Smoke Repo\n'
   )
 
   runGit(['add', 'README.md'], smokeRepoPath)

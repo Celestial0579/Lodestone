@@ -1,12 +1,11 @@
 /* eslint-disable no-sync */
 
 /**
- * Shared Playwright fixtures for GitHub Desktop e2e tests.
+ * Shared Playwright fixtures for the end-to-end test of Lodestone.
  *
  * Provides:
  *  - `app`  — the ElectronApplication instance
  *  - `mainWindow` — the main BrowserWindow page
- *  - `mockServer` — the mock update server (with control helpers)
  *
  * All fixtures are scoped to the **worker** so the app launches once
  * and all tests in the file share the same session (one Electron
@@ -14,10 +13,8 @@
  */
 
 import fs from 'fs'
-import http from 'http'
 import os from 'os'
 import path from 'path'
-import { spawnSync } from 'child_process'
 import {
   test as base,
   type ElectronApplication,
@@ -25,23 +22,16 @@ import {
 } from '@playwright/test'
 import { _electron as electron } from 'playwright'
 import { ensureSmokeTestRepository, smokeRepoPath } from './test-helpers'
-import {
-  createMockUpdateServer,
-  MOCK_CONTROL_URL,
-  type IMockUpdateServer,
-  type UpdateBehavior,
-} from './mock-update-server'
 import { getDistPath, getExecutableName } from '../../../script/dist-info'
 import { getProductName } from '../../package-info'
 
 const projectRoot = path.resolve(__dirname, '..', '..', '..')
-const userDataDir = path.join(os.tmpdir(), 'github-desktop-pw-e2e')
-const fakeHomeDir = path.join(os.tmpdir(), 'github-desktop-pw-fake-home')
+const userDataDir = path.join(os.tmpdir(), 'lodestone-pw-e2e')
+const fakeHomeDir = path.join(os.tmpdir(), 'lodestone-pw-fake-home')
 const installedAppExecutablePath = process.env.DESKTOP_E2E_APP_PATH
-// `packaged` is the default because CI runs the suite against packaged or
-// installed production artifacts. `unpackaged` exists for local iteration so
-// the same tests can run against the staged app in `out/main.js` without
-// requiring packaging or signing.
+// `packaged` is the default because that is what CI builds and what a release
+// is made from. `unpackaged` exists for local iteration, so the same test can
+// run against the staged app in `out/main.js` without packaging it.
 const e2eAppMode = process.env.DESKTOP_E2E_APP_MODE ?? 'packaged'
 const unpackagedAppEntryPoint = path.join(projectRoot, 'out', 'main.js')
 
@@ -96,44 +86,7 @@ function getE2ELaunchOptions() {
   }
 }
 
-export function terminateWindowsUpdaterProcesses() {
-  if (process.platform !== 'win32') {
-    return
-  }
-
-  for (const imageName of ['Update.exe', 'GitHubDesktop.exe']) {
-    spawnSync('taskkill', ['/F', '/T', '/IM', imageName], {
-      stdio: 'ignore',
-      windowsHide: true,
-    })
-  }
-}
-
 // ── Helpers exposed to tests ────────────────────────────────────────
-
-type MockControlAction =
-  | `set-behavior/${UpdateBehavior}`
-  | 'reset-requests'
-  | 'requests'
-  | 'behavior'
-
-export function controlMockServer(action: MockControlAction): Promise<string> {
-  return new Promise((resolve, reject) => {
-    http
-      .get(`${MOCK_CONTROL_URL}/${action}`, res => {
-        let data = ''
-        res.on('data', (chunk: string) => (data += chunk))
-        res.on('end', () => resolve(data))
-      })
-      .on('error', reject)
-  })
-}
-
-export async function getMockRequests(): Promise<
-  ReadonlyArray<{ method: string; url: string }>
-> {
-  return JSON.parse(await controlMockServer('requests'))
-}
 
 export async function dismissMoveToApplicationsDialog(page: Page) {
   if (process.platform !== 'darwin') {
@@ -154,14 +107,12 @@ export async function dismissMoveToApplicationsDialog(page: Page) {
 type E2EFixtures = {
   app: ElectronApplication
   mainWindow: Page
-  mockServer: IMockUpdateServer
 }
 
 export const test = base.extend<{}, E2EFixtures>({
   // Worker-scoped: one Electron app per test file.
-  // Depends on mockServer so the update server is ready before launch.
   app: [
-    async ({ mockServer }, use) => {
+    async ({}, use) => {
       // Setup directories
       ensureSmokeTestRepository()
 
@@ -197,9 +148,7 @@ export const test = base.extend<{}, E2EFixtures>({
 
       await use(app)
 
-      terminateWindowsUpdaterProcesses()
       await app.close().catch(() => {})
-      terminateWindowsUpdaterProcesses()
       await new Promise(resolve => setTimeout(resolve, 1000))
     },
     { scope: 'worker' },
@@ -239,15 +188,6 @@ export const test = base.extend<{}, E2EFixtures>({
         .context()
         .tracing.stop({ path: tracePath })
         .catch(() => {})
-    },
-    { scope: 'worker' },
-  ],
-
-  mockServer: [
-    async ({}, use) => {
-      const server = await createMockUpdateServer()
-      await use(server)
-      await server.close()
     },
     { scope: 'worker' },
   ],

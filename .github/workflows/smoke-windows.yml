@@ -1,0 +1,145 @@
+name: Smoke test the Windows setup
+
+# Takes the installers that "Build the Windows setup" left in a given run, and
+# checks the setup on a Windows runner before a release is made from it:
+# a silent install, that the app starts, that its update check asks this
+# repository on GitHub, and that uninstalling takes the app back off again.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-run:
+        description: Run of "Build the Windows setup" whose installers to test
+        required: true
+  pull_request:
+    paths:
+      - .github/workflows/smoke-windows.yml
+      - .github/smoke/**
+
+permissions:
+  contents: read
+  # To download the artifact of another run.
+  actions: read
+
+env:
+  # The build of v1.0.1, for runs on a pull request.
+  BUILD_RUN: ${{ inputs.build-run || '43705372867' }}
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/smoke
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: lodestone-windows-x64
+          path: setup
+          run-id: ${{ env.BUILD_RUN }}
+          github-token: ${{ github.token }}
+
+      - name: Check the files against their sums
+        working-directory: setup
+        run: |
+          foreach ($line in Get-Content SHA256SUMS.txt) {
+            $sum, $name = $line -split '\s+', 2
+            $actual = (Get-FileHash $name -Algorithm SHA256).Hash.ToLower()
+            if ($actual -ne $sum) { throw "$name does not match its sum" }
+            "$name matches"
+          }
+
+      - name: Install silently
+        run: |
+          $p = Start-Process setup\LodestoneSetup-x64.exe -ArgumentList '--silent' -PassThru
+          $null = $p.Handle
+          $p.WaitForExit()
+          "setup exited with $($p.ExitCode)"
+          $exe = "$env:LOCALAPPDATA\Lodestone\app-1.0.1\Lodestone.exe"
+          for ($i = 0; $i -lt 60 -and -not (Test-Path $exe); $i++) { Start-Sleep 2 }
+          if (-not (Test-Path $exe)) { throw "not installed: $exe" }
+          $version = (Get-Item $exe).VersionInfo.ProductVersion
+          "installed $exe, version $version"
+          if ($version -ne '1.0.1') { throw "expected version 1.0.1" }
+          # Squirrel starts the app once after installing. Give it the time to
+          # finish its install hook, then close it.
+          Start-Sleep 20
+          Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep 3
+
+      - name: Check what the installation left
+        run: |
+          $expected = @(
+            "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike\Lodestone.lnk",
+            "$env:USERPROFILE\Desktop\Lodestone.lnk",
+            "$env:LOCALAPPDATA\Lodestone\bin\lodestone.bat"
+          )
+          foreach ($f in $expected) { '{0}: {1}' -f $f, (Test-Path $f) }
+
+      - name: Start the app and see where the update check goes
+        run: |
+          $proxyLog = "$env:RUNNER_TEMP\proxy.log"
+          $proxy = Start-Process node -ArgumentList '.github/smoke/refusing-proxy.js', '8899', $proxyLog -PassThru -WindowStyle Hidden
+          Start-Sleep 2
+          $exe = "$env:LOCALAPPDATA\Lodestone\app-1.0.1\Lodestone.exe"
+          $app = Start-Process $exe -ArgumentList '--proxy-server=127.0.0.1:8899' -PassThru
+          $logs = "$env:APPDATA\Lodestone\logs"
+          $line = $null
+          for ($i = 0; $i -lt 60 -and -not $line; $i++) {
+            Start-Sleep 3
+            if ($app.HasExited) { throw "the app exited with $($app.ExitCode)" }
+            $line = Get-ChildItem $logs -Filter *.log -ErrorAction SilentlyContinue |
+              Select-String -SimpleMatch '[updates]' | Select-Object -First 1
+          }
+          '--- asked of the proxy'
+          Get-Content $proxyLog
+          '--- update lines in the app log'
+          Get-ChildItem $logs -Filter *.log | Select-String -SimpleMatch '[updates]' | ForEach-Object { $_.Line }
+          Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
+          Stop-Process $proxy.Id -Force
+          if (-not $line) { throw 'the app logged no update check' }
+          if ($line.Line -notmatch [regex]::Escape('https://github.com/Celestial0579/Lodestone')) {
+            throw 'the update check went to another repository'
+          }
+          if (-not (Select-String $proxyLog -SimpleMatch 'CONNECT api.github.com:443')) {
+            throw 'the app did not ask api.github.com'
+          }
+          if (Select-String $proxyLog -SimpleMatch 'firestrike') {
+            throw 'the app asked git.firestrike.de'
+          }
+          'the update check asks https://github.com/Celestial0579/Lodestone, through api.github.com'
+
+      - name: Uninstall
+        run: |
+          Start-Sleep 3
+          $p = Start-Process "$env:LOCALAPPDATA\Lodestone\Update.exe" -ArgumentList '--uninstall', '-s' -PassThru
+          $null = $p.Handle
+          $p.WaitForExit()
+          "uninstall exited with $($p.ExitCode)"
+          Start-Sleep 10
+          $gone = @(
+            "$env:LOCALAPPDATA\Lodestone\app-1.0.1\Lodestone.exe",
+            "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike\Lodestone.lnk",
+            "$env:USERPROFILE\Desktop\Lodestone.lnk",
+            "$env:LOCALAPPDATA\Lodestone\bin\lodestone.bat"
+          )
+          $left = $gone | Where-Object { Test-Path $_ }
+          foreach ($f in $gone) { '{0}: {1}' -f $f, $(if (Test-Path $f) { 'still there' } else { 'gone' }) }
+          if ($left) { throw 'uninstalling left files behind' }
+
+      - name: Keep the logs of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-logs
+          path: |
+            ${{ runner.temp }}/proxy.log
+            ~/AppData/Roaming/Lodestone/logs
+            ~/AppData/Local/SquirrelTemp
+          if-no-files-found: ignore

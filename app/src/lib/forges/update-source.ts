@@ -8,10 +8,11 @@
  * Forgejo and GitHub, and anything that needs translating is translated a layer
  * below this one.
  *
- * We deliberately don't download or install anything. A release is a set of
- * file attachments rather than a Squirrel feed, so there is nothing to hand the
- * auto updater. Telling the user that a new version exists and taking them to
- * it is the honest version of this feature.
+ * A release is a set of file attachments rather than a Squirrel feed. Where
+ * the app can update itself, the main process makes a feed of the release's
+ * full package once its SHA-256 matches the release's sum file (see
+ * update-assets.ts). Everywhere else, and whenever that fails, the user is
+ * told a new version exists and taken to it.
  */
 
 import { SemVer, parse as parseSemVer, gt } from 'semver'
@@ -26,6 +27,7 @@ import {
   RetiredProjectRepositoryURLs,
 } from '../project-links'
 import { request, parsedResponse, IAPIError } from '../http'
+import { IReleaseAsset } from './update-assets'
 
 /** localStorage key holding the repository releases are published to. */
 const UpdateSourceKey = 'gitea-update-source-url'
@@ -49,6 +51,15 @@ export interface IForgeRelease {
   readonly name: string
   /** Where the user can download this release. */
   readonly htmlURL: string
+  /** The files attached to the release. */
+  readonly assets: ReadonlyArray<IReleaseAsset>
+}
+
+/** A file attached to a release, as the API describes it. */
+interface IAPIForgeReleaseAsset {
+  readonly name: string
+  readonly browser_download_url: string
+  readonly size: number
 }
 
 /** The raw shape of a release, as far as we care about it. */
@@ -58,6 +69,25 @@ interface IAPIForgeRelease {
   readonly html_url: string
   readonly draft: boolean
   readonly prerelease: boolean
+  readonly assets?: ReadonlyArray<IAPIForgeReleaseAsset> | null
+}
+
+/** The assets of a release, leaving out any entry that is not one. */
+function toReleaseAssets(
+  assets: IAPIForgeRelease['assets']
+): ReadonlyArray<IReleaseAsset> {
+  if (!Array.isArray(assets)) {
+    return []
+  }
+
+  return assets
+    .filter(
+      a =>
+        typeof a?.name === 'string' &&
+        typeof a.browser_download_url === 'string' &&
+        typeof a.size === 'number'
+    )
+    .map(a => ({ name: a.name, url: a.browser_download_url, size: a.size }))
 }
 
 /**
@@ -452,6 +482,7 @@ export async function fetchLatestRelease(
       version,
       name: release.name || release.tag_name,
       htmlURL: release.html_url,
+      assets: toReleaseAssets(release.assets),
     },
   }
 }

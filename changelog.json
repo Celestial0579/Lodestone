@@ -1,6 +1,7 @@
 {
   "releases": {
     "1.0.2": [
+      "[New] Update itself on Windows from the repository set in Options, once the package matches the SHA-256 the release lists for it",
       "[Improved] Name Celestial0579 as the publisher on Windows, and move the Start menu shortcut there on update without leaving the old one behind"
     ],
     "1.0.1": [

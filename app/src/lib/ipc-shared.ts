@@ -1,4 +1,8 @@
 import { IMenuItemState } from './menu-update'
+import type {
+  ForgeUpdateResult,
+  IForgeUpdateRequest,
+} from '../main-process/forge-update'
 import { MenuIDs } from '../models/menu-ids'
 import { ISerializableMenuItem } from './menu-item'
 import { MenuLabelsEvent } from '../models/menu-labels'
@@ -114,6 +118,9 @@ export type RequestResponseChannels = {
   'is-in-application-folder': () => Promise<boolean | null>
   'move-to-applications-folder': () => Promise<void>
   'check-for-updates': (url: string) => Promise<Error | undefined>
+  'prepare-forge-update': (
+    request: IForgeUpdateRequest
+  ) => Promise<ForgeUpdateResult>
   'get-current-window-state': () => Promise<WindowState | undefined>
   'get-current-window-zoom-factor': () => Promise<number | undefined>
   'resolve-proxy': (url: string) => Promise<string>

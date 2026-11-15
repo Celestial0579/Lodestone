@@ -22,6 +22,7 @@ import {
   uninstallWindowsCLI,
 } from './squirrel-updater'
 import { squirrelAppUserModelId } from '../lib/toast-activator-clsid'
+import { prepareForgeUpdate } from './forge-update'
 import { fatalError } from '../lib/fatal-error'
 
 import { log as writeLog } from './log'
@@ -524,6 +525,10 @@ app.on('ready', () => {
 
   ipcMain.handle('check-for-updates', async (_, url) =>
     mainWindow?.checkForUpdates(url)
+  )
+
+  ipcMain.handle('prepare-forge-update', async (_, request) =>
+    prepareForgeUpdate(request)
   )
 
   ipcMain.on('quit-and-install-updates', () =>

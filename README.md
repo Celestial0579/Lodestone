@@ -114,9 +114,25 @@ repository, e.g.
 `https://git.example.com/team/lodestone`. Any host works. **Clear the field to
 turn update checks off entirely**, and nothing is contacted at all.
 
-Releases are downloaded by hand; the app never installs anything on its own,
-and prereleases are not offered as updates. If the repository is private, the
-account you are signed in to on that same instance is used to read it.
+On Windows, Lodestone updates itself from that repository, the way GitHub
+Desktop does. When the check finds a newer release, the app downloads its full
+package (`Lodestone-<version>-full.nupkg`) and `SHA256SUMS.txt` in the
+background. The package goes to Squirrel only if its SHA-256 is the one that
+file lists for it. The main window then offers **Restart to update**. Every
+download goes over HTTPS, only from the host of that repository (for
+github.com also from GitHub's asset storage), without the credentials of your
+accounts. It lands in a fresh folder under `%LOCALAPPDATA%\Lodestone\updates`
+and is removed once Squirrel is done with it. A release without these two
+files, a download redirected elsewhere and a package that does not match its
+sum are refused. Nothing is installed then, and the notice with a link to the
+release stays, so you can still update by hand.
+
+The builds are unsigned, so the sum protects against a corrupted or swapped
+download, not against someone who can publish releases in the repository you
+chose. Only enter a repository whose releases you trust. Prereleases are not
+offered as updates. If the repository is private, the account you are signed
+in to on that same instance is used to read it. The download then fails, and
+the update has to be made by hand.
 
 The About dialog says what the last check came to: that you have the latest
 version, that the repository has no published release - which is also what it

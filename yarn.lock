@@ -3232,12 +3232,12 @@ form-data@^4.0.1:
     hasown "^2.0.4"
     mime-types "^2.1.35"
 
-front-matter@^2.3.0:
-  version "2.3.0"
-  resolved "https://registry.yarnpkg.com/front-matter/-/front-matter-2.3.0.tgz#7203af896ce357ee04e2aa45169ea91ed7f67504"
-  integrity sha1-cgOviWzjV+4E4qpFFp6pHtf2dQQ=
+front-matter@^4.0.2:
+  version "4.0.2"
+  resolved "https://registry.yarnpkg.com/front-matter/-/front-matter-4.0.2.tgz#b14e54dc745cfd7293484f3210d15ea4edd7f4d5"
+  integrity sha512-I8ZuJ/qG92NWX8i5x1Y8qyj3vizhXS31OxjKDu3LKP+7/qBgfIKValiZIEwoVoJKUHlhWtYrktkxV1XsX+pPlg==
   dependencies:
-    js-yaml "^3.10.0"
+    js-yaml "^3.13.1"
 
 fs-extra@^11.1.1:
   version "11.4.0"
@@ -4087,7 +4087,7 @@ jest-worker@^27.4.5:
   resolved "https://registry.yarnpkg.com/js-tokens/-/js-tokens-4.0.0.tgz#19203fb59991df98e3a287050d4647cdeaf32499"
   integrity sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==
 
-js-yaml@^3.10.0:
+js-yaml@^3.13.1:
   version "3.15.2"
   resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-3.15.2.tgz#3f83823ac6be17f570f23b2ecdef3777ff5ea364"
   integrity sha512-6EuL879VkRA+1Cz578mKMiKvjPNEuk6+r1JaFzoSWejZmtf7xWbIyw1e3KkxlkzTIt9Taw6JBhEppG7utc1P+w==

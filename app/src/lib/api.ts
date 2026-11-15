@@ -2111,6 +2111,14 @@ export class API {
    * @returns An array of strings with the feature flags enabled for the user.
    */
   public async fetchFeatureFlags(): Promise<ReadonlyArray<string> | undefined> {
+    // These are GitHub Desktop's own flags, and no other forge has them. For
+    // Gitea and Forgejo the adapter answers the question itself, with a 404,
+    // so all that came of asking was a warning in the log, at every sign-in
+    // and every start.
+    if (isGiteaEndpoint(this.endpoint)) {
+      return undefined
+    }
+
     try {
       const response = await this.ghRequest('GET', '/desktop_internal/features')
       const featuresResponse = await parsedResponse<IUserFeaturesResponse>(
@@ -2129,6 +2137,13 @@ export class API {
    * @returns Copilot license and API endpoint.
    */
   public async fetchUserCopilotInfo(): Promise<UserCopilotInfo | undefined> {
+    // Copilot is GitHub's, and so is the GraphQL API this asks. Gitea and
+    // Forgejo have neither. The adapter's 404 has no `data` to take a viewer
+    // from, which made the warning this used to leave in the log a TypeError.
+    if (isGiteaEndpoint(this.endpoint)) {
+      return undefined
+    }
+
     // Copilot is not available on GHES
     if (isGHES(this.endpoint)) {
       return undefined

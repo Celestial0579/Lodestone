@@ -1,239 +1,129 @@
-# E2E Smoke Tests
+# The End-to-End Test
 
-This document explains the end-to-end smoke test harness added for GitHub
-Desktop, what it covers, how it runs locally and in CI, and which repository
-files make up the implementation.
+Lodestone has one end-to-end test. It launches the real, production-built app
+with Playwright's Electron support, goes through it as a new user would, and
+checks in the repository what came of it. This document says what it covers,
+how it is run, and which files it is made of.
 
-## Overview
+## What It Covers
 
-The smoke suite uses Playwright's Electron support to launch the real Desktop
-application and drive a small set of critical user paths. The focus is not broad
-UI coverage. The suite is intended to protect the app's highest-risk integration
-boundaries:
+The test lives in `app/test/e2e/app-launch.e2e.ts` and does this, in one
+Electron session:
 
-- app startup and first-run flow
-- opening an existing repository
-- committing and switching branches
-- updater state transitions and platform-specific update behavior
+- launches the app and completes the welcome flow without signing in
+- opens a repository from disk
+- checks that the changed file shows up with its diff
+- creates a commit
+- creates a branch and switches back
 
-The suite is deliberately small and runs serially in one Electron session. That
-keeps it practical for CI and useful for iterative development.
+It mixes what the window shows with what git says: after each step it asks the
+repository itself, with git, whether the commit and the branch are there.
 
-## What The Suite Covers
+That is deliberately little. The test is there to show that a build starts and
+can do the one thing the app is for. It is the only automated check that runs
+the app as a whole.
 
-The current smoke spec lives in `app/test/e2e/app-launch.e2e.ts` and covers:
+## What It Does Not Cover
 
-- launching Desktop and completing the welcome flow
-- opening the smoke repository from disk
-- verifying the changed file appears in the diff
-- creating a commit
-- creating a branch and switching back
-- verifying startup update checks against the mock update server
-- verifying About dialog update states
-- verifying update-available and quit-during-download behavior
+Upstream's suite went on to test the updater: a mock update server stood in
+for the Squirrel feed, and nine tests expected what that updater shows, from
+"downloading update" to the dialog that warns against closing GitHub Desktop
+while an update installs. Lodestone does not update that way. It asks a forge
+for the latest release of a repository and links to it; it downloads and
+installs nothing. Those tests expected texts and dialogs this app never shows.
+They were removed, together with the mock server and the build switch that
+pointed the app at it.
 
-These tests intentionally mix UI assertions with repository-level verification by
-checking Git state directly in the smoke repository.
+What the update check does is covered by unit tests instead:
 
-## File Layout
+- `app/test/unit/forges/update-source-test.ts`: asking a forge, in either API
+  dialect, and every way that can fail
+- `app/test/unit/update-store-test.ts`: what the app makes of the answer
+- `app/test/unit/ui/about-update-check-test.tsx`: what the About dialog says
 
-The main files added or changed for the E2E harness are:
+## Files
 
-- `app/test/e2e/app-launch.e2e.ts`
-  - the smoke suite itself
-- `app/test/e2e/e2e-fixtures.ts`
-  - Playwright/Electron fixtures, launch mode selection, tracing, video output,
-    and Windows updater cleanup
-- `app/test/e2e/mock-update-server.ts`
-  - an in-process HTTP server used to simulate updater responses for macOS and
-    Windows
-- `app/test/e2e/test-helpers.ts`
-  - helpers for creating and validating the smoke test repository
-- `app/test/e2e/playwright.config.ts`
-  - Playwright configuration for the smoke suite
+- `app/test/e2e/app-launch.e2e.ts`: the test
+- `app/test/e2e/e2e-fixtures.ts`: the Playwright fixtures, which choose how the
+  app is launched and record video and a trace
+- `app/test/e2e/test-helpers.ts`: creates the repository the test works in and
+  reads its state back
+- `app/test/e2e/playwright.config.ts`: the Playwright configuration
 
 ## How The App Is Launched
 
-The fixture supports three effective launch modes.
+The fixtures can launch the app in three ways.
 
-### Installed app
+### Packaged
 
-If `DESKTOP_E2E_APP_PATH` is set, the fixture launches the executable at that
-path. This is the mode used by CI after the app has been packaged and installed.
+The default. The fixtures take the app from `dist`, where `yarn build:prod`
+puts it, and start that executable. This is the form a release is made from.
 
-This matters most on Windows, where Squirrel update behavior depends on running
-from a real installed application layout.
+### Unpackaged
 
-### Packaged app
+With `DESKTOP_E2E_APP_MODE=unpackaged` the fixtures start `out/main.js` with
+the Electron from `node_modules`. This is for working on the test or on code
+near it: it needs no packaging, and still runs a production webpack bundle.
 
-If `DESKTOP_E2E_APP_PATH` is not set and `DESKTOP_E2E_APP_MODE` is not set to
-`unpackaged`, the fixture resolves the packaged app path from `dist` and launches
-that executable directly.
+### Installed
 
-This is the default E2E mode because CI uses production-like packaged artifacts.
+With `DESKTOP_E2E_APP_PATH` set to an executable, the fixtures start that one.
+This is for running the test against an app that was installed with its setup.
 
-### Unpackaged app
+In every mode the app gets a user data folder of its own under the temp
+folder, so it starts as a fresh installation would. Git is pointed at a global
+and a system configuration of its own there (`GIT_CONFIG_GLOBAL`,
+`GIT_CONFIG_SYSTEM`), so the run does not use the git settings of the person
+running the test.
 
-If `DESKTOP_E2E_APP_MODE=unpackaged`, the fixture launches `out/main.js`
-instead of a packaged executable.
+## Running It
 
-This mode exists for local iteration. It avoids the need to fully package and
-sign the app just to run the smoke suite while still using a production webpack
-bundle and staged resources.
-
-## Local Commands
-
-The branch adds two ways to run the suite locally.
-
-### Packaged mode
+The test needs `git` on the PATH: the repository it works in is made with it.
 
 ```bash
 yarn test:e2e:packaged
 ```
 
-This builds a packaged production app and then runs the E2E suite.
-
-### Unpackaged mode
+builds a packaged production app and runs the test against it.
 
 ```bash
 yarn test:e2e:unpackaged
 ```
 
-This builds a production-configured staged app in `out/` and runs the same E2E
-suite against `out/main.js`.
+builds the staged app in `out/` and runs the test against `out/main.js`. The
+build sets `DESKTOP_SKIP_PACKAGE=1`, which makes `script/build.ts` stop before
+packaging.
 
-The unpackaged build path uses `DESKTOP_SKIP_PACKAGE=1` so `script/build.ts`
-stages the app without invoking the final packaging step.
+`yarn test:e2e` is the packaged form. `yarn test:e2e:run:packaged` and
+`yarn test:e2e:run:unpackaged` run the test without building first.
 
-### Default alias
+## In CI
 
-```bash
-yarn test:e2e
-```
+The `windows` job of `.github/workflows/ci.yml` packages the app with
+`yarn test:e2e:build:packaged` and runs the test against it. When a run fails
+there, the job keeps the `playwright-videos` folder as an artifact.
 
-This remains the packaged path and is equivalent to `yarn test:e2e:packaged`.
+## The Repository It Works In
 
-## Smoke Repository Setup
+`app/test/e2e/test-helpers.ts` makes a throwaway repository under the temp
+folder before the app starts: it initialises it, gives it an author, makes a
+first commit, and adds one file that is not committed yet. That file is what
+the test expects to find in the list of changes.
 
-The suite uses a throwaway local Git repository created in the system temp
-directory.
+## Videos And Traces
 
-`app/test/e2e/test-helpers.ts` is responsible for:
+The run writes to `playwright-videos`, which git ignores:
 
-- creating the repository
-- initializing Git
-- configuring a local author name and email
-- creating an initial commit
-- adding an uncommitted smoke file used by the tests
+- a video of the window, recorded through the Electron fixture
+- a trace, saved when the session ends, that Playwright's trace viewer opens
 
-The tests then verify Desktop's behavior both through the UI and by checking the
-repository state directly with Git commands.
+The fixtures also pass errors from the renderer's console, and uncaught errors
+of the page, on to the output of the run. That helps when the app dies before
+the test has anything to assert.
 
-## Updater Testing
+## Limits
 
-Updater behavior is tested through a local HTTP server defined in
-`app/test/e2e/mock-update-server.ts`.
-
-### Build-time updater URL override
-
-`app/app-info.ts` now uses `DESKTOP_E2E_UPDATES_URL` when present. This is what
-lets E2E builds point the app at the local mock update server instead of the
-real update service.
-
-### macOS behavior
-
-For macOS, the mock server serves a Squirrel.Mac-style JSON response.
-
-- `no-update` returns HTTP 204
-- `update-available` returns a JSON payload with a fake zip URL
-
-The fake download stays open rather than completing, which keeps the app in the
-"Downloading update…" state without requiring a valid signed update archive.
-
-### Windows behavior
-
-For Windows, the mock server serves Squirrel.Windows-style responses.
-
-- requests for `RELEASES` receive a text manifest
-- requests for `.nupkg` receive a fake long-lived binary response
-
-This is necessary because Windows updater behavior does not use the macOS JSON
-contract.
-
-### Mock server control plane
-
-The mock server exposes a simple control surface under `/_control/`.
-
-The tests use it to:
-
-- switch between `no-update` and `update-available`
-- reset the captured request log
-- inspect which requests the app made
-
-## CI Design
-
-The `e2e-smoke` job in `.github/workflows/ci.yml` runs separately from the main
-`build` job.
-
-It currently:
-
-- checks out the repository
-- uses the shared CI environment setup action
-- builds the production app with `DESKTOP_E2E_UPDATES_URL` pointed at the mock
-  server
-- uses the shared Windows signing action when needed
-- packages the app
-- installs the app on macOS and Windows
-- exports `DESKTOP_E2E_APP_PATH`
-- runs `yarn test:e2e:run:packaged`
-- uploads `playwright-videos` as artifacts so traces and videos are retained
-
-The CI job intentionally tests production-like packaged or installed artifacts.
-This catches failures that do not show up when running only webpack output.
-
-## Windows-Specific Notes
-
-Windows needed a few extra pieces to keep the suite stable.
-
-- the smoke suite only runs updater coverage against an installed app path on
-  Windows
-- the workflow installs the generated Squirrel setup executable silently and
-  discovers the installed `Lodestone.exe` path
-- installer failures dump Squirrel log files for diagnosis
-- the E2E fixtures kill lingering `Update.exe` and `Lodestone.exe` process
-  trees during teardown to avoid hangs and races with the mock server
-
-## Videos, Traces, and Diagnostics
-
-The suite writes output to `playwright-videos`.
-
-Artifacts include:
-
-- Playwright videos recorded through the Electron fixture
-- trace zip files saved from the Playwright context
-
-The workflow uploads that directory as an artifact so CI failures can be
-inspected after the run completes.
-
-The fixture also forwards renderer console errors and page errors to the job log
-to make failures easier to diagnose when the app dies before Playwright can make
-useful assertions.
-
-## Limitations And Tradeoffs
-
-- The suite is intentionally narrow. It protects critical integration paths, not
-  the entire UI surface.
-- Updater tests simulate update availability rather than downloading valid
-  signed release artifacts.
-- Windows updater behavior is realistic only when running from an installed app,
-  which is why CI uses installer-based setup there.
-- Local unpackaged mode is meant for fast iteration, not as a perfect substitute
-  for packaged/install-time validation.
-
-## When To Use Which Mode
-
-- Use `yarn test:e2e:unpackaged` when iterating locally on the smoke suite or
-  nearby app behavior.
-- Use `yarn test:e2e:packaged` when you need parity with the packaged runtime.
-- Rely on the CI `e2e-smoke` job for the final check against production-like
-  packaged and installed artifacts.
+- One path through the app, not the interface as a whole.
+- Nothing that needs an account: no sign-in, no clone, no push.
+- The unpackaged mode is for speed. It does not stand in for a packaged build,
+  and neither stands in for an installation.

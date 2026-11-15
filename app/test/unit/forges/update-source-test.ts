@@ -247,6 +247,52 @@ describe('fetchLatestRelease', () => {
     assert.equal(seen.length, 1)
   })
 
+  it('keeps the files attached to the release, and only well formed ones', async () => {
+    stubForge({
+      [`${github}/releases/latest`]: {
+        status: 200,
+        body: release({
+          assets: [
+            {
+              name: 'Lodestone-1.2.3-full.nupkg',
+              browser_download_url:
+                'https://github.com/team/lodestone/releases/download/v1.2.3/Lodestone-1.2.3-full.nupkg',
+              size: 1234,
+            },
+            { name: 'broken', size: 'large' },
+            null,
+          ],
+        }),
+      },
+    })
+
+    const result = await fetchLatestRelease(
+      sourceAt('https://github.com/team/lodestone'),
+      []
+    )
+
+    assert.deepEqual(result.kind === 'release' && result.release.assets, [
+      {
+        name: 'Lodestone-1.2.3-full.nupkg',
+        url: 'https://github.com/team/lodestone/releases/download/v1.2.3/Lodestone-1.2.3-full.nupkg',
+        size: 1234,
+      },
+    ])
+  })
+
+  it('reads a release without assets as one with none', async () => {
+    stubForge({
+      [`${github}/releases/latest`]: { status: 200, body: release() },
+    })
+
+    const result = await fetchLatestRelease(
+      sourceAt('https://github.com/team/lodestone'),
+      []
+    )
+
+    assert.deepEqual(result.kind === 'release' && result.release.assets, [])
+  })
+
   it('names a release after its tag when it has no name', async () => {
     stubForge({
       [`${github}/releases/latest`]: {

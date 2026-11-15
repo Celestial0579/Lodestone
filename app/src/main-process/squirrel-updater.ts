@@ -22,8 +22,8 @@ import {
 } from './squirrel-install-state'
 
 const appFolder = Path.resolve(process.execPath, '..')
-const rootAppDir = Path.resolve(appFolder, '..')
-const updateDotExe = Path.resolve(Path.join(rootAppDir, 'Update.exe'))
+export const rootAppDir = Path.resolve(appFolder, '..')
+export const updateDotExe = Path.resolve(Path.join(rootAppDir, 'Update.exe'))
 const exeName = Path.basename(process.execPath)
 
 // A lot of this code was cargo-culted from our Atom collaborators:

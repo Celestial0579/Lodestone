@@ -13,6 +13,7 @@ import {
   onAutoUpdaterUpdateAvailable,
   onAutoUpdaterUpdateDownloaded,
   onAutoUpdaterUpdateNotAvailable,
+  prepareForgeUpdate,
   quitAndInstallUpdate,
   sendWillQuitSync,
 } from '../main-process-proxy'
@@ -319,6 +320,34 @@ class UpdateStore {
   }
 
   /**
+   * Have the main process download the release, check it and hand it to the
+   * auto updater, which then reports as it always does: the banner offers a
+   * restart once the update is in place. Where the app cannot update itself,
+   * or the release does not check out, the notice with the link to the
+   * release stays, and the reason is logged.
+   */
+  private async updateFromForgeRelease(
+    sourceURL: string,
+    release: IForgeRelease
+  ) {
+    try {
+      const result = await prepareForgeUpdate({
+        version: release.version.version,
+        sourceURL,
+        assets: release.assets,
+      })
+
+      if (result.kind === 'failed') {
+        log.warn(
+          `[updates] not updating to ${release.version}: ${result.reason}`
+        )
+      }
+    } catch (e) {
+      log.warn(`[updates] not updating to ${release.version}`, e)
+    }
+  }
+
+  /**
    * Ask the configured forge repository whether a newer release exists.
    *
    * Returns true when a source is configured and was checked, in which case the
@@ -357,6 +386,7 @@ class UpdateStore {
         if (isNewerRelease(result.release, getVersion())) {
           this.forgeRelease = result.release
           this.status = UpdateStatus.UpdateAvailable
+          this.updateFromForgeRelease(source.htmlURL, result.release)
         }
 
         this.forgeCheck = { kind: 'compared' }

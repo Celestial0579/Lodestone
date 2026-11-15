@@ -1,0 +1,64 @@
+name: Build the Windows setup
+
+# Builds the installers a release is made from, on demand, and keeps them as an
+# artifact together with their SHA-256 sums. It publishes nothing: the release
+# is made by hand from what this leaves. The builds are unsigned (#23).
+
+on:
+  workflow_dispatch:
+
+# Nothing here writes to the repository.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Keep line endings as they are
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      # postinstall compiles the native modules and fetches the data
+      # submodules, which packaging bundles.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        run: yarn build:prod
+        env:
+          NODE_ENV: production
+          RELEASE_CHANNEL: production
+
+      - name: Make the installers
+        run: yarn package
+        env:
+          NODE_ENV: production
+          RELEASE_CHANNEL: production
+
+      - name: Write the SHA-256 sums
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem dist -File |
+            Where-Object { $_.Name -match '\.(exe|msi|nupkg)$' -or $_.Name -eq 'RELEASES' }
+          $files | ForEach-Object {
+            '{0}  {1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          } | Set-Content dist/SHA256SUMS.txt -Encoding ascii
+          Get-Content dist/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lodestone-windows-x64
+          path: |
+            dist/*.exe
+            dist/*.msi
+            dist/*.nupkg
+            dist/RELEASES
+            dist/SHA256SUMS.txt
+          if-no-files-found: error

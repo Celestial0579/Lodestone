@@ -12,20 +12,17 @@ import {
   getWindowsInstallerName,
   shouldMakeDelta,
   getUpdatesURL,
-  isPublishable,
   getBundleSizes,
   getDistRoot,
   getDistArchitecture,
   getIconDirectory,
 } from './dist-info'
-import { isGitHubActions } from './build-platforms'
 import { ProjectRepositoryURL } from '../app/src/lib/project-links'
 import { copyFileSync, existsSync, rmSync, writeFileSync } from 'fs'
 import { getVersion } from '../app/package-info'
 import { computeBundleHashSync } from '../app/src/lib/compute-bundle-hash'
 import { rename } from 'fs/promises'
 import { join } from 'path'
-import { assertNonNullable } from '../app/src/lib/fatal-error'
 
 const distPath = getDistPath()
 const productName = getProductName()
@@ -157,25 +154,8 @@ function packageWindows() {
     options.remoteReleases = url.toString()
   }
 
-  if (isGitHubActions() && isPublishable()) {
-    assertNonNullable(process.env.RUNNER_TEMP, 'Missing RUNNER_TEMP env var')
-
-    const acsPath = join(process.env.RUNNER_TEMP, 'acs')
-    const dlibPath = join(acsPath, 'bin', 'x64', 'Azure.CodeSigning.Dlib.dll')
-
-    assertExistsSync(dlibPath)
-
-    const metadataPath = join(acsPath, 'metadata.json')
-    const acsMetadata = {
-      Endpoint: 'https://wus3.codesigning.azure.net/',
-      CodeSigningAccountName: 'GitHubInc',
-      CertificateProfileName: 'GitHubInc',
-      CorrelationId: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
-    }
-    writeFileSync(metadataPath, JSON.stringify(acsMetadata))
-
-    options.signWithParams = `/v /fd SHA256 /tr "http://timestamp.acs.microsoft.com" /td SHA256 /dlib "${dlibPath}" /dmdf "${metadataPath}"`
-  }
+  // Upstream signed here through GitHub's own Azure code signing account,
+  // which this fork has no access to. Releases are unsigned (#23).
 
   ensureSquirrelHasSevenZip()
 

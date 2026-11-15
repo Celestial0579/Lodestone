@@ -1,9 +1,13 @@
 name: Smoke test the Windows setup
 
-# Takes the installers that "Build the Windows setup" left in a given run, and
-# checks the setup on a Windows runner before a release is made from it:
-# a silent install, that the app starts, that its update check asks this
-# repository on GitHub, and that uninstalling takes the app back off again.
+# Checks the setup on a Windows runner before a release is made from it: a
+# silent install, that the app starts, that its update check asks this
+# repository on GitHub, that an update from the last release leaves exactly
+# one Start menu shortcut, both by running the new setup over it and through
+# Update.exe, and that uninstalling takes the app back off again.
+#
+# Run by hand, it tests the installers "Build the Windows setup" left in a
+# given run. On a pull request that touches the setup, it builds them first.
 
 on:
   workflow_dispatch:
@@ -14,7 +18,10 @@ on:
   pull_request:
     paths:
       - .github/workflows/smoke-windows.yml
+      - .github/workflows/build-windows.yml
       - .github/smoke/**
+      - app/src/main-process/squirrel-*.ts
+      - script/package.ts
 
 permissions:
   contents: read
@@ -22,11 +29,20 @@ permissions:
   actions: read
 
 env:
-  # The build of v1.0.1, for runs on a pull request.
-  BUILD_RUN: ${{ inputs.build-run || '43705372867' }}
+  # The release an update is tested from.
+  FORMER_RELEASE: v1.0.1
+  PUBLISHER: Celestial0579
 
 jobs:
+  build:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/build-windows.yml
+
   smoke:
+    needs: build
+    if:
+      ${{ !cancelled() && (needs.build.result == 'success' || needs.build.result
+      == 'skipped') }}
     runs-on: windows-latest
 
     defaults:
@@ -39,12 +55,21 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github/smoke
 
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - name: Download the installers of the given run
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: lodestone-windows-x64
           path: setup
-          run-id: ${{ env.BUILD_RUN }}
+          run-id: ${{ inputs.build-run }}
           github-token: ${{ github.token }}
+
+      - name: Download the installers built here
+        if: github.event_name == 'pull_request'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lodestone-windows-x64
+          path: setup
 
       - name: Check the files against their sums
         working-directory: setup
@@ -55,40 +80,93 @@ jobs:
             if ($actual -ne $sum) { throw "$name does not match its sum" }
             "$name matches"
           }
+          $version = [regex]::Match((Get-Content RELEASES -Raw), 'Lodestone-(\S+)-full\.nupkg').Groups[1].Value
+          if (-not $version) { throw 'RELEASES names no full package' }
+          "the installers are of version $version"
+          "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Write the helpers
+        run: |
+          @'
+          function Install-Setup($setup, $version) {
+            $p = Start-Process $setup -ArgumentList '--silent' -PassThru
+            $null = $p.Handle
+            $p.WaitForExit()
+            "setup exited with $($p.ExitCode)"
+            $exe = "$env:LOCALAPPDATA\Lodestone\app-$version\Lodestone.exe"
+            for ($i = 0; $i -lt 60 -and -not (Test-Path $exe); $i++) { Start-Sleep 2 }
+            if (-not (Test-Path $exe)) { throw "not installed: $exe" }
+            $info = (Get-Item $exe).VersionInfo
+            "installed $exe, version $($info.ProductVersion), company $($info.CompanyName)"
+            if ($info.ProductVersion -ne $version) { throw "expected version $version" }
+            # Squirrel starts the app once after installing. Give it the time to
+            # finish its install hook, then close it.
+            Start-Sleep 20
+            Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep 3
+          }
+
+          # Every Start menu shortcut of the app, whatever folder it is filed in.
+          function Get-StartMenuShortcuts {
+            @(Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\*\Lodestone.lnk" -ErrorAction SilentlyContinue |
+              ForEach-Object { $_.FullName })
+          }
+
+          function Get-Publisher {
+            (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Lodestone' -ErrorAction SilentlyContinue).Publisher
+          }
+
+          # What an installation of the current build has to leave: one Start
+          # menu shortcut under the publisher, the desktop shortcut and the
+          # command line tool, and the publisher in the uninstall entry.
+          function Assert-Installed {
+            $menu = @(Get-StartMenuShortcuts)
+            '--- Start menu'
+            $menu
+            if ($menu.Count -ne 1 -or (Split-Path (Split-Path $menu[0] -Parent) -Leaf) -ne $env:PUBLISHER) {
+              throw "expected exactly one shortcut, in Programs\$env:PUBLISHER"
+            }
+            foreach ($f in "$env:USERPROFILE\Desktop\Lodestone.lnk", "$env:LOCALAPPDATA\Lodestone\bin\lodestone.bat") {
+              '{0}: {1}' -f $f, (Test-Path $f)
+              if (-not (Test-Path $f)) { throw "missing: $f" }
+            }
+            $publisher = Get-Publisher
+            "publisher in the uninstall entry: $publisher"
+            if ($publisher -ne $env:PUBLISHER) { throw "expected the publisher $env:PUBLISHER" }
+          }
+
+          function Uninstall-App {
+            Start-Sleep 3
+            $p = Start-Process "$env:LOCALAPPDATA\Lodestone\Update.exe" -ArgumentList '--uninstall', '-s' -PassThru
+            $null = $p.Handle
+            $p.WaitForExit()
+            "uninstall exited with $($p.ExitCode)"
+            Start-Sleep 10
+            $left = @(Get-ChildItem "$env:LOCALAPPDATA\Lodestone\app-*\Lodestone.exe" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+            $left += @(Get-StartMenuShortcuts)
+            $left += @("$env:USERPROFILE\Desktop\Lodestone.lnk", "$env:LOCALAPPDATA\Lodestone\bin\lodestone.bat",
+                       "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike") | Where-Object { Test-Path $_ }
+            if (Get-Publisher) { $left += 'the uninstall entry' }
+            '--- left after uninstalling'
+            $left
+            if ($left) { throw 'uninstalling left things behind' }
+            # Squirrel clears the rest of its folder on the next start of Windows.
+            Remove-Item "$env:LOCALAPPDATA\Lodestone" -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          '@ | Set-Content "$env:RUNNER_TEMP\smoke.ps1"
 
       - name: Install silently
         run: |
-          $p = Start-Process setup\LodestoneSetup-x64.exe -ArgumentList '--silent' -PassThru
-          $null = $p.Handle
-          $p.WaitForExit()
-          "setup exited with $($p.ExitCode)"
-          $exe = "$env:LOCALAPPDATA\Lodestone\app-1.0.1\Lodestone.exe"
-          for ($i = 0; $i -lt 60 -and -not (Test-Path $exe); $i++) { Start-Sleep 2 }
-          if (-not (Test-Path $exe)) { throw "not installed: $exe" }
-          $version = (Get-Item $exe).VersionInfo.ProductVersion
-          "installed $exe, version $version"
-          if ($version -ne '1.0.1') { throw "expected version 1.0.1" }
-          # Squirrel starts the app once after installing. Give it the time to
-          # finish its install hook, then close it.
-          Start-Sleep 20
-          Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
-          Start-Sleep 3
-
-      - name: Check what the installation left
-        run: |
-          $expected = @(
-            "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike\Lodestone.lnk",
-            "$env:USERPROFILE\Desktop\Lodestone.lnk",
-            "$env:LOCALAPPDATA\Lodestone\bin\lodestone.bat"
-          )
-          foreach ($f in $expected) { '{0}: {1}' -f $f, (Test-Path $f) }
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          Install-Setup setup\LodestoneSetup-x64.exe $env:VERSION
+          Assert-Installed
 
       - name: Start the app and see where the update check goes
         run: |
           $proxyLog = "$env:RUNNER_TEMP\proxy.log"
           $proxy = Start-Process node -ArgumentList '.github/smoke/refusing-proxy.js', '8899', $proxyLog -PassThru -WindowStyle Hidden
           Start-Sleep 2
-          $exe = "$env:LOCALAPPDATA\Lodestone\app-1.0.1\Lodestone.exe"
+          $exe = "$env:LOCALAPPDATA\Lodestone\app-$env:VERSION\Lodestone.exe"
           $app = Start-Process $exe -ArgumentList '--proxy-server=127.0.0.1:8899' -PassThru
           $logs = "$env:APPDATA\Lodestone\logs"
           $line = $null
@@ -118,29 +196,85 @@ jobs:
 
       - name: Uninstall
         run: |
-          Start-Sleep 3
-          $p = Start-Process "$env:LOCALAPPDATA\Lodestone\Update.exe" -ArgumentList '--uninstall', '-s' -PassThru
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          Uninstall-App
+
+      - name: Install the former release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          gh release download $env:FORMER_RELEASE --repo $env:GITHUB_REPOSITORY --dir former --pattern LodestoneSetup-x64.exe --pattern SHA256SUMS.txt
+          $sum = (Select-String -Path former\SHA256SUMS.txt -SimpleMatch 'LodestoneSetup-x64.exe').Line.Split(' ')[0]
+          if ((Get-FileHash former\LodestoneSetup-x64.exe -Algorithm SHA256).Hash.ToLower() -ne $sum) { throw 'the former setup does not match its sum' }
+          $formerVersion = $env:FORMER_RELEASE.TrimStart('v')
+          Install-Setup former\LodestoneSetup-x64.exe $formerVersion
+          '--- Start menu'
+          Get-StartMenuShortcuts
+          "publisher in the uninstall entry: $(Get-Publisher)"
+
+      # Lodestone installs no updates itself, so an update is the setup of the
+      # new release run over the installed one.
+      - name: Run the setup of the build under test over it
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          Install-Setup setup\LodestoneSetup-x64.exe $env:VERSION
+          Assert-Installed
+          $former = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike"
+          if (Test-Path $former) { throw "the update left $former" }
+          'the update moved the Start menu shortcut and left no second one'
+
+      - name: Uninstall after the update
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          Uninstall-App
+
+      # The way an app updates itself: Update.exe applies the package the
+      # RELEASES file in the feed names, here the folder of the build.
+      - name: Install the former release again
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          $formerVersion = $env:FORMER_RELEASE.TrimStart('v')
+          Install-Setup former\LodestoneSetup-x64.exe $formerVersion
+
+      - name: Update it with Update.exe
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          $p = Start-Process "$env:LOCALAPPDATA\Lodestone\Update.exe" -ArgumentList "--update=$((Resolve-Path setup).Path)" -PassThru
           $null = $p.Handle
           $p.WaitForExit()
-          "uninstall exited with $($p.ExitCode)"
-          Start-Sleep 10
-          $gone = @(
-            "$env:LOCALAPPDATA\Lodestone\app-1.0.1\Lodestone.exe",
-            "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike\Lodestone.lnk",
-            "$env:USERPROFILE\Desktop\Lodestone.lnk",
-            "$env:LOCALAPPDATA\Lodestone\bin\lodestone.bat"
-          )
-          $left = $gone | Where-Object { Test-Path $_ }
-          foreach ($f in $gone) { '{0}: {1}' -f $f, $(if (Test-Path $f) { 'still there' } else { 'gone' }) }
-          if ($left) { throw 'uninstalling left files behind' }
+          "update exited with $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw 'Update.exe failed' }
+          $exe = "$env:LOCALAPPDATA\Lodestone\app-$env:VERSION\Lodestone.exe"
+          if (-not (Test-Path $exe)) { throw "not updated: $exe" }
+          # Give the update hook of the new version the time to run.
+          Start-Sleep 20
+          Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
+          Assert-Installed
+          $former = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike"
+          if (Test-Path $former) { throw "the update left $former" }
+          'Update.exe updated the app, moved the Start menu shortcut and left no second one'
+
+      - name: Uninstall after Update.exe
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          Uninstall-App
+
+      # upload-artifact wants the files on one drive, and the runner keeps its
+      # temp folder on another than the profile.
+      - name: Gather the logs of a failed run
+        if: failure()
+        run: |
+          $logs = New-Item -ItemType Directory "$env:RUNNER_TEMP\smoke-logs" -Force
+          foreach ($p in "$env:RUNNER_TEMP\proxy.log", "$env:APPDATA\Lodestone\logs",
+                         "$env:LOCALAPPDATA\SquirrelTemp", "$env:LOCALAPPDATA\Lodestone\SquirrelSetup.log") {
+            if (Test-Path $p) { Copy-Item $p $logs -Recurse -Force }
+          }
 
       - name: Keep the logs of a failed run
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: smoke-logs
-          path: |
-            ${{ runner.temp }}/proxy.log
-            ~/AppData/Roaming/Lodestone/logs
-            ~/AppData/Local/SquirrelTemp
+          path: ${{ runner.temp }}/smoke-logs
           if-no-files-found: ignore

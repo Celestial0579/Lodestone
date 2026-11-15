@@ -2,10 +2,12 @@ name: Build the Windows setup
 
 # Builds the installers a release is made from, on demand, and keeps them as an
 # artifact together with their SHA-256 sums. It publishes nothing: the release
-# is made by hand from what this leaves. The builds are unsigned (#23).
+# is made by hand from what this leaves. The builds are unsigned (#23). The
+# smoke test calls it too, to test the setup of a pull request.
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 # Nothing here writes to the repository.
 permissions:

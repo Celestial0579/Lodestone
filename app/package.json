@@ -2,8 +2,8 @@
   "name": "lodestone",
   "productName": "Lodestone",
   "bundleID": "de.firestrike.lodestone",
-  "companyName": "Firestrike",
-  "version": "1.0.1",
+  "companyName": "Celestial0579",
+  "version": "1.0.2",
   "main": "./main.js",
   "repository": {
     "type": "git",
@@ -11,9 +11,9 @@
   },
   "description": "Lodestone, a desktop client for Gitea, Forgejo, GitHub and other Git hosts",
   "author": {
-    "name": "Firestrike",
+    "name": "Celestial0579",
     "email": "",
-    "url": "https://firestrike.de/"
+    "url": "https://github.com/Celestial0579"
   },
   "license": "MIT",
   "dependencies": {

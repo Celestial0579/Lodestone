@@ -10,6 +10,7 @@ const release = {
   version: new SemVer('99.0.0'),
   name: 'Lodestone v99.0.0',
   htmlURL: 'https://github.com/team/lodestone/releases/tag/v99.0.0',
+  assets: [],
 }
 
 describe('NewerReleaseBanner', () => {

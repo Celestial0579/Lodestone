@@ -4,7 +4,8 @@ name: Smoke test the Windows setup
 # silent install, that the app starts, that its update check asks this
 # repository on GitHub, that an update from the last release leaves exactly
 # one Start menu shortcut, both by running the new setup over it and through
-# Update.exe, and that uninstalling takes the app back off again.
+# Update.exe, that the app updates itself from a release that checks out and
+# from no other, and that uninstalling takes the app back off again.
 #
 # Run by hand, it tests the installers "Build the Windows setup" left in a
 # given run. On a pull request that touches the setup, it builds them first.
@@ -21,6 +22,8 @@ on:
       - .github/workflows/build-windows.yml
       - .github/smoke/**
       - app/src/main-process/squirrel-*.ts
+      - app/src/main-process/forge-update.ts
+      - app/src/lib/forges/update-*.ts
       - script/package.ts
 
 permissions:
@@ -213,8 +216,8 @@ jobs:
           Get-StartMenuShortcuts
           "publisher in the uninstall entry: $(Get-Publisher)"
 
-      # Lodestone installs no updates itself, so an update is the setup of the
-      # new release run over the installed one.
+      # One way users update: the setup of the new release run over the
+      # installed one.
       - name: Run the setup of the build under test over it
         run: |
           . "$env:RUNNER_TEMP\smoke.ps1"
@@ -260,12 +263,107 @@ jobs:
           . "$env:RUNNER_TEMP\smoke.ps1"
           Uninstall-App
 
+      # The self-update (#50): the app installed from the build under test
+      # finds a newer release on a repository served from localhost over
+      # HTTPS. It must refuse a download redirected to another host and a
+      # package whose sum does not match, and update from a release that
+      # checks out. The newer release is the package of this build with the
+      # next patch version written into it.
+      - name: Make the newer release and a server for it
+        run: |
+          $pass = [guid]::NewGuid().ToString()
+          "::add-mask::$pass"
+          $cert = New-SelfSignedCertificate -DnsName localhost -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(1)
+          Export-PfxCertificate -Cert $cert -FilePath "$env:RUNNER_TEMP\release-server.pfx" -Password (ConvertTo-SecureString $pass -AsPlainText -Force) | Out-Null
+          Export-Certificate -Cert $cert -FilePath "$env:RUNNER_TEMP\release-server.cer" | Out-Null
+          Import-Certificate -FilePath "$env:RUNNER_TEMP\release-server.cer" -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+          "PFX_PASS=$pass" >> $env:GITHUB_ENV
+          "CERT_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+
+          $v = [version]$env:VERSION
+          $next = '{0}.{1}.{2}' -f $v.Major, $v.Minor, ($v.Build + 1)
+          "NEXT_VERSION=$next" >> $env:GITHUB_ENV
+          $release = New-Item -ItemType Directory "$env:RUNNER_TEMP\release" -Force
+          $package = "$release\Lodestone-$next-full.nupkg"
+          Copy-Item "setup\Lodestone-$env:VERSION-full.nupkg" $package
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::Open($package, 'Update')
+          $entry = $zip.Entries | Where-Object { $_.FullName -like '*.nuspec' } | Select-Object -First 1
+          $reader = New-Object System.IO.StreamReader($entry.Open())
+          $nuspec = $reader.ReadToEnd()
+          $reader.Dispose()
+          $name = $entry.FullName
+          $entry.Delete()
+          $writer = New-Object System.IO.StreamWriter($zip.CreateEntry($name).Open())
+          $writer.Write(($nuspec -replace '<version>[^<]+</version>', "<version>$next</version>"))
+          $writer.Dispose()
+          $zip.Dispose()
+          '{0}  {1}' -f (Get-FileHash $package -Algorithm SHA256).Hash.ToLower(), (Split-Path $package -Leaf) |
+            Set-Content "$release\SHA256SUMS.txt" -Encoding ascii
+          Get-Content "$release\SHA256SUMS.txt"
+
+          npm install --prefix "$env:RUNNER_TEMP\playwright" --no-save --no-audit --no-fund playwright-core@1.58.2
+
+          @'
+          function Test-SelfUpdate($mode, $expect, $version) {
+            $log = "$env:RUNNER_TEMP\release-server-$mode.log"
+            $server = Start-Process node -ArgumentList '.github/smoke/release-server.js', '8443', "$env:RUNNER_TEMP\release-server.pfx", $env:PFX_PASS, "$env:RUNNER_TEMP\release", $env:NEXT_VERSION, $mode, $log -PassThru -WindowStyle Hidden
+            Start-Sleep 2
+            node .github/smoke/self-update.js "$env:RUNNER_TEMP\playwright" "$env:LOCALAPPDATA\Lodestone\app-$version\Lodestone.exe" 'https://localhost:8443/Celestial0579/Lodestone' $expect $env:NEXT_VERSION "$env:APPDATA\Lodestone\logs"
+            $code = $LASTEXITCODE
+            Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
+            Stop-Process $server.Id -Force
+            "--- asked of the release server ($mode)"
+            Get-Content $log
+            if ($code -ne 0) { throw "self-update with $mode`: expected $expect" }
+          }
+          '@ | Add-Content "$env:RUNNER_TEMP\smoke.ps1"
+
+      - name: Install the build under test for the self-update
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          Install-Setup setup\LodestoneSetup-x64.exe $env:VERSION
+
+      - name: Refuse a download redirected to another host
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          Test-SelfUpdate foreign-redirect 'redirected to 127.0.0.1' $env:VERSION
+
+      - name: Refuse a package that does not match its sum
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          Test-SelfUpdate bad-sum 'does not match its SHA-256' $env:VERSION
+
+      - name: Update itself from a release that checks out
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          Test-SelfUpdate good updated $env:VERSION
+          $left = @(Get-ChildItem "$env:LOCALAPPDATA\Lodestone\updates" -ErrorAction SilentlyContinue)
+          if ($left) { throw "the update left $($left.FullName -join ', ')" }
+          Assert-Installed
+          "the app updated itself to $env:NEXT_VERSION and removed what it downloaded"
+
+      - name: Uninstall after the self-update
+        run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
+          Uninstall-App
+          if (Test-Path "$env:LOCALAPPDATA\Lodestone\updates") { throw 'uninstalling left the updates folder' }
+
+      - name: Remove the certificate of the release server
+        if: always()
+        run: |
+          if ($env:CERT_THUMBPRINT) {
+            Remove-Item "Cert:\LocalMachine\Root\$env:CERT_THUMBPRINT" -ErrorAction SilentlyContinue
+            Remove-Item "Cert:\CurrentUser\My\$env:CERT_THUMBPRINT" -ErrorAction SilentlyContinue
+          }
+
       # upload-artifact wants the files on one drive, and the runner keeps its
       # temp folder on another than the profile.
       - name: Gather the logs of a failed run
         if: failure()
         run: |
           $logs = New-Item -ItemType Directory "$env:RUNNER_TEMP\smoke-logs" -Force
+          Copy-Item "$env:RUNNER_TEMP\release-server-*.log" $logs -ErrorAction SilentlyContinue
           foreach ($p in "$env:RUNNER_TEMP\proxy.log", "$env:APPDATA\Lodestone\logs",
                          "$env:LOCALAPPDATA\SquirrelTemp", "$env:LOCALAPPDATA\Lodestone\SquirrelSetup.log") {
             if (Test-Path $p) { Copy-Item $p $logs -Recurse -Force }

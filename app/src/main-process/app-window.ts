@@ -29,6 +29,7 @@ import {
 import { addTrustedIPCSender } from './trusted-ipc-sender'
 import { getUpdaterGUID } from '../lib/get-updater-guid'
 import { CLIAction } from '../lib/cli-action'
+import { removeForgeUpdateFeed } from './forge-update'
 
 export class AppWindow {
   private window: Electron.BrowserWindow
@@ -405,6 +406,7 @@ export class AppWindow {
   public setupAutoUpdater() {
     autoUpdater.on('error', (error: Error) => {
       this.isDownloadingUpdate = false
+      removeForgeUpdateFeed(false)
       ipcWebContents.send(this.window.webContents, 'auto-updater-error', error)
     })
 
@@ -434,6 +436,7 @@ export class AppWindow {
 
     autoUpdater.on('update-downloaded', () => {
       this.isDownloadingUpdate = false
+      removeForgeUpdateFeed(true)
       ipcWebContents.send(
         this.window.webContents,
         'auto-updater-update-downloaded'

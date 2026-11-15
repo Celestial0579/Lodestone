@@ -85,6 +85,7 @@ describe('IPC channel contract', () => {
     'is-in-application-folder',
     'move-to-applications-folder',
     'check-for-updates',
+    'prepare-forge-update',
     'get-current-window-state',
     'get-current-window-zoom-factor',
     'resolve-proxy',

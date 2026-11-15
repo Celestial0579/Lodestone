@@ -1,5 +1,8 @@
 {
   "releases": {
+    "1.0.2": [
+      "[Improved] Name Celestial0579 as the publisher on Windows, and move the Start menu shortcut there on update without leaving the old one behind"
+    ],
     "1.0.1": [
       "[Fixed] Check for updates on GitHub, where the project moved, and say so when a check fails or finds nothing published",
       "[New] Announce a newer release in the main window, with a link to it",

@@ -50,9 +50,9 @@
     "validate-changelog": "ts-node -P script/tsconfig.json script/validate-changelog.ts"
   },
   "author": {
-    "name": "Firestrike",
+    "name": "Celestial0579",
     "email": "",
-    "url": "https://firestrike.de/"
+    "url": "https://github.com/Celestial0579"
   },
   "license": "MIT",
   "engines": {

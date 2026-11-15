@@ -3,9 +3,11 @@ import assert from 'node:assert'
 import * as Path from 'path'
 import {
   getBatchScriptCLITrampoline,
+  getFormerStartMenuShortcutPaths,
   getInstallationRepair,
   hasNewerVersionInstalled,
   IInstallationState,
+  isShortcutIntoInstallation,
 } from '../../src/main-process/squirrel-install-state'
 
 const root = 'C:\\Users\\alice\\AppData\\Local\\Lodestone'
@@ -151,5 +153,58 @@ describe('getBatchScriptCLITrampoline', () => {
 
   it('differs from one version to the next', () => {
     assert.notEqual(trampolineOf('1.0.0'), trampolineOf('1.0.1'))
+  })
+})
+
+describe('getFormerStartMenuShortcutPaths', () => {
+  const home = 'C:\\Users\\alice'
+  const programs = `${home}\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs`
+
+  it('finds the shortcut v1.0.1 left under Firestrike', () => {
+    assert.deepEqual(
+      getFormerStartMenuShortcutPaths(home, 'Celestial0579', Path.win32),
+      [`${programs}\\Firestrike\\Lodestone.lnk`]
+    )
+  })
+
+  it('leaves out the name the app is published under now', () => {
+    assert.deepEqual(
+      getFormerStartMenuShortcutPaths(home, 'firestrike', Path.win32),
+      []
+    )
+  })
+})
+
+describe('isShortcutIntoInstallation', () => {
+  const into = (target: string) =>
+    isShortcutIntoInstallation(target, root, Path.win32)
+
+  it('takes the stub Squirrel points its shortcuts at', () => {
+    assert.equal(into(`${root}\\Lodestone.exe`), true)
+  })
+
+  it('takes an executable of a version folder, whatever the case', () => {
+    assert.equal(
+      into(
+        'c:\\users\\ALICE\\appdata\\local\\lodestone\\app-1.0.1\\Lodestone.exe'
+      ),
+      true
+    )
+  })
+
+  it('leaves the shortcut of another app alone', () => {
+    assert.equal(
+      into('C:\\Users\\alice\\AppData\\Local\\LodestoneTools\\tool.exe'),
+      false
+    )
+    assert.equal(into('C:\\Program Files\\Firestrike\\Other.exe'), false)
+  })
+
+  it('leaves a shortcut without a target alone', () => {
+    assert.equal(into(''), false)
+    assert.equal(
+      isShortcutIntoInstallation(`${root}\\Lodestone.exe`, '', Path.win32),
+      false
+    )
   })
 })

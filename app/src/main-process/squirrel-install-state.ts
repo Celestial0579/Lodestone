@@ -108,22 +108,72 @@ export function getBatchScriptCLITrampoline(
   return `@echo off\n"%~dp0\\${versionedPath}" %*`
 }
 
+/**
+ * The Start menu shortcut Squirrel.Windows makes for an app published under
+ * the given name: it files shortcuts by publisher.
+ */
+function getStartMenuShortcutPath(
+  homeDirectory: string,
+  companyName: string,
+  pathApi: typeof Path = Path
+) {
+  return pathApi.join(
+    homeDirectory,
+    'AppData',
+    'Roaming',
+    'Microsoft',
+    'Windows',
+    'Start Menu',
+    'Programs',
+    companyName,
+    `${__APP_NAME__}.lnk`
+  )
+}
+
 /** Where Squirrel.Windows puts the shortcuts of the app. */
 export function getSquirrelShortcutPaths(
   homeDirectory: string = Os.homedir()
 ): ReadonlyArray<string> {
   return [
-    Path.join(
-      homeDirectory,
-      'AppData',
-      'Roaming',
-      'Microsoft',
-      'Windows',
-      'Start Menu',
-      'Programs',
-      __APP_COMPANY__,
-      `${__APP_NAME__}.lnk`
-    ),
+    getStartMenuShortcutPath(homeDirectory, __APP_COMPANY__),
     Path.join(homeDirectory, 'Desktop', `${__APP_NAME__}.lnk`),
   ]
+}
+
+/** The names the app was published under on Windows before the current one. */
+export const formerCompanyNames: ReadonlyArray<string> = ['Firestrike']
+
+/**
+ * Where the Start menu shortcuts of earlier releases are, which an update to
+ * a release under another publisher name would otherwise leave beside the new
+ * one.
+ */
+export function getFormerStartMenuShortcutPaths(
+  homeDirectory: string = Os.homedir(),
+  companyName: string = __APP_COMPANY__,
+  pathApi: typeof Path = Path
+): ReadonlyArray<string> {
+  return formerCompanyNames
+    .filter(name => name.toLowerCase() !== companyName.toLowerCase())
+    .map(name => getStartMenuShortcutPath(homeDirectory, name, pathApi))
+}
+
+/**
+ * Whether a shortcut leads into the given Squirrel.Windows installation, so
+ * that removing it takes nothing from another app filed under the same name.
+ */
+export function isShortcutIntoInstallation(
+  target: string,
+  rootAppDir: string,
+  pathApi: typeof Path = Path
+): boolean {
+  if (target === '' || rootAppDir === '') {
+    return false
+  }
+
+  const root = pathApi.resolve(rootAppDir).toLowerCase()
+  const resolved = pathApi.resolve(target).toLowerCase()
+  return resolved.startsWith(
+    root.endsWith(pathApi.sep) ? root : root + pathApi.sep
+  )
 }

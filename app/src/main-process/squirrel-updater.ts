@@ -1,8 +1,8 @@
 import * as Path from 'path'
 import * as Os from 'os'
 
-import { app } from 'electron'
-import { mkdir, readdir, readFile, writeFile } from 'fs/promises'
+import { app, shell } from 'electron'
+import { mkdir, readdir, readFile, rmdir, unlink, writeFile } from 'fs/promises'
 import { spawn, getPathSegments, setPathSegments } from '../lib/process/win32'
 import { pathExists } from '../lib/path-exists'
 import { getKeyForEndpoint } from '../lib/auth'
@@ -13,10 +13,12 @@ import {
 import { TokenStore } from '../lib/stores/token-store'
 import {
   getBatchScriptCLITrampoline,
+  getFormerStartMenuShortcutPaths,
   getInstallationRepair,
   getSquirrelShortcutPaths,
   hasNewerVersionInstalled,
   InstallationRepair,
+  isShortcutIntoInstallation,
 } from './squirrel-install-state'
 
 const appFolder = Path.resolve(process.execPath, '..')
@@ -66,6 +68,7 @@ async function handleInstalled(): Promise<void> {
 
 async function handleUpdated(): Promise<void> {
   await updateShortcut()
+  await removeFormerShortcuts()
   await installWindowsCLI()
 }
 
@@ -220,6 +223,7 @@ async function handleUninstall(
   await removeShortcut().catch(e =>
     log.error('Failed removing the shortcuts', e)
   )
+  await removeFormerShortcuts()
   await uninstallWindowsCLI()
   removeProtocolHandlers(protocols)
   await removeStoredCredentials().catch(e =>
@@ -273,6 +277,33 @@ async function removeStoredCredentials(): Promise<void> {
       await TokenStore.deleteItem(parts.key, parts.login).catch(e =>
         log.error('Failed removing a stored credential', e)
       )
+    }
+  }
+}
+
+/**
+ * Remove the Start menu shortcut an earlier release left under its publisher
+ * name, so that an update does not leave two. Only a shortcut into this
+ * installation goes, and its folder only when nothing else is left in it.
+ */
+async function removeFormerShortcuts(): Promise<void> {
+  for (const shortcutPath of getFormerStartMenuShortcutPaths()) {
+    try {
+      if (!(await pathExists(shortcutPath))) {
+        continue
+      }
+
+      const { target } = shell.readShortcutLink(shortcutPath)
+      if (!isShortcutIntoInstallation(target, rootAppDir)) {
+        log.info(`Leaving ${shortcutPath} alone, it leads to ${target}`)
+        continue
+      }
+
+      await unlink(shortcutPath)
+      // Fails when the folder holds anything else, which is then kept.
+      await rmdir(Path.dirname(shortcutPath)).catch(() => {})
+    } catch (e) {
+      log.error(`Failed removing the former shortcut ${shortcutPath}`, e)
     }
   }
 }

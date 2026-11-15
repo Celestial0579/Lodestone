@@ -1,6 +1,7 @@
 {
   "releases": {
     "1.0.2": [
+      "[Security] Mask passwords and tokens in the log, such as credentials in a clone URL or an Authorization header (GHSA-gmvh-p668-gr4c)",
       "[Improved] Name Celestial0579 as the publisher on Windows, and move the Start menu shortcut there on update without leaving the old one behind"
     ],
     "1.0.1": [

@@ -300,23 +300,6 @@ test.describe('Lodestone - Electron 44', () => {
     expect(labels.some(l => /Copy/i.test(l))).toBe(true)
   })
 
-  test('opens a menu of the menu bar in the title bar', async ({
-    mainWindow: page,
-  }) => {
-    // The menu bar is part of the title bar on Windows only.
-    test.skip(process.platform !== 'win32', 'the menu bar is Windows only')
-
-    const fileMenu = page
-      .locator('#app-menu-bar')
-      .getByRole('menuitem', { name: /File/ })
-    await fileMenu.waitFor({ state: 'visible', timeout: 15000 })
-    await fileMenu.click()
-
-    await expect(page.locator('#app-menu-foldout')).toBeVisible({
-      timeout: 15000,
-    })
-  })
-
   test('lists a file whose path is longer than 260 characters', async ({
     mainWindow: page,
   }) => {
@@ -332,5 +315,23 @@ test.describe('Lodestone - Electron 44', () => {
     await expect(
       page.locator('#changed-files, .file-list').getByText(longPathFileName)
     ).toBeVisible({ timeout: 15000 })
+  })
+
+  // The menu bar test is the last: it leaves its menu open over the window.
+  test('opens a menu of the menu bar in the title bar', async ({
+    mainWindow: page,
+  }) => {
+    // The menu bar is part of the title bar on Windows only.
+    test.skip(process.platform !== 'win32', 'the menu bar is Windows only')
+
+    const fileMenu = page
+      .locator('#app-menu-bar')
+      .getByRole('menuitem', { name: /File/ })
+    await fileMenu.waitFor({ state: 'visible', timeout: 15000 })
+    await fileMenu.click()
+
+    await expect(page.locator('#app-menu-foldout')).toBeVisible({
+      timeout: 15000,
+    })
   })
 })

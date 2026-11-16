@@ -1,16 +1,18 @@
-name: Probe a Windows profile with umlauts
+name: Smoke test under a Windows profile with an umlaut
 
-# Does the setup, the app and the uninstall work under a profile whose path has
-# a space and an umlaut, such as C:\Users\Jürgen Müller (#88)? The profile path
-# comes from the system, not from the environment, so a second local user is the
-# only way to get one. The user has no password: the task that runs as it logs on
-# with S4U, which needs none. Whatever Windows answers is the result, so the job
-# does not fail on it.
+# Do the setup, the app, an update with Update.exe and the uninstall work under a
+# profile whose path has a space and an umlaut, C:\Users\Jürgen Müller (#88)? The
+# profile path comes from the system, not from the environment, so a second local
+# user is the only way to get one. The user has no password and nothing here
+# types one: the OpenSSH server logs it on by public key, which Windows does as
+# S4U. (A scheduled task for such a user is refused: "Access is denied".) The
+# app runs in session 0, so this checks install, start, update and uninstall,
+# not the window.
 
 on:
   pull_request:
     paths:
-      - .github/workflows/probe-profile.yml
+      - .github/workflows/smoke-profile.yml
       - .github/profile/**
   workflow_dispatch:
     inputs:
@@ -29,7 +31,7 @@ env:
   FORMER_RELEASE: v1.0.4
 
 jobs:
-  probe:
+  profile:
     runs-on: windows-latest
 
     defaults:
@@ -55,8 +57,8 @@ jobs:
         run: |
           gh release download $env:FORMER_RELEASE --repo $env:GITHUB_REPOSITORY --dir former --pattern LodestoneSetup-x64.exe
 
-      - name: Make the user and run the setup, the app and the uninstall as it
-        continue-on-error: true
+      - name:
+          Make the user and run the setup, the update and the uninstall as it
         run: |
           $name = 'Jürgen Müller'
           $work = 'C:\profile-test'
@@ -121,9 +123,6 @@ jobs:
             $result | ForEach-Object { "[$user] ssh says: $_" }
           }
 
-          # An ASCII name first, to tell a refusal of the logon from a trouble
-          # with the name.
-          Test-Logon 'probeplain' 'whoami'
           Test-Logon $name "powershell -NoProfile -ExecutionPolicy Bypass -File $work\as-user.ps1"
 
           '--- sshd log'
@@ -136,10 +135,30 @@ jobs:
           '--- profile folders'
           Get-ChildItem C:\Users -Directory | ForEach-Object { $_.FullName }
 
+      - name: Check what the user saw
+        run: |
+          $out = Get-Content C:\profile-test\out.txt -Raw -Encoding UTF8
+          $expected = @(
+            'USERPROFILE: C:\Users\Jürgen Müller',
+            'LOCALAPPDATA: C:\Users\Jürgen Müller\AppData\Local',
+            'setup finished: True, exit code: 0',
+            'installed: True at C:\Users\Jürgen Müller\AppData\Local\Lodestone\app-',
+            'app running after 25 s: True',
+            'logs folder: True',
+            'first uninstall finished: True, exit code: 0',
+            'app left after the first uninstall: 0',
+            'former installed: True',
+            'update finished: True, exit code: 0',
+            'updated: True',
+            'shortcuts after update: 1',
+            'app left after the uninstall after the update: 0'
+          )
+          $missing = @($expected | Where-Object { -not $out.Contains($_) })
+          if ($missing) { throw "not seen: $($missing -join '; ')" }
+          'everything the user was to do under C:\Users\Jürgen Müller worked'
+
       - name: Clean up
         if: always()
         continue-on-error: true
         run: |
-          Unregister-ScheduledTask -TaskName LodestoneProfileProbe -Confirm:$false -ErrorAction SilentlyContinue
           Remove-LocalUser -Name 'Jürgen Müller' -ErrorAction SilentlyContinue
-          Remove-LocalUser -Name 'probeplain' -ErrorAction SilentlyContinue

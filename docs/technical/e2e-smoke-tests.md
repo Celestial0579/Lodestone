@@ -15,6 +15,13 @@ Electron session:
 - checks that the changed file shows up with its diff
 - creates a commit
 - creates a branch and switches back
+- copies the SHA of a commit and reads it back from the clipboard of the main
+  process
+- right-clicks a commit and checks that the main process was asked for a menu
+  with a Copy entry (a native menu cannot be seen from the page)
+- on Windows, opens a menu of the menu bar in the title bar
+- saves one picture of the main window to `e2e-screenshots/`, which CI keeps as
+  the artifact `e2e-main-window`
 
 It mixes what the window shows with what git says: after each step it asks the
 repository itself, with git, whether the commit and the branch are there.

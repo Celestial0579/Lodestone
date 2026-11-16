@@ -21,9 +21,11 @@ import {
   smokeRepoPath,
   getSmokeRepoCurrentBranch,
   getSmokeRepoHeadMessage,
+  getSmokeRepoHeadSha,
   getSmokeRepoStatus,
 } from './test-helpers'
 import type { Page } from '@playwright/test'
+import path from 'path'
 
 // All tests run sequentially in the same Electron session.
 test.describe.configure({ mode: 'serial' })
@@ -199,5 +201,117 @@ test.describe('Lodestone - App Launch', () => {
       .poll(() => getSmokeRepoCurrentBranch(), { timeout: 15000 })
       .toBe(initialBranch)
     await expect.poll(() => getSmokeRepoStatus(), { timeout: 15000 }).toBe('')
+  })
+})
+
+// ── Electron 44 checks ──────────────────────────────────────────────
+//
+// What the move to Electron 44 changed (#81): copying goes through the main
+// process's clipboard, context menus are built there, and the menu bar sits in
+// the title bar on Windows. They run in the session of the test above, which
+// left a repository with one commit open.
+
+const screenshotDirectory = path.resolve(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  'e2e-screenshots'
+)
+
+async function showFirstCommit(page: Page) {
+  await page.getByRole('tab', { name: /History/ }).click()
+  const commit = page.locator('.commit').first()
+  await commit.waitFor({ state: 'visible', timeout: 15000 })
+  await commit.click()
+  return commit
+}
+
+test.describe('Lodestone - Electron 44', () => {
+  test('copies the SHA of a commit through the clipboard of the main process', async ({
+    app,
+    mainWindow: page,
+  }) => {
+    await showFirstCommit(page)
+
+    await app.evaluate(({ clipboard }) => clipboard.writeText('before'))
+
+    const copyButton = page.locator('button.copy-button').first()
+    await copyButton.waitFor({ state: 'visible', timeout: 15000 })
+    await copyButton.click()
+
+    await expect
+      .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()), {
+        timeout: 15000,
+      })
+      .toBe(getSmokeRepoHeadSha())
+
+    // One picture of the main window for the run, with the history open. Give
+    // the file list of the commit the time to load first.
+    await page.waitForTimeout(1500)
+    await page.screenshot({
+      path: path.join(screenshotDirectory, 'main-window.png'),
+    })
+  })
+
+  test('opens the context menu of a commit', async ({
+    app,
+    mainWindow: page,
+  }) => {
+    // A native menu cannot be seen from the page, so the main process records
+    // what it was asked to show instead of showing it.
+    await app.evaluate(({ Menu }) => {
+      const shown = new Array<ReadonlyArray<string>>()
+      Object.assign(globalThis, { e2eShownMenus: shown })
+      Menu.prototype.popup = function () {
+        shown.push(this.items.map(i => i.label))
+        return this
+      }
+    })
+
+    const commit = await showFirstCommit(page)
+    await commit.click({ button: 'right' })
+
+    await expect
+      .poll(
+        () =>
+          app.evaluate(
+            () =>
+              (
+                globalThis as unknown as {
+                  e2eShownMenus: ReadonlyArray<ReadonlyArray<string>>
+                }
+              ).e2eShownMenus.length
+          ),
+        { timeout: 15000 }
+      )
+      .toBeGreaterThan(0)
+
+    const labels = await app.evaluate(
+      () =>
+        (
+          globalThis as unknown as {
+            e2eShownMenus: ReadonlyArray<ReadonlyArray<string>>
+          }
+        ).e2eShownMenus[0]
+    )
+    expect(labels.some(l => /Copy/i.test(l))).toBe(true)
+  })
+
+  test('opens a menu of the menu bar in the title bar', async ({
+    mainWindow: page,
+  }) => {
+    // The menu bar is part of the title bar on Windows only.
+    test.skip(process.platform !== 'win32', 'the menu bar is Windows only')
+
+    const fileMenu = page
+      .locator('#app-menu-bar')
+      .getByRole('menuitem', { name: /File/ })
+    await fileMenu.waitFor({ state: 'visible', timeout: 15000 })
+    await fileMenu.click()
+
+    await expect(page.locator('#app-menu-foldout')).toBeVisible({
+      timeout: 15000,
+    })
   })
 })

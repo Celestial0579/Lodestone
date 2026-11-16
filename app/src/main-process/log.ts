@@ -6,6 +6,7 @@ import { DesktopConsoleTransport } from './desktop-console-transport'
 import memoizeOne from 'memoize-one'
 import { mkdir } from 'fs/promises'
 import { DesktopFileTransport } from './desktop-file-transport'
+import { redactSecrets } from '../lib/logging/redact-secrets'
 
 /**
  * Initializes winston and returns a subset of the available log level
@@ -66,6 +67,10 @@ const getLogger = memoizeOne(async () => {
  * or if the entry could not be written due to an error.
  */
 export async function log(level: LogLevel, message: string) {
+  // Every entry passes here, the renderer's too, so this is where credentials
+  // are masked, before any transport sees the entry.
+  message = redactSecrets(message)
+
   try {
     const logger = await getLogger()
     await new Promise<void>((resolve, reject) => {

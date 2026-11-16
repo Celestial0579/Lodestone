@@ -1,3 +1,4 @@
+import { getIssueCreationURL } from '../../lib/repository-web-urls'
 import { Disposable } from 'event-kit'
 
 import {
@@ -81,7 +82,6 @@ import {
   Repository,
   RepositoryWithGitHubRepository,
   isRepositoryWithGitHubRepository,
-  getGitHubHtmlUrl,
   isRepositoryWithForkedGitHubRepository,
   getNonForkGitHubRepository,
 } from '../../models/repository'
@@ -2914,15 +2914,16 @@ export class Dispatcher {
   public async openIssueCreationPage(repository: Repository): Promise<boolean> {
     // Default to creating issue on parent repo
     // See https://github.com/desktop/desktop/issues/9232 for rationale
-    const url = getGitHubHtmlUrl(repository)
+    const url = getIssueCreationURL(repository)
     if (url !== null) {
       this.statsStore.increment('issueCreationWebpageOpenedCount')
-      // GitHub's template chooser lives at /issues/new/choose; The forge opens the
-      // new issue form directly and 404s on the chooser path.
-      return this.appStore._openInBrowser(`${url}/issues/new`)
-    } else {
-      return false
+      return this.appStore._openInBrowser(url)
     }
+
+    log.warn(
+      `[issues] no web address for ${repository.name}, cannot open the issue page`
+    )
+    return false
   }
 
   public setRepositoryIndicatorsEnabled(repositoryIndicatorsEnabled: boolean) {

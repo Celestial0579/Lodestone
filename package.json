@@ -64,7 +64,9 @@
     "legal-eagle/underscore": "^1.13.8",
     "**/@typescript-eslint/typescript-estree/minimatch": "^11.0.1",
     "**/markdownlint-cli/minimatch": "^11.0.1",
-    "**/micromark-extension-math/katex": "^0.18.2"
+    "**/micromark-extension-math/katex": "^0.18.2",
+    "@types/webpack-bundle-analyzer/webpack": "^5.111.0",
+    "@types/webpack-hot-middleware/webpack": "^5.111.0"
   },
   "dependencies": {
     "@primer/octicons": "^19.42.0",
@@ -101,7 +103,7 @@
     "ts-loader": "^9",
     "ts-node": "^7.0.1",
     "typescript": "^5.8.2",
-    "webpack": "^5.104.1",
+    "webpack": "^5.111.0",
     "webpack-bundle-analyzer": "^4.5.0",
     "webpack-dev-middleware": "^7.4.6",
     "webpack-hot-middleware": "^2.25.1",

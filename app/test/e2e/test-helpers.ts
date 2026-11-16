@@ -5,12 +5,26 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 
+// The names have spaces and umlauts, as the folders of many users do (#49).
 export const smokeRepoPath = path.join(
   os.tmpdir(),
-  'lodestone-e2e-smoke-repository'
+  'Lodestone E2E Prüfung Müller',
+  'Repository mit Leerzeichen'
 )
 export const smokeRepoName = path.basename(smokeRepoPath)
 export const smokeRepoFileName = 'smoke-change.txt'
+
+/**
+ * A file deep in the repository, whose path is longer than the 260 characters
+ * Windows allows without long path support (#49). It is in the first commit, so
+ * that the changes list of the test stays the one file it was.
+ */
+export const longPathFileName = 'lange-datei.txt'
+export const longPathDirectories = Array.from(
+  { length: 14 },
+  (_, i) => `Unterordner mit langem Namen ${i + 1}`
+)
+
 export const smokeRepoFileContents =
   'This file should appear in the changes list.'
 
@@ -27,7 +41,15 @@ export function ensureSmokeTestRepository() {
     '# Lodestone Smoke Repo\n'
   )
 
-  runGit(['add', 'README.md'], smokeRepoPath)
+  // Git for Windows needs this for a path of that length, as it does for any
+  // repository that has one.
+  runGit(['config', 'core.longpaths', 'true'], smokeRepoPath)
+
+  const longDirectory = path.join(smokeRepoPath, ...longPathDirectories)
+  fs.mkdirSync(longDirectory, { recursive: true })
+  fs.writeFileSync(path.join(longDirectory, longPathFileName), 'long\n')
+
+  runGit(['add', '.'], smokeRepoPath)
   runGit(['commit', '-m', 'Initial commit'], smokeRepoPath)
 
   fs.writeFileSync(

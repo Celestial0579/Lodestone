@@ -22,6 +22,8 @@ import {
   getSmokeRepoCurrentBranch,
   getSmokeRepoHeadMessage,
   getSmokeRepoHeadSha,
+  longPathDirectories,
+  longPathFileName,
   getSmokeRepoStatus,
 } from './test-helpers'
 import type { Page } from '@playwright/test'
@@ -313,5 +315,22 @@ test.describe('Lodestone - Electron 44', () => {
     await expect(page.locator('#app-menu-foldout')).toBeVisible({
       timeout: 15000,
     })
+  })
+
+  test('lists a file whose path is longer than 260 characters', async ({
+    mainWindow: page,
+  }) => {
+    // The repository is under a path with spaces and umlauts, and the first
+    // commit holds a file deep in it (#49).
+    expect(
+      path.join(smokeRepoPath, ...longPathDirectories).length
+    ).toBeGreaterThan(260)
+
+    await page.getByRole('tab', { name: /History/ }).click()
+    await page.locator('.commit').filter({ hasText: 'Initial commit' }).click()
+
+    await expect(
+      page.locator('#changed-files, .file-list').getByText(longPathFileName)
+    ).toBeVisible({ timeout: 15000 })
   })
 })

@@ -26,8 +26,8 @@ import { getDistPath, getExecutableName } from '../../../script/dist-info'
 import { getProductName } from '../../package-info'
 
 const projectRoot = path.resolve(__dirname, '..', '..', '..')
-const userDataDir = path.join(os.tmpdir(), 'lodestone-pw-e2e')
-const fakeHomeDir = path.join(os.tmpdir(), 'lodestone-pw-fake-home')
+const userDataDir = path.join(os.tmpdir(), 'Lodestone PW E2E Prüfung')
+const fakeHomeDir = path.join(os.tmpdir(), 'Lodestone PW Zuhause Müller')
 const installedAppExecutablePath = process.env.DESKTOP_E2E_APP_PATH
 // `packaged` is the default because that is what CI builds and what a release
 // is made from. `unpackaged` exists for local iteration, so the same test can

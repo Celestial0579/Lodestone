@@ -84,21 +84,32 @@ jobs:
             public static extern int CreateProfile(string sid, string userName, StringBuilder path, uint size);
           }
           '@
-          $path = New-Object System.Text.StringBuilder 260
-          $hr = [Profile]::CreateProfile((Get-LocalUser $name).SID.Value, $name, $path, 260)
-          "profile made: 0x$('{0:X}' -f $hr), $path"
-
-          $key = "$work\key"
+          $key = "$work\\key"
           ssh-keygen -q -t ed25519 -N '' -f $key
-          $ssh = Join-Path "$path" '.ssh'
-          New-Item -ItemType Directory $ssh -Force | Out-Null
-          Copy-Item "$key.pub" "$ssh\authorized_keys"
-          icacls $ssh /inheritance:r /grant "SYSTEM:(OI)(CI)F" "BUILTIN\Administrators:(OI)(CI)F" "$env:COMPUTERNAME\${name}:(OI)(CI)F" | Out-Null
 
-          $remote = "powershell -NoProfile -ExecutionPolicy Bypass -File $work\as-user.ps1"
-          $result = ssh -i $key -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL -o BatchMode=yes "$name@localhost" $remote 2>&1
-          "ssh as the user: exit $LASTEXITCODE"
-          $result | ForEach-Object { "ssh says: $_" }
+          function Test-Logon($user, $command) {
+            if (-not (Get-LocalUser $user -ErrorAction SilentlyContinue)) {
+              New-LocalUser -Name $user -NoPassword -AccountNeverExpires | Out-Null
+            }
+            $path = New-Object System.Text.StringBuilder 260
+            $hr = [Profile]::CreateProfile((Get-LocalUser $user).SID.Value, $user, $path, 260)
+            "[$user] profile made: 0x$('{0:X}' -f $hr), $path"
+            $ssh = Join-Path "$path" '.ssh'
+            New-Item -ItemType Directory $ssh -Force | Out-Null
+            Copy-Item "$key.pub" "$ssh\authorized_keys" -Force
+            icacls $ssh /inheritance:r /grant "SYSTEM:(OI)(CI)F" "BUILTIN\Administrators:(OI)(CI)F" "$env:COMPUTERNAME\${user}:(OI)(CI)F" | Out-Null
+            $result = ssh -i $key -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL -o BatchMode=yes "$user@localhost" $command 2>&1
+            "[$user] ssh: exit $LASTEXITCODE"
+            $result | ForEach-Object { "[$user] ssh says: $_" }
+          }
+
+          # An ASCII name first, to tell a refusal of the logon from a trouble
+          # with the name.
+          Test-Logon 'probeplain' 'whoami'
+          Test-Logon $name "powershell -NoProfile -ExecutionPolicy Bypass -File $work\as-user.ps1"
+
+          '--- sshd log'
+          Get-WinEvent -LogName 'OpenSSH/Operational' -MaxEvents 12 -ErrorAction SilentlyContinue | ForEach-Object { $_.Message -replace '\s+', ' ' }
 
           $state = 'finished'
           $info = $null
@@ -113,3 +124,4 @@ jobs:
         run: |
           Unregister-ScheduledTask -TaskName LodestoneProfileProbe -Confirm:$false -ErrorAction SilentlyContinue
           Remove-LocalUser -Name 'Jürgen Müller' -ErrorAction SilentlyContinue
+          Remove-LocalUser -Name 'probeplain' -ErrorAction SilentlyContinue

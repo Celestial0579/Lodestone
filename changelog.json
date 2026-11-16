@@ -1,5 +1,12 @@
 {
   "releases": {
+    "1.0.3": [
+      "[Improved] Update itself only to a newer version, decided by the app, and read the release from github.com itself instead of taking the list of files from the window",
+      "[Fixed] Keep memory use low while an update downloads to a slow disk",
+      "[Fixed] A second update request no longer empties the folder Squirrel is still reading",
+      "[Improved] Keep the log files in %LOCALAPPDATA%\\Lodestone\\logs on Windows, so a roaming profile does not carry them",
+      "[Improved] Support long paths on Windows, where long paths are enabled"
+    ],
     "1.0.2": [
       "[New] Update itself on Windows from the repository set in Options, once the package matches the SHA-256 the release lists for it",
       "[Security] Mask passwords and tokens in the log, such as credentials in a clone URL or an Authorization header (GHSA-gmvh-p668-gr4c)",

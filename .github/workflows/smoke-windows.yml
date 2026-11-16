@@ -198,6 +198,13 @@ jobs:
           . "$env:RUNNER_TEMP\smoke.ps1"
           Install-Setup setup\LodestoneSetup-x64.exe $env:VERSION
           Assert-Installed
+          # The manifest of the exe (#49): long path support is in it.
+          $exeBytes = [IO.File]::ReadAllBytes("$env:LOCALAPPDATA\Lodestone\app-$env:VERSION\Lodestone.exe")
+          $manifest = [Text.Encoding]::Latin1.GetString($exeBytes)
+          foreach ($setting in 'longPathAware', 'asInvoker', 'true/pm') {
+            if (-not $manifest.Contains($setting)) { throw "the manifest of Lodestone.exe has no $setting" }
+          }
+          'the manifest has long path support, asInvoker and DPI awareness'
 
       - name: Start the app and see where the update check goes
         run: |
@@ -207,7 +214,7 @@ jobs:
           Start-Sleep 2
           $exe = "$env:LOCALAPPDATA\Lodestone\app-$env:VERSION\Lodestone.exe"
           $app = Start-Process $exe -ArgumentList '--proxy-server=127.0.0.1:8899' -PassThru
-          $logs = "$env:APPDATA\Lodestone\logs"
+          $logs = "$env:LOCALAPPDATA\Lodestone\logs"
           $line = $null
           for ($i = 0; $i -lt 60 -and -not $line; $i++) {
             Start-Sleep 3
@@ -316,7 +323,8 @@ jobs:
           "PFX_PASS=$pass" >> $env:GITHUB_ENV
           "CERT_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
 
-          $v = [version]$env:VERSION
+          # A beta's version has a label, which [version] does not take.
+          $v = [version]($env:VERSION -split '-')[0]
           $next = '{0}.{1}.{2}' -f $v.Major, $v.Minor, ($v.Build + 1)
           "NEXT_VERSION=$next" >> $env:GITHUB_ENV
           $release = New-Item -ItemType Directory "$env:RUNNER_TEMP\release" -Force
@@ -345,7 +353,7 @@ jobs:
             $log = "$env:RUNNER_TEMP\release-server-$mode.log"
             $server = Start-Process node -ArgumentList '.github/smoke/release-server.js', '8443', "$env:RUNNER_TEMP\release-server.pfx", $env:PFX_PASS, "$env:RUNNER_TEMP\release", $env:NEXT_VERSION, $mode, $log -PassThru -WindowStyle Hidden
             Start-Sleep 2
-            node .github/smoke/self-update.js "$env:RUNNER_TEMP\playwright" "$env:LOCALAPPDATA\Lodestone\app-$version\Lodestone.exe" 'https://localhost:8443/Celestial0579/Lodestone' $expect $env:NEXT_VERSION "$env:APPDATA\Lodestone\logs"
+            node .github/smoke/self-update.js "$env:RUNNER_TEMP\playwright" "$env:LOCALAPPDATA\Lodestone\app-$version\Lodestone.exe" 'https://localhost:8443/Celestial0579/Lodestone' $expect $env:NEXT_VERSION "$env:LOCALAPPDATA\Lodestone\logs"
             $code = $LASTEXITCODE
             Stop-App
             Stop-Process $server.Id -Force
@@ -400,7 +408,7 @@ jobs:
         run: |
           $logs = New-Item -ItemType Directory "$env:RUNNER_TEMP\smoke-logs" -Force
           Copy-Item "$env:RUNNER_TEMP\release-server-*.log" $logs -ErrorAction SilentlyContinue
-          foreach ($p in "$env:RUNNER_TEMP\proxy.log", "$env:APPDATA\Lodestone\logs",
+          foreach ($p in "$env:RUNNER_TEMP\proxy.log", "$env:LOCALAPPDATA\Lodestone\logs",
                          "$env:LOCALAPPDATA\SquirrelTemp", "$env:LOCALAPPDATA\Lodestone\SquirrelSetup.log") {
             if (Test-Path $p) { Copy-Item $p $logs -Recurse -Force }
           }

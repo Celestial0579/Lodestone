@@ -2,7 +2,7 @@ import * as Path from 'path'
 import { createHash, randomBytes } from 'crypto'
 import { createWriteStream } from 'fs'
 import { mkdir, readdir, rm, stat, writeFile } from 'fs/promises'
-import { autoUpdater, net } from 'electron'
+import { app, autoUpdater, net } from 'electron'
 import { valid } from 'semver'
 import { pathExists } from '../lib/path-exists'
 import {
@@ -14,16 +14,20 @@ import {
   MaxSumsFileSize,
   parseSha256Sums,
 } from '../lib/forges/update-assets'
+import {
+  getGitHubReleaseURL,
+  IForgeUpdateRequest,
+  IPausable,
+  isNewerThanRunning,
+  parseUpdateRequest,
+  readGitHubRelease,
+  UpdateGate,
+  writeWithBackpressure,
+} from '../lib/forges/update-guard'
 import { rootAppDir, updateDotExe } from './squirrel-updater'
 
-/** What the renderer asks for: the release the update check found. */
-export interface IForgeUpdateRequest {
-  /** The version of the release, without a leading v. */
-  readonly version: string
-  /** The web address of the repository the release is from. */
-  readonly sourceURL: string
-  readonly assets: ReadonlyArray<IReleaseAsset>
-}
+/** The release description of a forge is a few kilobytes. */
+const MaxReleaseSize = 4 * 1024 * 1024
 
 export type ForgeUpdateResult =
   /** The package checked out, and Squirrel was handed a feed of it. */
@@ -36,8 +40,7 @@ export type ForgeUpdateResult =
 /** Where the downloads go: a folder only the user can write to. */
 const updatesDirectory = Path.join(rootAppDir, 'updates')
 
-let inFlight: Promise<ForgeUpdateResult> | null = null
-let feedDirectory: string | null = null
+const gate = new UpdateGate<ForgeUpdateResult>()
 
 class UpdateRefusedError extends Error {}
 
@@ -48,13 +51,13 @@ class UpdateRefusedError extends Error {}
  */
 function download(
   url: string,
-  sourceURL: string,
+  isAllowed: (url: string) => boolean,
   maxSize: number,
   hashes: ReadonlyArray<ReturnType<typeof createHash>>,
   path?: string
 ): Promise<Buffer | null> {
   return new Promise((resolve, reject) => {
-    if (!isAllowedUpdateURL(url, sourceURL)) {
+    if (!isAllowed(url)) {
       reject(
         new UpdateRefusedError(
           `${url} is not an address on the host of the update source.`
@@ -83,7 +86,7 @@ function download(
     }
 
     request.on('redirect', (_status, _method, redirectURL) => {
-      if (isAllowedUpdateURL(redirectURL, sourceURL)) {
+      if (isAllowed(redirectURL)) {
         request.followRedirect()
       } else {
         fail(
@@ -115,7 +118,9 @@ function download(
         if (file === null) {
           chunks.push(chunk)
         } else {
-          file.write(chunk)
+          // Electron's IncomingMessage is a Readable stream, which its typings
+          // do not say.
+          writeWithBackpressure(response as unknown as IPausable, file, chunk)
         }
       })
 
@@ -151,6 +156,42 @@ async function clearUpdatesDirectory() {
   }
 }
 
+/**
+ * The files of the release. For a repository on github.com, the main process
+ * asks the API itself, so a renderer that was talked into sending other files
+ * gets no say; for any other forge the list of the request stands.
+ */
+async function getReleaseAssets(
+  request: IForgeUpdateRequest
+): Promise<ReadonlyArray<IReleaseAsset>> {
+  const url = getGitHubReleaseURL(request.sourceURL, request.version)
+
+  if (url === null) {
+    return request.assets
+  }
+
+  const body = await download(
+    url,
+    u => u.startsWith('https://api.github.com/repos/'),
+    MaxReleaseSize,
+    []
+  )
+
+  let release: unknown
+  try {
+    release = JSON.parse(body?.toString('utf8') ?? '')
+  } catch {
+    throw new UpdateRefusedError('The update source did not answer with JSON.')
+  }
+
+  const assets = readGitHubRelease(release, request.version)
+  if (typeof assets === 'string') {
+    throw new UpdateRefusedError(assets)
+  }
+
+  return assets
+}
+
 async function prepare(
   request: IForgeUpdateRequest
 ): Promise<ForgeUpdateResult> {
@@ -167,7 +208,34 @@ async function prepare(
     }
   }
 
-  const assets = findUpdateAssets(request.assets, __APP_NAME__, request.version)
+  // Squirrel.Windows compares versions as well, but whether this is an update
+  // at all is not left to it.
+  if (!isNewerThanRunning(request.version, app.getVersion())) {
+    return {
+      kind: 'failed',
+      reason: `${
+        request.version
+      } is not newer than the running version, ${app.getVersion()}.`,
+    }
+  }
+
+  const isAllowed = (url: string) => isAllowedUpdateURL(url, request.sourceURL)
+
+  let releaseAssets: ReadonlyArray<IReleaseAsset>
+  try {
+    releaseAssets = await getReleaseAssets(request)
+  } catch (e) {
+    log.warn(`[updates] could not read the release ${request.version}`, e)
+    return {
+      kind: 'failed',
+      reason:
+        e instanceof UpdateRefusedError
+          ? e.message
+          : `The release ${request.version} could not be read from its source.`,
+    }
+  }
+
+  const assets = findUpdateAssets(releaseAssets, __APP_NAME__, request.version)
   if (typeof assets === 'string') {
     return { kind: 'failed', reason: assets }
   }
@@ -185,7 +253,7 @@ async function prepare(
   try {
     const sumsText = await download(
       assets.sums.url,
-      request.sourceURL,
+      isAllowed,
       MaxSumsFileSize,
       []
     )
@@ -203,7 +271,7 @@ async function prepare(
     const packagePath = Path.join(directory, assets.package.name)
     await download(
       assets.package.url,
-      request.sourceURL,
+      isAllowed,
       MaxPackageSize,
       [sha256, sha1],
       packagePath
@@ -244,7 +312,7 @@ async function prepare(
   log.info(
     `[updates] ${request.version} checked against its SHA-256, handing it to Squirrel`
   )
-  feedDirectory = directory
+  gate.holdFeed(directory)
   autoUpdater.setFeedURL({ url: directory })
   autoUpdater.checkForUpdates()
   return { kind: 'started' }
@@ -253,18 +321,26 @@ async function prepare(
 /**
  * Download the full package of a newer release, check it against the sum
  * file of the same release, and hand Squirrel.Windows a feed of it. Squirrel
- * then reports through the usual auto updater events. Only one at a time.
+ * then reports through the usual auto updater events. Only one at a time, and
+ * none while Squirrel still reads the feed of the last one.
  */
 export function prepareForgeUpdate(
-  request: IForgeUpdateRequest
+  untrusted: unknown
 ): Promise<ForgeUpdateResult> {
-  if (inFlight === null) {
-    inFlight = prepare(request).finally(() => {
-      inFlight = null
-    })
+  const request = parseUpdateRequest(untrusted)
+
+  if (typeof request === 'string') {
+    log.warn(`[updates] refused an update request: ${request}`)
+    return Promise.resolve({ kind: 'failed', reason: request })
   }
 
-  return inFlight
+  return gate.request(
+    () => prepare(request),
+    () => ({
+      kind: 'failed',
+      reason: 'An update is already being applied.',
+    })
+  )
 }
 
 /**
@@ -272,8 +348,7 @@ export function prepareForgeUpdate(
  * needed: Squirrel keeps its own copy of the package.
  */
 export function removeForgeUpdateFeed(applied: boolean) {
-  const directory = feedDirectory
-  feedDirectory = null
+  const directory = gate.releaseFeed()
 
   if (directory === null) {
     return
@@ -282,7 +357,7 @@ export function removeForgeUpdateFeed(applied: boolean) {
   log.info(
     applied
       ? '[updates] Squirrel applied the update, restart to finish it'
-      : '[updates] Squirrel could not apply the update'
+      : '[updates] Squirrel is done with the feed without an update'
   )
   rm(directory, { recursive: true, force: true }).catch(e =>
     log.warn(`[updates] could not remove ${directory}`, e)

@@ -1,8 +1,6 @@
 import { IMenuItemState } from './menu-update'
-import type {
-  ForgeUpdateResult,
-  IForgeUpdateRequest,
-} from '../main-process/forge-update'
+import type { ForgeUpdateResult } from '../main-process/forge-update'
+import type { IForgeUpdateRequest } from './forges/update-guard'
 import { MenuIDs } from '../models/menu-ids'
 import { ISerializableMenuItem } from './menu-item'
 import { MenuLabelsEvent } from '../models/menu-labels'

@@ -69,12 +69,37 @@ export function getKnownForge(endpoint: string): IForgeInfo {
     return cached
   }
 
+  // github.com is known without asking it. Left unknown, the menu named it "the
+  // server" (#83).
+  if (isDotComAPIEndpoint(endpoint)) {
+    return {
+      kind: ForgeKind.DotCom,
+      family: ForgeFamily.GitHub,
+      version: null,
+      verified: true,
+      observedAt: 0,
+    }
+  }
+
   return {
     kind: ForgeKind.Unknown,
     family: getForgeFamily(endpoint),
     version: null,
     verified: false,
     observedAt: 0,
+  }
+}
+
+function isDotComAPIEndpoint(endpoint: string) {
+  try {
+    const url = new URL(endpoint)
+    return (
+      url.protocol === 'https:' &&
+      url.hostname.toLowerCase() === 'api.github.com' &&
+      url.pathname.replace(/\/+$/, '') === ''
+    )
+  } catch {
+    return false
   }
 }
 

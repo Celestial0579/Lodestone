@@ -1,5 +1,8 @@
 {
   "releases": {
+    "1.0.5": [
+      "[Fixed] Create issue on the host did nothing for a repository whose web address the app had not stored yet; it now opens the new issue page, and the menu names GitHub for github.com instead of \"the server\""
+    ],
     "1.0.4": [
       "[Improved] Update Electron, the runtime Lodestone is built on, from 42 to 44.9.1; version 42 gets no more security fixes",
       "[Fixed] Windows: the title bar of the window stays responsive after the Electron update"

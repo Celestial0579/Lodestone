@@ -1,3 +1,4 @@
+import { getRepositoryWebURL } from './repository-web-urls'
 import { MenuIDs } from '../models/menu-ids'
 import { merge } from './merge'
 import { IAppState, SelectionType } from '../lib/app-state'
@@ -456,9 +457,14 @@ function getAppMenuBuilder(state: IAppState): MenuStateBuilder {
   return menuStateBuilder
 }
 
-function getRepoIssuesEnabled(repository: Repository): boolean {
+export function getRepoIssuesEnabled(repository: Repository): boolean {
   if (isRepositoryWithGitHubRepository(repository)) {
     const ghRepo = repository.gitHubRepository
+
+    // Without an address to open there is nothing the item could do.
+    if (getRepositoryWebURL(repository) === null) {
+      return false
+    }
 
     if (ghRepo.parent) {
       // issues enabled on parent repo

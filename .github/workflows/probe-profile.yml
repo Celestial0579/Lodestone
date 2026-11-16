@@ -1,0 +1,88 @@
+name: Probe a Windows profile with umlauts
+
+# Does the setup, the app and the uninstall work under a profile whose path has
+# a space and an umlaut, such as C:\Users\Jürgen Müller (#88)? The profile path
+# comes from the system, not from the environment, so a second local user is the
+# only way to get one. The user has no password: the task that runs as it logs on
+# with S4U, which needs none. Whatever Windows answers is the result, so the job
+# does not fail on it.
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/probe-profile.yml
+      - .github/profile/**
+  workflow_dispatch:
+    inputs:
+      build-run:
+        description: Run of "Build the Windows setup" whose installers to use
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  # The installers a pull request uses: the build of 1.0.5.
+  DEFAULT_BUILD_RUN: '43912157568'
+
+jobs:
+  probe:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/profile
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lodestone-windows-x64
+          path: setup
+          run-id: ${{ inputs.build-run || env.DEFAULT_BUILD_RUN }}
+          github-token: ${{ github.token }}
+
+      - name: Make the user and run the setup, the app and the uninstall as it
+        continue-on-error: true
+        run: |
+          $name = 'Jürgen Müller'
+          $work = 'C:\profile-test'
+          New-Item -ItemType Directory $work -Force | Out-Null
+          Copy-Item setup "$work\setup" -Recurse
+          $version = [regex]::Match((Get-Content setup\RELEASES -Raw), 'Lodestone-(\S+)-full\.nupkg').Groups[1].Value
+          Set-Content "$work\version.txt" $version
+          Copy-Item .github\profile\as-user.ps1 "$work\as-user.ps1"
+          icacls $work /grant 'Users:(OI)(CI)M' | Out-Null
+
+          New-LocalUser -Name $name -NoPassword -AccountNeverExpires | Out-Null
+          "created the user, SID: $((Get-LocalUser $name).SID)"
+
+          $action = New-ScheduledTaskAction -Execute "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File $work\as-user.ps1"
+          $principal = New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$name" -LogonType S4U -RunLevel Limited
+          $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 12)
+          Register-ScheduledTask -TaskName LodestoneProfileProbe -Action $action -Principal $principal -Settings $settings | Out-Null
+          Start-ScheduledTask -TaskName LodestoneProfileProbe
+
+          for ($i = 0; $i -lt 90; $i++) {
+            Start-Sleep 8
+            $state = (Get-ScheduledTask -TaskName LodestoneProfileProbe).State
+            if ($state -ne 'Running' -and $state -ne 'Queued') { break }
+          }
+          $info = Get-ScheduledTaskInfo -TaskName LodestoneProfileProbe
+          "task state: $state, last result: 0x$('{0:X}' -f $info.LastTaskResult)"
+          '--- what the user saw'
+          if (Test-Path "$work\out.txt") { Get-Content "$work\out.txt" -Encoding UTF8 } else { 'no output: the task did not run, or could not write' }
+          '--- profile folders'
+          Get-ChildItem C:\Users -Directory | ForEach-Object { $_.FullName }
+
+      - name: Clean up
+        if: always()
+        continue-on-error: true
+        run: |
+          Unregister-ScheduledTask -TaskName LodestoneProfileProbe -Confirm:$false -ErrorAction SilentlyContinue
+          Remove-LocalUser -Name 'Jürgen Müller' -ErrorAction SilentlyContinue

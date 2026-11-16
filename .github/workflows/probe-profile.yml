@@ -25,6 +25,8 @@ permissions:
 env:
   # The installers a pull request uses: the build of 1.0.5.
   DEFAULT_BUILD_RUN: '43912157568'
+  # The release an update is made from.
+  FORMER_RELEASE: v1.0.4
 
 jobs:
   probe:
@@ -47,6 +49,12 @@ jobs:
           run-id: ${{ inputs.build-run || env.DEFAULT_BUILD_RUN }}
           github-token: ${{ github.token }}
 
+      - name: Download the former release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download $env:FORMER_RELEASE --repo $env:GITHUB_REPOSITORY --dir former --pattern LodestoneSetup-x64.exe
+
       - name: Make the user and run the setup, the app and the uninstall as it
         continue-on-error: true
         run: |
@@ -54,6 +62,7 @@ jobs:
           $work = 'C:\profile-test'
           New-Item -ItemType Directory $work -Force | Out-Null
           Copy-Item setup "$work\setup" -Recurse
+          Copy-Item former "$work\former" -Recurse
           $version = [regex]::Match((Get-Content setup\RELEASES -Raw), 'Lodestone-(\S+)-full\.nupkg').Groups[1].Value
           Set-Content "$work\version.txt" $version
           Copy-Item .github\profile\as-user.ps1 "$work\as-user.ps1"

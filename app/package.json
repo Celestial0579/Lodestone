@@ -3,7 +3,7 @@
   "productName": "Lodestone",
   "bundleID": "de.firestrike.lodestone",
   "companyName": "Celestial0579",
-  "version": "1.0.2",
+  "version": "1.0.3-beta01",
   "main": "./main.js",
   "repository": {
     "type": "git",

@@ -428,6 +428,7 @@ export class AppWindow {
 
     autoUpdater.on('update-not-available', () => {
       this.isDownloadingUpdate = false
+      removeForgeUpdateFeed(false)
       ipcWebContents.send(
         this.window.webContents,
         'auto-updater-update-not-available'

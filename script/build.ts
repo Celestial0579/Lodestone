@@ -240,6 +240,13 @@ function packageApp() {
       OriginalFilename: '',
       ProductName: getProductName(),
       InternalName: getProductName(),
+      // Adds long path support to the manifest Electron ships (#49).
+      'application-manifest': path.join(
+        projectRoot,
+        'script',
+        'windows',
+        'lodestone.manifest'
+      ),
     },
   })
 }

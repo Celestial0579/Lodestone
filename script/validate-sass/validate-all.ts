@@ -1,5 +1,5 @@
 import * as path from 'path'
-import * as glob from 'glob'
+import { readdirSync } from 'fs'
 import { listUnencodedSassVariables, SassVariable } from './validate-file'
 
 export async function verifyInjectedSassVariables(
@@ -13,8 +13,9 @@ export async function verifyInjectedSassVariables(
 
   const root = path.dirname(outRoot)
 
-  const allStyleSheets = path.join(outRoot, '*.css')
-  const stylesheets = glob.sync(allStyleSheets)
+  const stylesheets = readdirSync(outRoot)
+    .filter(name => name.endsWith('.css'))
+    .map(name => path.join(outRoot, name))
 
   const unencodedVariables = new Array<SassVariable>()
 

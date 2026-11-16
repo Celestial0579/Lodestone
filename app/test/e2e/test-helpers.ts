@@ -59,6 +59,10 @@ export function getSmokeRepoHeadMessage() {
   return readGitOutput(['log', '-1', '--pretty=%s'], smokeRepoPath)
 }
 
+export function getSmokeRepoHeadSha() {
+  return readGitOutput(['rev-parse', 'HEAD'], smokeRepoPath)
+}
+
 export function getSmokeRepoCurrentBranch() {
   return readGitOutput(['branch', '--show-current'], smokeRepoPath)
 }

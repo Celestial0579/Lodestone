@@ -62,10 +62,29 @@ jobs:
           New-LocalUser -Name $name -NoPassword -AccountNeverExpires | Out-Null
           "created the user, SID: $((Get-LocalUser $name).SID)"
 
-          $action = New-ScheduledTaskAction -Execute "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File $work\as-user.ps1"
-          $principal = New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$name" -LogonType S4U -RunLevel Limited
-          $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 12)
-          Register-ScheduledTask -TaskName LodestoneProfileProbe -Action $action -Principal $principal -Settings $settings | Out-Null
+          $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+          "runner user: $(whoami), administrator role: $admin"
+          whoami /groups | Select-String 'Mandatory Label' | ForEach-Object { "integrity: $($_.Line.Trim())" }
+
+          # First S4U through the cmdlets, then the no-password switch of schtasks.
+          $command = "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe"
+          $arguments = "-NoProfile -ExecutionPolicy Bypass -File $work\as-user.ps1"
+          $registered = $false
+          try {
+            $action = New-ScheduledTaskAction -Execute $command -Argument $arguments
+            $principal = New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$name" -LogonType S4U -RunLevel Limited
+            Register-ScheduledTask -TaskName LodestoneProfileProbe -Action $action -Principal $principal | Out-Null
+            $registered = $true
+            'registered with the cmdlets (S4U)'
+          } catch {
+            "cmdlets refused: $($_.Exception.Message)"
+          }
+          if (-not $registered) {
+            $output = schtasks /Create /TN LodestoneProfileProbe /TR "`"$command`" $arguments" /SC ONCE /ST 00:00 /RU "$env:COMPUTERNAME\$name" /NP /F 2>&1
+            "schtasks /NP: exit $LASTEXITCODE, $output"
+            $registered = $LASTEXITCODE -eq 0
+          }
+          if (-not $registered) { throw 'Windows would not register a task for a user without a password' }
           Start-ScheduledTask -TaskName LodestoneProfileProbe
 
           for ($i = 0; $i -lt 90; $i++) {

@@ -1,5 +1,9 @@
 {
   "releases": {
+    "1.0.4": [
+      "[Improved] Update Electron, the runtime Lodestone is built on, from 42 to 44.9.1; version 42 gets no more security fixes",
+      "[Fixed] Windows: the title bar of the window stays responsive after the Electron update"
+    ],
     "1.0.3": [
       "[Improved] Update itself only to a newer version, decided by the app, and read the release from github.com itself instead of taking the list of files from the window",
       "[Fixed] Keep memory use low while an update downloads to a slow disk",

@@ -66,36 +66,44 @@ jobs:
           "runner user: $(whoami), administrator role: $admin"
           whoami /groups | Select-String 'Mandatory Label' | ForEach-Object { "integrity: $($_.Line.Trim())" }
 
-          # First S4U through the cmdlets, then the no-password switch of schtasks.
-          $command = "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe"
-          $arguments = "-NoProfile -ExecutionPolicy Bypass -File $work\as-user.ps1"
-          $registered = $false
-          try {
-            $action = New-ScheduledTaskAction -Execute $command -Argument $arguments
-            $principal = New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$name" -LogonType S4U -RunLevel Limited
-            Register-ScheduledTask -TaskName LodestoneProfileProbe -Action $action -Principal $principal | Out-Null
-            $registered = $true
-            'registered with the cmdlets (S4U)'
-          } catch {
-            "cmdlets refused: $($_.Exception.Message)"
-          }
-          if (-not $registered) {
-            $output = schtasks /Create /TN LodestoneProfileProbe /TR "`"$command`" $arguments" /SC ONCE /ST 00:00 /RU "$env:COMPUTERNAME\$name" /NP /F 2>&1
-            "schtasks /NP: exit $LASTEXITCODE, $output"
-            $registered = $LASTEXITCODE -eq 0
-          }
-          if (-not $registered) { throw 'Windows would not register a task for a user without a password' }
-          Start-ScheduledTask -TaskName LodestoneProfileProbe
+          # Windows refused the first way (#88): neither the cmdlets nor schtasks
+          # take a task for a user without a password. The OpenSSH server logs a
+          # user on by public key with S4U, which needs no password either.
+          Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0 | Out-Null
+          Set-Service sshd -StartupType Manual
+          Start-Service sshd
+          "sshd: $((Get-Service sshd).Status)"
 
-          for ($i = 0; $i -lt 90; $i++) {
-            Start-Sleep 8
-            $state = (Get-ScheduledTask -TaskName LodestoneProfileProbe).State
-            if ($state -ne 'Running' -and $state -ne 'Queued') { break }
+          # The profile folder is made by Windows, so that it is the real one.
+          Add-Type -TypeDefinition @'
+          using System;
+          using System.Runtime.InteropServices;
+          using System.Text;
+          public static class Profile {
+            [DllImport("userenv.dll", CharSet = CharSet.Unicode)]
+            public static extern int CreateProfile(string sid, string userName, StringBuilder path, uint size);
           }
-          $info = Get-ScheduledTaskInfo -TaskName LodestoneProfileProbe
-          "task state: $state, last result: 0x$('{0:X}' -f $info.LastTaskResult)"
+          '@
+          $path = New-Object System.Text.StringBuilder 260
+          $hr = [Profile]::CreateProfile((Get-LocalUser $name).SID.Value, $name, $path, 260)
+          "profile made: 0x$('{0:X}' -f $hr), $path"
+
+          $key = "$work\key"
+          ssh-keygen -q -t ed25519 -N '' -f $key
+          $ssh = Join-Path "$path" '.ssh'
+          New-Item -ItemType Directory $ssh -Force | Out-Null
+          Copy-Item "$key.pub" "$ssh\authorized_keys"
+          icacls $ssh /inheritance:r /grant "SYSTEM:(OI)(CI)F" "BUILTIN\Administrators:(OI)(CI)F" "$env:COMPUTERNAME\${name}:(OI)(CI)F" | Out-Null
+
+          $remote = "powershell -NoProfile -ExecutionPolicy Bypass -File $work\as-user.ps1"
+          $result = ssh -i $key -o StrictHostKeyChecking=no -o UserKnownHostsFile=NUL -o BatchMode=yes "$name@localhost" $remote 2>&1
+          "ssh as the user: exit $LASTEXITCODE"
+          $result | ForEach-Object { "ssh says: $_" }
+
+          $state = 'finished'
+          $info = $null
           '--- what the user saw'
-          if (Test-Path "$work\out.txt") { Get-Content "$work\out.txt" -Encoding UTF8 } else { 'no output: the task did not run, or could not write' }
+          if (Test-Path "$work\out.txt") { Get-Content "$work\out.txt" -Encoding UTF8 } else { 'no output: the logon was refused or the user could not write' }
           '--- profile folders'
           Get-ChildItem C:\Users -Directory | ForEach-Object { $_.FullName }
 

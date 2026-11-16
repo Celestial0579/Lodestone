@@ -14,18 +14,18 @@ describe('getLogDirectory', () => {
   it('keeps them in the user data folder elsewhere', () => {
     assert.equal(
       getLogDirectory('/home/a/.config/Lodestone', 'linux', '/tmp'),
-      '/home/a/.config/Lodestone/logs'
+      Path.join('/home/a/.config/Lodestone', 'logs')
     )
   })
 
   it('falls back to the user data folder without a usable local profile', () => {
     assert.equal(
       getLogDirectory('/u/Lodestone', 'win32', undefined),
-      '/u/Lodestone/logs'
+      Path.join('/u/Lodestone', 'logs')
     )
     assert.equal(
       getLogDirectory('/u/Lodestone', 'win32', 'relative'),
-      '/u/Lodestone/logs'
+      Path.join('/u/Lodestone', 'logs')
     )
   })
 })

@@ -147,14 +147,26 @@ jobs:
 
           # Close the app and wait until every process of it has exited. Stop-Process
           # does not wait, and Squirrel cannot delete an exe that is still running.
+          # The processes of the app that are still running. A process that has
+          # ended stays in the list while anything holds a handle to it, such as
+          # the object Start-Process -PassThru returned, so it does not count.
+          function Get-RunningApp {
+            @(Get-Process Lodestone -ErrorAction SilentlyContinue | Where-Object {
+              try { -not $_.HasExited } catch { $false }
+            })
+          }
+
           function Stop-App {
             for ($i = 0; $i -lt 3; $i++) {
-              $procs = @(Get-Process Lodestone -ErrorAction SilentlyContinue)
+              $procs = Get-RunningApp
               if (-not $procs) { return }
               $procs | Stop-Process -Force -ErrorAction SilentlyContinue
               $procs | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
             }
-            if (Get-Process Lodestone -ErrorAction SilentlyContinue) { throw 'the app does not exit' }
+            if (Get-RunningApp) {
+              Show-AppProcesses 'that do not exit'
+              throw 'the app does not exit'
+            }
           }
 
           function Get-Leftovers {

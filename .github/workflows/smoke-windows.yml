@@ -234,6 +234,34 @@ jobs:
             $line = Get-ChildItem $logs -Filter *.log -ErrorAction SilentlyContinue |
               Select-String -SimpleMatch '[updates]' | Select-Object -First 1
           }
+          # How the window is aware of the display scaling (#49). The manifest
+          # asks for per-monitor (V1); this says whether Chromium raises it to
+          # per-monitor V2 at run time, which decides whether the manifest needs
+          # dpiAwareness. The app must be at least per-monitor aware.
+          Add-Type @'
+          using System;
+          using System.Runtime.InteropServices;
+          public static class Dpi {
+            [DllImport("user32.dll")] public static extern IntPtr GetWindowDpiAwarenessContext(IntPtr hwnd);
+            [DllImport("user32.dll")] public static extern int GetAwarenessFromDpiAwarenessContext(IntPtr context);
+            [DllImport("user32.dll")] public static extern bool AreDpiAwarenessContextsEqual(IntPtr a, IntPtr b);
+          }
+          '@
+          $handle = [IntPtr]::Zero
+          for ($i = 0; $i -lt 30 -and $handle -eq [IntPtr]::Zero; $i++) {
+            $app.Refresh()
+            $handle = $app.MainWindowHandle
+            if ($handle -eq [IntPtr]::Zero) { Start-Sleep 1 }
+          }
+          if ($handle -eq [IntPtr]::Zero) {
+            'dpi awareness: the app showed no window to ask'
+          } else {
+            $context = [Dpi]::GetWindowDpiAwarenessContext($handle)
+            $level = [Dpi]::GetAwarenessFromDpiAwarenessContext($context)
+            $v2 = [Dpi]::AreDpiAwarenessContextsEqual($context, [IntPtr]::new(-4))
+            "dpi awareness of the main window: level $level (0 unaware, 1 system, 2 per monitor), per monitor V2: $v2"
+            if ($level -lt 2) { throw 'the window is not per-monitor DPI aware' }
+          }
           '--- asked of the proxy'
           Get-Content $proxyLog
           '--- update lines in the app log'

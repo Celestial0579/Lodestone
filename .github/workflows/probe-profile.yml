@@ -88,15 +88,17 @@ jobs:
           ssh-keygen -q -t ed25519 -N '' -f $key
 
           # The image limits sshd to some groups. Put the test users in them.
-          $allowed = @(Select-String -Path "$env:ProgramData\ssh\sshd_config" -Pattern '^\s*AllowGroups\s+(.+)$' | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() -split '\s+' })
-          "sshd AllowGroups: $($allowed -join ', ')"
+          $line = (Select-String -Path "$env:ProgramData\ssh\sshd_config" -Pattern '^\s*AllowGroups\s+(.+)$').Matches[0].Groups[1].Value
+          $allowed = @([regex]::Matches($line, '"([^"]+)"|(\S+)') | ForEach-Object { if ($_.Groups[1].Success) { $_.Groups[1].Value } else { $_.Groups[2].Value } } | Where-Object { $_ -ne 'administrators' })
+          "sshd AllowGroups, without administrators: $($allowed -join ' | ')"
+          "local groups: $((Get-LocalGroup | ForEach-Object { $_.Name }) -join ' | ')"
 
           function Test-Logon($user, $command) {
             if (-not (Get-LocalUser $user -ErrorAction SilentlyContinue)) {
               New-LocalUser -Name $user -NoPassword -AccountNeverExpires | Out-Null
             }
             foreach ($group in $allowed) {
-              Add-LocalGroupMember -Group $group -Member $user -ErrorAction SilentlyContinue
+              Add-LocalGroupMember -Group $group -Member $user -ErrorAction Continue
             }
             $path = New-Object System.Text.StringBuilder 260
             $hr = [Profile]::CreateProfile((Get-LocalUser $user).SID.Value, $user, $path, 260)

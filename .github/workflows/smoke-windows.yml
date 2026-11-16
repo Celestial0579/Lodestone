@@ -105,7 +105,7 @@ jobs:
             # Squirrel starts the app once after installing. Give it the time to
             # finish its install hook, then close it.
             Start-Sleep 20
-            Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
+            Stop-App
             Start-Sleep 3
           }
 
@@ -138,18 +138,53 @@ jobs:
             if ($publisher -ne $env:PUBLISHER) { throw "expected the publisher $env:PUBLISHER" }
           }
 
-          function Uninstall-App {
-            Start-Sleep 3
-            $p = Start-Process "$env:LOCALAPPDATA\Lodestone\Update.exe" -ArgumentList '--uninstall', '-s' -PassThru
-            $null = $p.Handle
-            $p.WaitForExit()
-            "uninstall exited with $($p.ExitCode)"
-            Start-Sleep 10
+          # Every process of the app, with its command line.
+          function Show-AppProcesses($when) {
+            "--- Lodestone processes $when"
+            Get-CimInstance Win32_Process -Filter "Name = 'Lodestone.exe'" -ErrorAction SilentlyContinue |
+              ForEach-Object { "$($_.ProcessId) $($_.CommandLine)" }
+          }
+
+          # Close the app and wait until every process of it has exited. Stop-Process
+          # does not wait, and Squirrel cannot delete an exe that is still running.
+          function Stop-App {
+            for ($i = 0; $i -lt 3; $i++) {
+              $procs = @(Get-Process Lodestone -ErrorAction SilentlyContinue)
+              if (-not $procs) { return }
+              $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+              $procs | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
+            }
+            if (Get-Process Lodestone -ErrorAction SilentlyContinue) { throw 'the app does not exit' }
+          }
+
+          function Get-Leftovers {
             $left = @(Get-ChildItem "$env:LOCALAPPDATA\Lodestone\app-*\Lodestone.exe" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
             $left += @(Get-StartMenuShortcuts)
             $left += @("$env:USERPROFILE\Desktop\Lodestone.lnk", "$env:LOCALAPPDATA\Lodestone\bin\lodestone.bat",
                        "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike") | Where-Object { Test-Path $_ }
             if (Get-Publisher) { $left += 'the uninstall entry' }
+            $left
+          }
+
+          # The uninstall ends only when the app and Update.exe are gone: a
+          # running Lodestone.exe cannot be deleted (#65), and Squirrel then
+          # leaves it for the next start of Windows. Look for up to 30 s, since
+          # Update.exe may hand the deleting to another process.
+          function Uninstall-App {
+            Stop-App
+            Show-AppProcesses 'before the uninstall'
+            $p = Start-Process "$env:LOCALAPPDATA\Lodestone\Update.exe" -ArgumentList '--uninstall', '-s' -PassThru
+            $null = $p.Handle
+            $p.WaitForExit()
+            "uninstall exited with $($p.ExitCode)"
+            $left = @()
+            for ($i = 0; $i -lt 15; $i++) {
+              Start-Sleep 2
+              $left = @(Get-Leftovers)
+              if (-not $left) { break }
+            }
+            Show-AppProcesses 'after the uninstall'
+            Get-Process Update -ErrorAction SilentlyContinue | ForEach-Object { "Update.exe still running: $($_.Id)" }
             '--- left after uninstalling'
             $left
             if ($left) { throw 'uninstalling left things behind' }
@@ -166,6 +201,7 @@ jobs:
 
       - name: Start the app and see where the update check goes
         run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
           $proxyLog = "$env:RUNNER_TEMP\proxy.log"
           $proxy = Start-Process node -ArgumentList '.github/smoke/refusing-proxy.js', '8899', $proxyLog -PassThru -WindowStyle Hidden
           Start-Sleep 2
@@ -183,7 +219,7 @@ jobs:
           Get-Content $proxyLog
           '--- update lines in the app log'
           Get-ChildItem $logs -Filter *.log | Select-String -SimpleMatch '[updates]' | ForEach-Object { $_.Line }
-          Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
+          Stop-App
           Stop-Process $proxy.Id -Force
           if (-not $line) { throw 'the app logged no update check' }
           if ($line.Line -notmatch [regex]::Escape('https://github.com/Celestial0579/Lodestone')) {
@@ -252,7 +288,7 @@ jobs:
           if (-not (Test-Path $exe)) { throw "not updated: $exe" }
           # Give the update hook of the new version the time to run.
           Start-Sleep 20
-          Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
+          Stop-App
           Assert-Installed
           $former = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Firestrike"
           if (Test-Path $former) { throw "the update left $former" }
@@ -311,7 +347,7 @@ jobs:
             Start-Sleep 2
             node .github/smoke/self-update.js "$env:RUNNER_TEMP\playwright" "$env:LOCALAPPDATA\Lodestone\app-$version\Lodestone.exe" 'https://localhost:8443/Celestial0579/Lodestone' $expect $env:NEXT_VERSION "$env:APPDATA\Lodestone\logs"
             $code = $LASTEXITCODE
-            Get-Process Lodestone -ErrorAction SilentlyContinue | Stop-Process -Force
+            Stop-App
             Stop-Process $server.Id -Force
             "--- asked of the release server ($mode)"
             Get-Content $log

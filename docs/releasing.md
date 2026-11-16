@@ -1,8 +1,12 @@
 # Releasing
 
 Releases are made by hand from installers that the workflow
-[Build the Windows setup](../.github/workflows/build-windows.yml) leaves behind. The
-workflow publishes nothing. The builds are unsigned (#23).
+[Build the Windows setup for a release](../.github/workflows/release-windows.yml)
+leaves behind. It builds them with
+[Build the Windows setup](../.github/workflows/build-windows.yml) and attests the
+files (build provenance). The workflow publishes nothing. The builds are unsigned
+(#23). Check a downloaded file with
+`gh attestation verify <file> --repo Celestial0579/Lodestone`.
 
 ## Versions
 
@@ -32,7 +36,7 @@ workflow publishes nothing. The builds are unsigned (#23).
 2. Set the app version to the prerelease version (`1.0.3-beta01`) in
    `app/package.json`, and add the entries of the release to `changelog.json` under
    the final version (`1.0.3`). Run `yarn validate-changelog`. Merge this to `main`.
-3. Run _Build the Windows setup_ on that commit (`workflow_dispatch`). Note the
+3. Run _Build the Windows setup for a release_ on that commit (`workflow_dispatch`). Note the
    run id.
 4. Run _Smoke test the Windows setup_ (`workflow_dispatch`) with that run id as
    `build-run`. It must pass without warnings.
@@ -60,7 +64,7 @@ It is tested like the beta.
 1. Make sure CI on `main` is green and every open item for the release is closed.
 2. Set the app version to the final version (`1.0.3`) in `app/package.json`.
    `changelog.json` already holds the entries. Merge this to `main`.
-3. Run _Build the Windows setup_ on that commit. Note the run id.
+3. Run _Build the Windows setup for a release_ on that commit. Note the run id.
 4. Run _Smoke test the Windows setup_ with that run id. It must pass without
    warnings. Run it again if it fails, but find out why a run failed before
    trusting the second one.

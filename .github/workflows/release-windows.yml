@@ -1,0 +1,42 @@
+name: Build the Windows setup for a release
+
+# The way a release is built: it runs "Build the Windows setup", then attests the
+# files it made (build provenance, #49), so that a release asset can be traced to
+# this repository, this commit and this run. The attestation needs rights that a
+# pull request must not have, which is why it is not a step of the build itself,
+# the smoke test calls that on pull requests. Run it by hand on the commit the
+# release is made from; the smoke test and the release then use its run id.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-windows.yml
+
+  attest:
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lodestone-windows-x64
+          path: dist
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/*.exe
+            dist/*.msi
+            dist/*.nupkg
+            dist/RELEASES
+            dist/SHA256SUMS.txt

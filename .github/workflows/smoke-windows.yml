@@ -201,6 +201,7 @@ jobs:
 
       - name: Start the app and see where the update check goes
         run: |
+          . "$env:RUNNER_TEMP\smoke.ps1"
           $proxyLog = "$env:RUNNER_TEMP\proxy.log"
           $proxy = Start-Process node -ArgumentList '.github/smoke/refusing-proxy.js', '8899', $proxyLog -PassThru -WindowStyle Hidden
           Start-Sleep 2

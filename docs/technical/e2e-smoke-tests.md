@@ -63,7 +63,7 @@ The fixtures can launch the app in three ways.
 
 ### Packaged
 
-The default. The fixtures take the app from `dist`, where `yarn build:prod`
+The default. The fixtures take the app from `dist`, where `npm run build:prod`
 puts it, and start that executable. This is the form a release is made from.
 
 ### Unpackaged
@@ -88,26 +88,118 @@ running the test.
 The test needs `git` on the PATH: the repository it works in is made with it.
 
 ```bash
-yarn test:e2e:packaged
+npm run test:e2e:packaged
 ```
 
 builds a packaged production app and runs the test against it.
 
 ```bash
-yarn test:e2e:unpackaged
+npm run test:e2e:unpackaged
 ```
 
-builds the staged app in `out/` and runs the test against `out/main.js`. The
-build sets `DESKTOP_SKIP_PACKAGE=1`, which makes `script/build.ts` stop before
-packaging.
+This builds a production-configured staged app in `out/` and runs the same E2E
+suite against `out/main.js`.
 
-`yarn test:e2e` is the packaged form. `yarn test:e2e:run:packaged` and
-`yarn test:e2e:run:unpackaged` run the test without building first.
+The unpackaged build path uses `DESKTOP_SKIP_PACKAGE=1` so `script/build.ts`
+stages the app without invoking the final packaging step.
+
+### Default alias
+
+```bash
+npm run test:e2e
+```
+
+This remains the packaged path and is equivalent to `npm run test:e2e:packaged`.
+
+## Smoke Repository Setup
+
+The suite uses a throwaway local Git repository created in the system temp
+directory.
+
+`app/test/e2e/test-helpers.ts` is responsible for:
+
+- creating the repository
+- initializing Git
+- configuring a local author name and email
+- creating an initial commit
+- adding an uncommitted smoke file used by the tests
+
+The tests then verify Desktop's behavior both through the UI and by checking the
+repository state directly with Git commands.
+
+## Updater Testing
+
+Updater behavior is tested through a local HTTP server defined in
+`app/test/e2e/mock-update-server.ts`.
+
+### Build-time updater URL override
+
+`app/app-info.ts` now uses `DESKTOP_E2E_UPDATES_URL` when present. This is what
+lets E2E builds point the app at the local mock update server instead of the
+real update service.
+
+### macOS behavior
+
+For macOS, the mock server serves a Squirrel.Mac-style JSON response.
+
+- `no-update` returns HTTP 204
+- `update-available` returns a JSON payload with a fake zip URL
+
+The fake download stays open rather than completing, which keeps the app in the
+"Downloading update…" state without requiring a valid signed update archive.
+
+### Windows behavior
+
+For Windows, the mock server serves Squirrel.Windows-style responses.
+
+- requests for `RELEASES` receive a text manifest
+- requests for `.nupkg` receive a fake long-lived binary response
+
+This is necessary because Windows updater behavior does not use the macOS JSON
+contract.
+
+### Mock server control plane
+
+The mock server exposes a simple control surface under `/_control/`.
+
+The tests use it to:
+
+- switch between `no-update` and `update-available`
+- reset the captured request log
+- inspect which requests the app made
+
+## CI Design
+
+The `e2e-smoke` job in `.github/workflows/ci.yml` runs separately from the main
+`build` job.
+
+It currently:
+
+- checks out the repository
+- uses the shared CI environment setup action
+- builds the production app with `DESKTOP_E2E_UPDATES_URL` pointed at the mock
+  server
+- uses the shared Windows signing action when needed
+- packages the app
+- installs the app on macOS and Windows
+- exports `DESKTOP_E2E_APP_PATH`
+- runs `npm run test:e2e:run:packaged`
+- uploads `playwright-videos` as artifacts so traces and videos are retained
+
+The CI job intentionally tests production-like packaged or installed artifacts.
+This catches failures that do not show up when running only webpack output.
+
+## Windows-Specific Notes
+
+Windows needed a few extra pieces to keep the suite stable.
+
+`npm run test:e2e` is the packaged form. `npm run test:e2e:run:packaged` and
+`npm run test:e2e:run:unpackaged` run the test without building first.
 
 ## In CI
 
 The `windows` job of `.github/workflows/ci.yml` packages the app with
-`yarn test:e2e:build:packaged` and runs the test against it. When a run fails
+`npm run test:e2e:build:packaged` and runs the test against it. When a run fails
 there, the job keeps the `playwright-videos` folder as an artifact.
 
 ## The Repository It Works In
@@ -130,7 +222,8 @@ the test has anything to assert.
 
 ## Limits
 
-- One path through the app, not the interface as a whole.
-- Nothing that needs an account: no sign-in, no clone, no push.
-- The unpackaged mode is for speed. It does not stand in for a packaged build,
-  and neither stands in for an installation.
+- Use `npm run test:e2e:unpackaged` when iterating locally on the smoke suite or
+  nearby app behavior.
+- Use `npm run test:e2e:packaged` when you need parity with the packaged runtime.
+- Rely on the CI `e2e-smoke` job for the final check against production-like
+  packaged and installed artifacts.

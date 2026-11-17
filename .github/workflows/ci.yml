@@ -56,25 +56,25 @@ jobs:
       # does not need them - they are only bundled when packaging - so it would
       # warn and carry on if they could not be reached.
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Check formatting
-        run: yarn prettier
+        run: npm run prettier
 
       # The workflows this one replaced ran the linter; it was not carried over,
       # and three findings then sat on main unnoticed. `lint:src` rather than
       # `lint`, which would run Prettier a second time.
       - name: Lint
-        run: yarn lint:src
+        run: npm run lint:src
 
       - name: Typecheck
-        run: yarn tsc --noEmit -p tsconfig.json
+        run: npm exec -- tsc --noEmit -p tsconfig.json
 
       - name: Test the forge translation layer
         run: node script/test.mjs app/test/unit/gitea
 
       - name: Test
-        run: yarn test:unit
+        run: npm run test:unit
 
   # Releases are built for Windows only, and until this job existed nothing in
   # CI ran there. The unit suite has cases that exist only on Windows, the four
@@ -105,21 +105,21 @@ jobs:
       # node-gyp finds the Visual Studio build tools and the Python the runner
       # comes with.
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Test
-        run: yarn test:unit
+        run: npm run test:unit
 
       # A production build, packaged into dist. It bundles the data submodules,
       # which postinstall fetched above. No setup is made from it.
       - name: Package the app
-        run: yarn test:e2e:build:packaged
+        run: npm run test:e2e:build:packaged
 
       # The one end-to-end test, and the only check that starts the app as a
       # whole: welcome flow, commit, create a branch and switch back. See
       # docs/technical/e2e-smoke-tests.md.
       - name: Run the end-to-end test
-        run: yarn test:e2e:run:packaged
+        run: npm run test:e2e:run:packaged
 
       # One picture of the main window of the packaged app, to look at once.
       - name: Keep a picture of the main window

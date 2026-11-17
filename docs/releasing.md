@@ -35,7 +35,7 @@ files (build provenance). The workflow publishes nothing. The builds are unsigne
 1. Make sure CI on `main` is green.
 2. Set the app version to the prerelease version (`1.0.3-beta01`) in
    `app/package.json`, and add the entries of the release to `changelog.json` under
-   the final version (`1.0.3`). Run `yarn validate-changelog`. Merge this to `main`.
+   the final version (`1.0.3`). Run `npm run validate-changelog`. Merge this to `main`.
 3. Run _Build the Windows setup for a release_ on that commit (`workflow_dispatch`). Note the
    run id.
 4. Run _Smoke test the Windows setup_ (`workflow_dispatch`) with that run id as

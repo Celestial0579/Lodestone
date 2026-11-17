@@ -221,13 +221,13 @@ The toolchain is unchanged from upstream, see
 [setup instructions](docs/contributing/setup.md).
 
 ```sh
-yarn
-yarn build:dev
-yarn start
+npm ci
+npm run build:dev
+npm start
 ```
 
 Building the native vendor modules requires the Visual Studio build tools on
-Windows; without them `yarn test:unit` cannot load `windows-argv-parser` and the
+Windows; without them `npm run test:unit` cannot load `windows-argv-parser` and the
 whole suite fails before running. The Gitea translation layer has its own tests,
 which need none of that:
 

@@ -21,18 +21,18 @@ is unchanged from upstream; on Windows you need the Visual Studio build tools
 for the native modules.
 
 ```sh
-yarn
-yarn build:dev
-yarn start
+npm ci
+npm run build:dev
+npm start
 ```
 
 Before sending a change, run:
 
 ```sh
-yarn prettier --write
-yarn tsc --noEmit -p tsconfig.json
+npm run prettier -- --write
+npm exec -- tsc --noEmit -p tsconfig.json
 node script/test.mjs app/test/unit/gitea
-yarn test:unit
+npm run test:unit
 ```
 
 ## Changes that come from upstream

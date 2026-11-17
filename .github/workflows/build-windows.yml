@@ -34,16 +34,16 @@ jobs:
       # postinstall compiles the native modules and fetches the data
       # submodules, which packaging bundles.
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Build
-        run: yarn build:prod
+        run: npm run build:prod
         env:
           NODE_ENV: production
           RELEASE_CHANNEL: production
 
       - name: Make the installers
-        run: yarn package
+        run: npm run package
         env:
           NODE_ENV: production
           RELEASE_CHANNEL: production

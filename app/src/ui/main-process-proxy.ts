@@ -144,6 +144,7 @@ export async function showFolderContents(path: string) {
 }
 
 export const openExternal = invokeProxy('open-external', 1)
+export const openLocalFile = invokeProxy('open-local-file', 1)
 export const moveItemToTrash = invokeProxy('move-to-trash', 1)
 
 const writeClipboardTextProxy = invokeProxy('write-clipboard-text', 1)

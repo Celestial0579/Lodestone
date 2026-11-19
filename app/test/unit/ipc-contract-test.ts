@@ -83,6 +83,7 @@ describe('IPC channel contract', () => {
     'show-contextual-menu',
     'is-window-focused',
     'open-external',
+    'open-local-file',
     'is-in-application-folder',
     'move-to-applications-folder',
     'check-for-updates',

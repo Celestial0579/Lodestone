@@ -11,6 +11,8 @@ import {
   nativeTheme,
 } from 'electron'
 import * as Fs from 'fs'
+import * as Path from 'path'
+import { describeRefusedAddress, getSafeExternalURL } from '../lib/external-url'
 
 import { AppWindow } from './app-window'
 import { buildDefaultMenu, getAllMenuItems } from './menu'
@@ -599,20 +601,47 @@ app.on('ready', () => {
     reportError(error, { ...getExtraErrorContext(), ...extra }, nonFatal)
   })
 
-  ipcMain.handle('open-external', async (_, path: string) => {
-    const pathLowerCase = path.toLowerCase()
-    if (
-      pathLowerCase.startsWith('http://') ||
-      pathLowerCase.startsWith('https://')
-    ) {
-      log.info(`opening in browser: ${path}`)
+  ipcMain.handle('open-external', async (_, address: unknown) => {
+    // Every address the app opens in the browser comes through here, many of
+    // them from a forge, so this is where the scheme is checked (#GHSA-r63w).
+    const url = getSafeExternalURL(address)
+
+    if (url === null) {
+      log.warn(
+        `[security] refused to open an address that is not http or https: ${describeRefusedAddress(
+          address
+        )}`
+      )
+      return false
     }
 
+    log.info(`opening in browser: ${url}`)
+
     try {
-      await shell.openExternal(path)
+      await shell.openExternal(url)
       return true
     } catch (e) {
       log.error(`Call to openExternal failed: '${e}'`)
+      return false
+    }
+  })
+
+  /**
+   * Open a file of the user's repository with the program the system has for
+   * its type. The renderer sends a path, never an address: addresses go
+   * through open-external, which allows web addresses only.
+   */
+  ipcMain.handle('open-local-file', async (_, fullPath: unknown) => {
+    if (typeof fullPath !== 'string' || !Path.isAbsolute(fullPath)) {
+      log.warn('[security] refused to open a file that is not an absolute path')
+      return false
+    }
+
+    try {
+      await shell.openExternal(`file://${fullPath}`)
+      return true
+    } catch (e) {
+      log.error(`Call to open a local file failed: '${e}'`)
       return false
     }
   })

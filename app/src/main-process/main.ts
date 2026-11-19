@@ -637,26 +637,6 @@ app.on('ready', () => {
   })
 
   /**
-   * Open a file of the user's repository with the program the system has for
-   * its type. The renderer sends a path, never an address: addresses go
-   * through open-external, which allows web addresses only.
-   */
-  ipcMain.handle('open-local-file', async (_, fullPath: unknown) => {
-    if (typeof fullPath !== 'string' || !Path.isAbsolute(fullPath)) {
-      log.warn('[security] refused to open a file that is not an absolute path')
-      return false
-    }
-
-    try {
-      await shell.openExternal(`file://${fullPath}`)
-      return true
-    } catch (e) {
-      log.error(`Call to open a local file failed: '${e}'`)
-      return false
-    }
-  })
-
-  /**
    * An event sent by the renderer asking for the app's architecture
    */
   ipcMain.handle('get-path', async (_, path) => app.getPath(path))

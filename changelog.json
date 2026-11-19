@@ -1,5 +1,8 @@
 {
   "releases": {
+    "1.0.6": [
+      "[Fixed] Open only web addresses (http and https) in the browser, whichever link or host they come from"
+    ],
     "1.0.5": [
       "[Fixed] Create issue on the host did nothing for a repository whose web address the app had not stored yet; it now opens the new issue page, and the menu names GitHub for github.com instead of \"the server\""
     ],

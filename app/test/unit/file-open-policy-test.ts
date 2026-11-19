@@ -13,15 +13,7 @@ describe('getEffectiveExtension', () => {
   })
 
   it('reads a name the way Windows does', () => {
-    for (const name of [
-      'run.exe.',
-      'run.exe..',
-      'run.exe ',
-      'run.exe. .',
-      'run.exe::$DATA',
-      'run.exe:stream',
-      'run.exe:stream:$DATA',
-    ]) {
+    for (const name of ['run.exe.', 'run.exe..', 'run.exe ', 'run.exe. .']) {
       assert.equal(getEffectiveExtension(`C:\\repo\\${name}`), '.exe', name)
     }
   })
@@ -31,9 +23,8 @@ describe('getEffectiveExtension', () => {
     assert.equal(getEffectiveExtension('C:\\repo\\a.lnk.txt'), '.txt')
   })
 
-  it('has none for a name without one, or a dot file', () => {
+  it('has none for a name without a dot', () => {
     assert.equal(getEffectiveExtension('C:\\repo\\Makefile'), '')
-    assert.equal(getEffectiveExtension('C:\\repo\\.gitignore'), '')
     assert.equal(getEffectiveExtension('C:\\repo\\dir.d\\'), '')
     assert.equal(getEffectiveExtension(''), '')
   })
@@ -95,7 +86,6 @@ describe('isSafeToOpenFile on Windows', () => {
       'README.Hta',
       'run.exe.',
       'run.exe ',
-      'run.ps1::$DATA',
       'dir.d\\inner.URL',
     ]) {
       assert.equal(isSafeToOpenFile(`C:\\repo\\${name}`, true), false, name)
@@ -117,6 +107,85 @@ describe('isSafeToOpenFile on Windows', () => {
       'a.lnk.txt',
     ]) {
       assert.equal(isSafeToOpenFile(`C:\\repo\\${name}`, true), true, name)
+    }
+  })
+})
+
+describe('names that are all extension', () => {
+  it('are read by the extension, as Windows does', () => {
+    assert.equal(getEffectiveExtension('C:\\repo\\.bat'), '.bat')
+    assert.equal(getEffectiveExtension('C:\\repo\\.gitignore'), '.gitignore')
+  })
+
+  it('are refused when the extension is on the list', () => {
+    for (const name of ['.bat', '.HTA', '.lnk ', '.url.', '.exe', '.ps1']) {
+      assert.equal(isSafeToOpenFile(`C:\\repo\\${name}`, true), false, name)
+    }
+  })
+
+  it('are opened when it is not', () => {
+    for (const name of ['.gitignore', '.editorconfig', '.env', '.eslintrc']) {
+      assert.equal(isSafeToOpenFile(`C:\\repo\\${name}`, true), true, name)
+    }
+  })
+})
+
+describe('names with a colon on Windows', () => {
+  it('are refused whatever the extension', () => {
+    for (const name of [
+      'a.txt:evil.vbs',
+      'a.txt:stream',
+      'run.exe::$DATA',
+      'run.exe:stream:$DATA',
+      'readme.md:x',
+      'a:b',
+    ]) {
+      assert.equal(isSafeToOpenFile(`C:\\repo\\${name}`, true), false, name)
+    }
+  })
+
+  it('are left alone elsewhere, where a colon is a plain character', () => {
+    assert.equal(isSafeToOpenFile('/repo/a:b.txt', false), true)
+  })
+})
+
+describe('the added types', () => {
+  it('are refused', () => {
+    for (const ext of [
+      '.py',
+      '.pyw',
+      '.pyz',
+      '.pyzw',
+      '.rb',
+      '.rbw',
+      '.pl',
+      '.wsc',
+      '.sct',
+      '.shb',
+      '.shs',
+      '.xll',
+      '.xlam',
+      '.ppam',
+      '.ade',
+      '.adp',
+      '.mda',
+      '.mdb',
+      '.mde',
+      '.mdt',
+      '.mdw',
+      '.mdz',
+      '.ins',
+      '.isp',
+      '.its',
+      '.mau',
+      '.ops',
+      '.pcd',
+      '.prf',
+      '.prg',
+      '.vsmacros',
+      '.vsw',
+    ]) {
+      assert.equal(isSafeToOpenFile(`C:\\repo\\file${ext}`, true), false, ext)
     }
   })
 })

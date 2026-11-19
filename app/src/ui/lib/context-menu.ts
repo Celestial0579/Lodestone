@@ -1,4 +1,5 @@
-const RestrictedFileExtensions = ['.cmd', '.exe', '.bat', '.sh']
+import { isSafeToOpenExtension } from '../../lib/file-open-policy'
+
 export const CopyFilePathLabel = __DARWIN__
   ? 'Copy File Path'
   : 'Copy file path'
@@ -32,8 +33,5 @@ export const OpenWithDefaultProgramLabel = __DARWIN__
   : 'Open with default program'
 
 export function isSafeFileExtension(extension: string): boolean {
-  if (__WIN32__) {
-    return RestrictedFileExtensions.indexOf(extension.toLowerCase()) === -1
-  }
-  return true
+  return isSafeToOpenExtension(extension, __WIN32__)
 }

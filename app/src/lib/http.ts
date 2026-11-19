@@ -25,8 +25,8 @@ export function request(
   token: string | null,
   method: HTTPMethod,
   path: string,
-  jsonBody?: Object,
-  customHeaders?: Object,
+  jsonBody?: object,
+  customHeaders?: object,
   reloadCache: boolean = false
 ): Promise<Response> {
   return getForgeAdapter(endpoint).request({

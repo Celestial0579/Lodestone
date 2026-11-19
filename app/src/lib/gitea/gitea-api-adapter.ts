@@ -25,8 +25,8 @@ export interface IGiteaRequestOptions {
   readonly token: string | null
   readonly method: HTTPMethod
   readonly path: string
-  readonly jsonBody?: Object
-  readonly customHeaders?: Object
+  readonly jsonBody?: object
+  readonly customHeaders?: object
   readonly reloadCache: boolean
 }
 

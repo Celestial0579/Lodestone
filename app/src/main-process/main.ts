@@ -12,7 +12,6 @@ import {
   nativeTheme,
 } from 'electron'
 import * as Fs from 'fs'
-import * as Path from 'path'
 import { describeRefusedAddress, getSafeExternalURL } from '../lib/external-url'
 
 import { AppWindow } from './app-window'

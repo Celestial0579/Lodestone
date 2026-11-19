@@ -5,13 +5,13 @@ import {
   Menu,
   BrowserWindow,
   clipboard,
+  dialog,
   shell,
   session,
   systemPreferences,
   nativeTheme,
 } from 'electron'
 import * as Fs from 'fs'
-import * as Path from 'path'
 import { describeRefusedAddress, getSafeExternalURL } from '../lib/external-url'
 
 import { AppWindow } from './app-window'
@@ -253,8 +253,18 @@ async function handleCommandLineArguments(argv: string[]) {
   // `[executable path] --protocol-launcher "%1"`. Note that extra command
   // line arguments might be added by Chromium
   // (https://electronjs.org/docs/api/app#event-second-instance).
+  const isWindowsProtocolLaunch =
+    __WIN32__ && args['protocol-launcher'] === true
 
-  if (__WIN32__ && args['protocol-launcher'] === true) {
+  // On Linux the protocol handler is registered through a .desktop file
+  // (`Exec=... %u`), so the URL is passed as a plain argument without
+  // --protocol-launcher. macOS receives URLs through the `open-url` event
+  // instead, which Electron doesn't emit on Linux.
+  const prefixes = Array.from(possibleProtocols, p => `${p}://`)
+  const isLinuxProtocolLaunch =
+    __LINUX__ && argv.some(arg => prefixes.some(p => arg.startsWith(p)))
+
+  if (isWindowsProtocolLaunch || isLinuxProtocolLaunch) {
     // On Windows we'll end up getting called with something like
     // `--protocol-launcher --allow-file-access-from-files x-lodestone-client://..`
     // which minimist naturally interprets as
@@ -265,7 +275,6 @@ async function handleCommandLineArguments(argv: string[]) {
     // sure that Chromium won't add more switches later on which is why we have
     // to resort to looking through all arguments looking for something that
     // appears to be an app url.
-    const prefixes = Array.from(possibleProtocols, p => `${p}://`)
     const matchingUrl = argv.find(arg => {
       if (prefixes.some(p => arg.startsWith(p))) {
         try {
@@ -627,26 +636,6 @@ app.on('ready', () => {
   })
 
   /**
-   * Open a file of the user's repository with the program the system has for
-   * its type. The renderer sends a path, never an address: addresses go
-   * through open-external, which allows web addresses only.
-   */
-  ipcMain.handle('open-local-file', async (_, fullPath: unknown) => {
-    if (typeof fullPath !== 'string' || !Path.isAbsolute(fullPath)) {
-      log.warn('[security] refused to open a file that is not an absolute path')
-      return false
-    }
-
-    try {
-      await shell.openExternal(`file://${fullPath}`)
-      return true
-    } catch (e) {
-      log.error(`Call to open a local file failed: '${e}'`)
-      return false
-    }
-  })
-
-  /**
    * An event sent by the renderer asking for the app's architecture
    */
   ipcMain.handle('get-path', async (_, path) => app.getPath(path))
@@ -686,6 +675,26 @@ app.on('ready', () => {
   ipcMain.handle('show-item-in-folder', async (_, path) =>
     shell.showItemInFolder(path)
   )
+  ipcMain.handle('confirm-reveal-directory', async event => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    const options: Electron.MessageBoxOptions = {
+      type: 'warning',
+      title: 'Reveal Repository in Finder?',
+      message: 'This repository might be an application.',
+      detail:
+        'Opening it directly could run software. You can reveal and select it in Finder without opening it.',
+      buttons: ['Reveal in Finder', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      noLink: true,
+    }
+    const result =
+      window === null
+        ? await dialog.showMessageBox(options)
+        : await dialog.showMessageBox(window, options)
+
+    return result.response === 0
+  })
 
   ipcMain.on('unsafe-open-directory', async (_, path) =>
     UNSAFE_openDirectory(path)

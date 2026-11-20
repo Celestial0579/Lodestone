@@ -66,7 +66,11 @@ Git, libcurl and Windows' own OpenSSH read a name by the Windows rules above. Gi
 | Only `X:\` and `X:/` are Windows paths | those are looked at only by the Windows reading | "reads a value the way an MSYS2 ssh-keygen does" |
 | A link written as a small file that starts `!<symlink>` (`MSYS=winsymlinks:sys`) or with the Interix cookie, which `lstat` reports as a plain file | refused wherever the walk meets one, for every key | "knows the cookies of Cygwin and Interix links", "refuses a link made by MSYS2 ln with winsymlinks:sys" (Windows) |
 | A `.lnk` shortcut (`MSYS=winsymlinks:lnk`), also when `foo` is opened and only `foo.lnk` exists | a `.lnk` file is refused, and so is a missing name that has `<name>.lnk` next to it, for every key | "refuses a link made by MSYS2 ln with winsymlinks:lnk" (Windows) |
-| A WSL symlink (`IO_REPARSE_TAG_LX_SYMLINK`) | not modelled: whether Node reports it as a link is to be checked on a real machine (#104) | none yet |
+| A WSL symlink (`IO_REPARSE_TAG_LX_SYMLINK`) | Node's `lstat` and `readdir` report it as a symbolic link (seen on the Windows runner), so it is refused like any link | "refuses a WSL symlink, which lstat reports as a link" (Windows) |
+| `..` after a link (`lnk/../key` passes through `lnk` before the `..` is dropped) | for the three keys every path up to a `..` is looked at as well | "looks at every part before a .. that Cygwin resolves through a link" (Windows) |
+| A link file of any size | the first bytes of every regular file part are read, there is no size limit | "reads a Cygwin link file of any size" (Windows) |
+| A missing last part is opened as `name.exe` and `name.lnk` | for the three keys a missing last part with `<name>.exe` beside it is refused (`.lnk` as above) | "looks at name.exe for a missing last part, for the ssh-keygen keys only" (Windows) |
+| The parts after the drive of `X:\\` and `X:/` are mapped too | mapped the same way | "maps the parts after the drive of an absolute value" (Windows) |
 
 ## Always on
 

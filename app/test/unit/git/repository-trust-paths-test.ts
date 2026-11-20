@@ -1415,12 +1415,11 @@ describe('Cygwin and MSYS2 readings for ssh-keygen (#116)', () => {
     }
   })
 
-  it('reports what Node makes of a WSL symlink (Windows, report only)', async t => {
+  it('refuses a WSL symlink, which lstat reports as a link (Windows)', async t => {
     if (process.platform !== 'win32') {
       return t.skip('Windows names only')
     }
     const { spawnSync } = await import('child_process')
-    const { lstatSync, statSync, readdirSync } = await import('fs')
     const dir = await createTempDirectory(t)
     const path = await repo(t)
     const file = join(path, 'wsl')
@@ -1464,30 +1463,18 @@ Add-Type -TypeDefinition $src
       ).trim()} err=${(made.stderr ?? '').trim().slice(0, 300)}`
     )
 
-    let lstatResult = ''
-    try {
-      const s = lstatSync(file)
-      lstatResult = `lstat ok: symlink=${s.isSymbolicLink()} file=${s.isFile()} dir=${s.isDirectory()} size=${
-        s.size
-      }`
-    } catch (e) {
-      lstatResult = `lstat error: ${(e as NodeJS.ErrnoException).code}`
+    if (made.status !== 0 || !/^0\s*$/m.test(made.stdout ?? '')) {
+      return t.skip(
+        `could not make a WSL symlink: ${made.stdout} ${made.stderr}`
+      )
     }
-    let statResult = ''
-    try {
-      statResult = `stat ok: file=${statSync(file).isFile()}`
-    } catch (e) {
-      statResult = `stat error: ${(e as NodeJS.ErrnoException).code}`
-    }
-    const dirent = readdirSync(path, { withFileTypes: true }).find(
-      e => e.name === 'wsl'
-    )
-    t.diagnostic(
-      `PROBE wsl node: ${lstatResult} | ${statResult} | dirent symlink=${dirent?.isSymbolicLink()} file=${dirent?.isFile()}`
-    )
 
     await exec(['config', 'user.signingkey', 'wsl/key'], path)
     const found = await findNetworkPaths(path)
-    t.diagnostic(`PROBE wsl check: ${JSON.stringify(found)}`)
+    expectThat(
+      t,
+      found.some(l => l.includes('link or junction')),
+      JSON.stringify(found)
+    )
   })
 })

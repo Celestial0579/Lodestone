@@ -1,4 +1,4 @@
-import { isSafeToOpenExtension } from '../../lib/file-open-policy'
+import { isSafeToOpenFile } from '../../lib/file-open-policy'
 
 export const CopyFilePathLabel = __DARWIN__
   ? 'Copy File Path'
@@ -32,6 +32,15 @@ export const OpenWithDefaultProgramLabel = __DARWIN__
   ? 'Open with Default Program'
   : 'Open with default program'
 
-export function isSafeFileExtension(extension: string): boolean {
-  return isSafeToOpenExtension(extension, __WIN32__)
+/**
+ * Whether the context menu may offer to open the file at `path` with its
+ * default program. It decides as `openFile` does, by the whole name: a name
+ * that is all extension, one with trailing dots or spaces, one with a colon
+ * and one with an extension outside ASCII are refused there as they are here.
+ */
+export function canOpenWithDefaultProgram(
+  path: string,
+  windows: boolean = __WIN32__
+): boolean {
+  return isSafeToOpenFile(path, windows)
 }

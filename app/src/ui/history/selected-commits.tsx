@@ -12,7 +12,7 @@ import { revealInFileManager } from '../../lib/app-shell'
 
 import { openFile } from '../lib/open-file'
 import {
-  isSafeFileExtension,
+  canOpenWithDefaultProgram,
   CopyFilePathLabel,
   DefaultEditorLabel,
   RevealInFileManagerLabel,
@@ -395,9 +395,7 @@ export class SelectedCommits extends React.Component<
       return
     }
 
-    const extension = Path.extname(file.path)
-
-    const isSafeExtension = isSafeFileExtension(extension)
+    const isSafeExtension = canOpenWithDefaultProgram(file.path)
     const openInExternalEditor = externalEditorLabel
       ? `Open in ${externalEditorLabel}`
       : DefaultEditorLabel

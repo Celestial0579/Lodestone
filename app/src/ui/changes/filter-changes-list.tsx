@@ -22,7 +22,7 @@ import { Author, UnknownAuthor } from '../../models/author'
 import { Checkbox, CheckboxValue } from '../lib/checkbox'
 import { CommitOptions, IFileListFilterState } from '../../lib/app-state'
 import {
-  isSafeFileExtension,
+  canOpenWithDefaultProgram,
   DefaultEditorLabel,
   CopyFilePathLabel,
   RevealInFileManagerLabel,
@@ -659,8 +659,7 @@ export class FilterChangesList extends React.Component<
   ): ReadonlyArray<IMenuItem> {
     const { id, path, status } = file
 
-    const extension = Path.extname(path)
-    const isSafeExtension = isSafeFileExtension(extension)
+    const isSafeExtension = canOpenWithDefaultProgram(path)
 
     const { workingDirectory, selectedFileIDs } = this.props
 
@@ -807,8 +806,7 @@ export class FilterChangesList extends React.Component<
   ): ReadonlyArray<IMenuItem> {
     const { path, status } = file
 
-    const extension = Path.extname(path)
-    const isSafeExtension = isSafeFileExtension(extension)
+    const isSafeExtension = canOpenWithDefaultProgram(path)
 
     const items = new Array<IMenuItem>()
 

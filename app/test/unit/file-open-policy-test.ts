@@ -196,3 +196,227 @@ describe('isSafeToOpenFile elsewhere', () => {
     assert.equal(isSafeToOpenExtension('.lnk', false), true)
   })
 })
+
+/**
+ * Microsoft's list of file types Outlook blocks, as read from
+ * https://support.microsoft.com/en-us/office/blocked-attachments-in-outlook-434752e1-02d3-4e90-9124-8b81e49a8519
+ * on 2026-11-20: 133 types, in the order of the page. Pinned verbatim: the
+ * policy must hold every one of them.
+ */
+const MicrosoftOutlookBlockedList = `
+.ade
+.adp
+.apk
+.app
+.appcontent-ms
+.application
+.appref-ms
+.appx
+.asp
+.aspx
+.asx
+.bas
+.bat
+.bgi
+.cab
+.cdxml
+.cer
+.chm
+.cmd
+.cnt
+.com
+.cpl
+.crt
+.csh
+.der
+.diagcab
+.exe
+.fxp
+.gadget
+.grp
+.hlp
+.hpj
+.hta
+.htc
+.img
+.inf
+.ins
+.iso
+.isp
+.its
+.jar
+.jnlp
+.js
+.jse
+.ksh
+.library-ms
+.lnk
+.mad
+.maf
+.mag
+.mam
+.maq
+.mar
+.mas
+.mat
+.mau
+.mav
+.maw
+.mcf
+.mda
+.mdb
+.mde
+.mdt
+.mdw
+.mdz
+.msc
+.mht
+.mhtml
+.msh
+.msh1
+.msh2
+.mshxml
+.msh1xml
+.msh2xml
+.msi
+.msp
+.mst
+.msu
+.ops
+.osd
+.pcd
+.pif
+.pl
+.plg
+.prf
+.prg
+.printerexport
+.ps1
+.ps1xml
+.ps2
+.ps2xml
+.psc1
+.psc2
+.psd1
+.psdm1
+.pssc
+.pst
+.py
+.pyc
+.pyo
+.pyw
+.pyz
+.pyzw
+.reg
+.scf
+.scr
+.sct
+.search-ms
+.settingcontent-ms
+.shb
+.shs
+.theme
+.tmp
+.udl
+.url
+.vb
+.vbe
+.vbp
+.vbs
+.vhd
+.vhdx
+.vsmacros
+.vsw
+.webpnp
+.website
+.ws
+.wsb
+.wsc
+.wsf
+.wsh
+.xbap
+.xll
+.xnk
+`
+  .trim()
+  .split(/\s+/)
+
+describe("Microsoft's list of blocked Outlook attachments", () => {
+  it('has the 133 types it had when it was read', () => {
+    assert.equal(MicrosoftOutlookBlockedList.length, 133)
+    assert.equal(new Set(MicrosoftOutlookBlockedList).size, 133)
+  })
+
+  it('is refused in full, in any case and with trailing dots', () => {
+    for (const ext of MicrosoftOutlookBlockedList) {
+      assert.equal(isSafeToOpenExtension(ext, true), false, ext)
+      assert.equal(
+        isSafeToOpenFile(`C:\\repo\\x${ext.toUpperCase()}.`, true),
+        false,
+        ext
+      )
+    }
+  })
+
+  it('includes the types Windows installs, mounts and runs', () => {
+    for (const ext of [
+      '.msu',
+      '.wsb',
+      '.jnlp',
+      '.iso',
+      '.img',
+      '.vhd',
+      '.vhdx',
+      '.printerexport',
+      '.pyc',
+      '.pyo',
+      '.appcontent-ms',
+      '.udl',
+    ]) {
+      assert.equal(isSafeToOpenFile(`C:\\repo\\x${ext}`, true), false, ext)
+    }
+  })
+
+  it('is not refused elsewhere than Windows', () => {
+    assert.equal(isSafeToOpenFile('/repo/x.msu', false), true)
+  })
+})
+
+describe('types beyond the Outlook list', () => {
+  it('are refused', () => {
+    for (const ext of [
+      '.searchconnector-ms',
+      '.deskthemepack',
+      '.vsto',
+      '.xla',
+      '.ppa',
+    ]) {
+      assert.equal(isSafeToOpenFile(`C:\\repo\\x${ext}`, true), false, ext)
+    }
+  })
+})
+
+describe('extensions with a character outside ASCII on Windows', () => {
+  it('are refused: the registry may fold them onto a risky type', () => {
+    for (const name of [
+      'x.vb\u017F',
+      'x.\u0131nf',
+      'x.ln\u212A',
+      'x.\u0130nf',
+      'x.\u00e9',
+      'x.md\u00e9',
+    ]) {
+      assert.equal(isSafeToOpenFile(`C:\\repo\\${name}`, true), false, name)
+    }
+  })
+
+  it('leave a non-ASCII name with an ASCII extension alone', () => {
+    for (const name of ['x.md', 'r\u00e9sum\u00e9.md', '\u65e5\u672c.txt']) {
+      assert.equal(isSafeToOpenFile(`C:\\repo\\${name}`, true), true, name)
+    }
+  })
+
+  it('are left alone elsewhere than Windows', () => {
+    assert.equal(isSafeToOpenFile('/repo/x.\u00e9', false), true)
+  })
+})

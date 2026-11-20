@@ -19,7 +19,7 @@ The dialog lists every key, value and hook name as text. Control characters, bid
 
 ## Untrusted
 
-Until you answer, and after you answer no, every Git call for that repository, automatic or started by you, runs with the command keys overridden and hooks pointed at an empty folder. Local operations keep working. Git never goes into a submodule: status runs with `--ignore-submodules=all`, fetch and pull with `--no-recurse-submodules`, `submodule.recurse` is off, and submodules are not updated. Only `git:`, `http:`, `https:`, `ssh:` and `file:` transports are allowed (`GIT_ALLOW_PROTOCOL`), whatever `protocol.*` says. If the repository also sets transport keys, it gets no network operations, background fetch included.
+Until you answer, and after you answer no, every Git call for that repository, automatic or started by you, runs with the command keys overridden and hooks pointed at an empty folder. Local operations keep working. Git never goes into a submodule: status runs with `--ignore-submodules=all`, fetch and pull with `--no-recurse-submodules`, `submodule.recurse` is off, and submodules are not updated. Only `git:`, `http:`, `https:` and `ssh:` transports are allowed (`GIT_ALLOW_PROTOCOL`), whatever `protocol.*` says. `file` is left out, so an untrusted repository cannot fetch from a local path (which would copy the objects of another repository on the machine into it); trusting the repository restores that. If the repository also sets transport keys, it gets no network operations, background fetch included.
 
 ## Trusted
 
@@ -31,7 +31,9 @@ Lodestone stores a fingerprint (keys, values, origin files, hook names and the S
 
 ## Network paths
 
-On Windows, reading `\\host\share\...` connects to that host and sends the user's credentials. So before Git runs in a folder, Lodestone reads the files that name paths Git opens on every call (the `.git` file, `config` and `config.worktree`, local include files, the alternates file) with Git's own config parser run from a folder outside the repository (`git config --file <file> --no-includes --list -z`; includes followed to a depth of 10, alternates to 5, subsection names such as `url.<base>.insteadOf` checked too), without following links, and refuses a repository that names a network or device path (`\\`, `//`, `\\?\\UNC\\`, `\\.\\`). Git is not run in it at all. A submodule's `.git` file is followed only when its target lies inside the repository's own `.git` directory; any other target is shown in the question and not read.
+On Windows, reading `\\host\share\...` connects to that host and sends the user's credentials. So before Git runs in a folder, Lodestone checks the files that name paths Git opens on every call: the `.git` entry, `config`, `config.worktree`, `commondir` and the alternates file of every Git directory (the common one, submodule modules, and the targets of populated submodules' `.git` files), and the files they include. Configuration is read with Git's own parser run from a folder outside the repository (`git config --file <file> --no-includes --list -z`). Includes are followed to a depth of 10 and alternates to 5, whatever the conditions say, and a file reached again at a smaller depth is scanned again. Subsection names such as `url.<base>.insteadOf` are checked as well as values.
+
+A repository is refused, and Git is not run in it at all, when it names a network or device path (two separators of either kind at the start, `\\?\`, `\\.\`, `\??\`, `file://host/share`), when a file Git cannot parse is reached (Git follows an include before it fails on a later line), when a quoted alternates line does not decode as Git decodes it, or when a link or junction stands where the repository's own files are. A submodule's `.git` file is a refusal if its target is a network path, and its target is checked like any Git directory.
 
 ## Always on
 

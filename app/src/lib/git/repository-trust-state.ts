@@ -158,12 +158,14 @@ function effectivePolicy(
 /**
  * The transports an untrusted repository may use. The variable outranks every
  * protocol.* key, so a repository cannot allow ext:: for itself, and child
- * processes inherit it. `file` stays: a remote that is a local path is
- * ordinary, and the way it is misused (a local path named by a submodule) is
- * closed because an untrusted repository never updates submodules.
+ * processes inherit it. `file` is left out: a local-path remote would let an
+ * untrusted repository copy the objects of any other repository on the
+ * machine into itself, `file://host/share` reaches the network on Windows, and
+ * a local path named by a submodule is the CVE-2022-39253 class. Trusting the
+ * repository restores local-path fetches.
  */
 const ProtocolEnvironment: Readonly<Record<string, string>> = {
-  GIT_ALLOW_PROTOCOL: 'git:http:https:ssh:file',
+  GIT_ALLOW_PROTOCOL: 'git:http:https:ssh',
 }
 
 /** The policy of a repository that has not been looked at: nothing it names may run. */

@@ -274,6 +274,8 @@ const vectors: ReadonlyArray<IVector> = [
         f.repo.path
       ),
     operations: [fetchOp],
+    // The file transport is off for an untrusted repository, so a fetch from a local path fails.
+    mayFail: true,
   },
   {
     key: 'diff.external',
@@ -350,6 +352,8 @@ const vectors: ReadonlyArray<IVector> = [
       )
     },
     operations: [fetchOp],
+    // The file transport is off for an untrusted repository, so a fetch from a local path fails.
+    mayFail: true,
     noTrustedProofOnWindows: true,
   },
   {
@@ -407,7 +411,8 @@ describe('repository trust: what an untrusted repository may run', () => {
 
         assert.equal(await exists(f.marker), false, 'the planted command ran')
 
-        if (!v.mayFail) {
+        // A fetch from a local path fails while untrusted: the file transport is off.
+        if (!v.mayFail && op !== fetchOp) {
           assert.equal(failed, false, `the operation failed: ${failure}`)
           await op.worked(f)
         }
@@ -484,6 +489,33 @@ describe('repository trust: transport keys', () => {
 })
 
 describe('repository trust: submodules, protocols and unknown paths', () => {
+  it('does not fetch from a local path while untrusted, and does once trusted', async t => {
+    const f = await fixture(t)
+    await run(['config', 'core.sshCommand', 'ssh -v'], f.repo.path)
+    const findings = await readRepositoryFindings(f.repo.path)
+    assert.ok(findings)
+    t.after(() => setRepositoryGitPolicy(f.repo.path, null))
+
+    setRepositoryGitPolicy(
+      f.repo.path,
+      buildRepositoryGitPolicy('untrusted', findings)
+    )
+    await assert.rejects(
+      git(['fetch', 'origin'], f.repo.path, 'test').catch(e => {
+        // Not blocked by us but by Git: the file transport is not allowed.
+        assert.match(String(e), /transport 'file' not allowed/)
+        throw e
+      })
+    )
+
+    setRepositoryGitPolicy(
+      f.repo.path,
+      buildRepositoryGitPolicy('trusted', findings)
+    )
+    await fetchOp.run(f)
+    await fetchOp.worked(f)
+  })
+
   it('asks about a submodule whose own configuration runs a filter, and runs nothing meanwhile', async t => {
     const f = await fixture(t)
     const sub = join(f.base, 'sub')

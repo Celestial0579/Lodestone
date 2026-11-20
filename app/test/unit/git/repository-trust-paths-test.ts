@@ -1,13 +1,14 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { exec } from 'dugite'
-import { mkdir, writeFile } from 'fs/promises'
+import { mkdir, symlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { createTempDirectory } from '../../helpers/temp'
 import {
   findNetworkPaths,
   findNetworkPathsUpward,
   isNetworkPath,
+  unquoteAlternate,
 } from '../../../src/lib/git/repository-trust-paths'
 import { readRepositoryFindings } from '../../../src/lib/git/repository-trust-facts'
 import { RepositoryTrustStore } from '../../../src/lib/stores/repository-trust-store'
@@ -36,6 +37,12 @@ describe('isNetworkPath', () => {
     '\\\\?\\UNC\\host\\share',
     '\\\\.\\pipe\\x',
     '"\\\\host\\share"',
+    '\\/host/share',
+    '/\\host/share',
+    'file://host/share/repo',
+    'FILE://host/x',
+    '\\??\\UNC\\host\\share',
+    '/??/UNC/host/share',
   ]) {
     it(`${value} is one`, () => assert.equal(isNetworkPath(value), true))
   }
@@ -201,5 +208,167 @@ describe('network paths and the app', () => {
         l.includes('points outside this repository')
       )
     )
+  })
+})
+
+describe('network paths: gaps found in review (#103)', () => {
+  async function repo(t: Parameters<typeof createTempDirectory>[0]) {
+    const path = await createTempDirectory(t)
+    await exec(['init', '-q', '-b', 'main'], path)
+    return path
+  }
+
+  it('refuses a config file Git cannot parse, an included one and a submodule one', async t => {
+    const path = await repo(t)
+    const dir = await createTempDirectory(t)
+    // The include comes before the line Git fails on.
+    await writeFile(
+      join(dir, 'bad'),
+      `[include]\n\tpath = //host/share/x\n[core\n`
+    )
+    await exec(['config', 'include.path', fwd(join(dir, 'bad'))], path)
+    const found = await findNetworkPaths(path)
+    assert.ok(found.some(l => l.includes('Git cannot parse')))
+
+    const sub = await repo(t)
+    await mkdir(join(sub, '.git', 'modules', 'sm'), { recursive: true })
+    await writeFile(join(sub, '.git', 'modules', 'sm', 'HEAD'), 'ref: x\n')
+    await writeFile(
+      join(sub, '.git', 'modules', 'sm', 'config'),
+      '[include]\n\tpath = //h/x\n[core\n'
+    )
+    assert.ok((await findNetworkPaths(sub)).length > 0)
+  })
+
+  it('scans a file again when it is reached at a smaller depth', async t => {
+    const path = await repo(t)
+    const dir = await createTempDirectory(t)
+    const f = (n: string) => fwd(join(dir, n))
+    // config -> c0 -> ... -> c8 -> X is depth 10: X's own include is out of range.
+    for (let i = 0; i < 8; i++) {
+      await writeFile(
+        join(dir, `c${i}`),
+        `[include]\n\tpath = ${f(`c${i + 1}`)}\n`
+      )
+    }
+    await writeFile(join(dir, 'c8'), `[include]\n\tpath = ${f('X')}\n`)
+    await writeFile(join(dir, 'X'), `[include]\n\tpath = ${f('Y')}\n`)
+    await writeFile(join(dir, 'Y'), '[core]\n\texcludesFile = //host/x\n')
+    // First the long chain behind a false condition, then X directly.
+    await exec(['config', 'includeIf.onbranch:never.path', f('c0')], path)
+    await exec(['config', 'include.path', f('X')], path)
+    assert.equal((await findNetworkPaths(path)).length, 1)
+  })
+
+  it('decodes quoted alternates the way Git does', async t => {
+    assert.equal(unquoteAlternate('"\\057/host"'), '//host')
+    assert.equal(unquoteAlternate('"a\\tb"'), 'a\tb')
+    assert.equal(unquoteAlternate('"\\134\\134host"'), '\\\\host')
+    assert.equal(unquoteAlternate('"bad\\q"'), null)
+    assert.equal(unquoteAlternate('"no end'), null)
+    assert.equal(unquoteAlternate('plain'), 'plain')
+
+    const path = await repo(t)
+    await mkdir(join(path, '.git', 'objects', 'info'), { recursive: true })
+    await writeFile(
+      join(path, '.git', 'objects', 'info', 'alternates'),
+      '"\\057/host/share/objects"\n'
+    )
+    assert.equal((await findNetworkPaths(path)).length, 1)
+  })
+
+  it('refuses a populated submodule whose .git file points to a network path or to a place with one', async t => {
+    const path = await repo(t)
+    await mkdir(join(path, 'sm'))
+    await writeFile(join(path, 'sm', '.git'), 'gitdir: //host/share/evil\n')
+    await exec(
+      [
+        'update-index',
+        '--add',
+        '--cacheinfo',
+        '160000,0123456789012345678901234567890123456789,sm',
+      ],
+      path
+    )
+    assert.ok(
+      (await findNetworkPaths(path)).some(l => l.includes('network path'))
+    )
+
+    // A local target outside the repository is checked as the Git directories are.
+    const outside = await createTempDirectory(t)
+    await writeFile(join(outside, 'config'), '[core]\n\thooksPath = //host/h\n')
+    await writeFile(join(path, 'sm', '.git'), `gitdir: ${fwd(outside)}\n`)
+    assert.ok((await findNetworkPaths(path)).length > 0)
+  })
+
+  it('follows commondir of a linked work tree and refuses a network one', async t => {
+    const main = await repo(t)
+    await exec(['config', 'user.name', 't'], main)
+    await exec(['config', 'user.email', 't@e.x'], main)
+    await exec(['commit', '-q', '--allow-empty', '-m', 'one'], main)
+    const linked = join(await createTempDirectory(t), 'linked')
+    await exec(['worktree', 'add', '-q', linked], main)
+    assert.deepEqual(await findNetworkPaths(linked), [])
+
+    await exec(['config', 'core.excludesFile', '//host/share/ignore'], main)
+    assert.equal((await findNetworkPaths(linked)).length, 1)
+
+    await exec(['config', '--unset', 'core.excludesFile'], main)
+    const gitFile = await (
+      await import('fs/promises')
+    ).readFile(join(linked, '.git'), 'utf8')
+    const gitDir = gitFile.replace(/^gitdir:\s*/, '').trim()
+    await writeFile(join(gitDir, 'commondir'), '//host/share/common\n')
+    assert.ok((await findNetworkPaths(linked)).length > 0)
+  })
+
+  it('refuses links and junctions where the repository has its own files', async t => {
+    const target = await createTempDirectory(t)
+    const attempt = async (
+      make: (path: string) => Promise<unknown>
+    ): Promise<ReadonlyArray<string> | null> => {
+      const path = await repo(t)
+      try {
+        await make(path)
+      } catch {
+        return null // no permission to make links here
+      }
+      return findNetworkPaths(path)
+    }
+
+    const forms = [
+      (path: string) =>
+        mkdir(join(path, '.git', 'objects'), { recursive: true }).then(() =>
+          symlink(target, join(path, '.git', 'objects', 'info'), 'junction')
+        ),
+      async (path: string) => {
+        const real = join(path, 'realgit')
+        await exec(['init', '-q', real], path)
+        await (
+          await import('fs/promises')
+        ).rm(join(path, '.git'), { recursive: true })
+        await symlink(join(real, '.git'), join(path, '.git'), 'junction')
+      },
+      async (path: string) => {
+        await writeFile(join(target, 'cfg'), '[core]\n')
+        await (await import('fs/promises')).rm(join(path, '.git', 'config'))
+        await symlink(join(target, 'cfg'), join(path, '.git', 'config'), 'file')
+      },
+    ]
+
+    let tried = 0
+    for (const make of forms) {
+      const found = await attempt(make)
+      if (found !== null) {
+        tried++
+        assert.ok(
+          found.some(l => l.includes('link or junction')),
+          JSON.stringify(found)
+        )
+      }
+    }
+    if (tried === 0) {
+      t.skip('this system does not let the test make links')
+    }
   })
 })

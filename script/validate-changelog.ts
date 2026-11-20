@@ -5,6 +5,8 @@ import * as Fs from 'fs'
 
 import assert from 'assert'
 
+import { findDuplicateKeys } from './changelog/duplicate-keys'
+
 const repositoryRoot = Path.dirname(__dirname)
 const changelogPath = Path.join(repositoryRoot, 'changelog.json')
 
@@ -23,6 +25,15 @@ try {
 }
 
 assert(typeof changelogObj === 'object', 'Expected changelog to be an object')
+
+// JSON.parse keeps the last of two equal keys without a word.
+const duplicateKeys = findDuplicateKeys(changelog)
+assert(
+  duplicateKeys.length === 0,
+  `Expected no key to appear twice in changelog.json, found: ${duplicateKeys.join(
+    ', '
+  )}`
+)
 assert(
   Object.keys(changelogObj).length === 1,
   'Expected changelog to have exactly one key'

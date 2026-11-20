@@ -21,6 +21,8 @@ import {
   getGitArgumentsFor,
   getGitEnvironmentFor,
   getNetworkBlock,
+  getRepositoryRefusal,
+  RepositoryRefusedError,
   getSubmoduleBlock,
   RepositoryNetworkBlockedError,
   RepositorySubmoduleBlockedError,
@@ -246,6 +248,10 @@ export async function git(
 
   // What the repository names must not run unless the user said so, and no
   // untrusted repository with its own transport settings connects anywhere.
+  const refusal = getRepositoryRefusal(path)
+  if (refusal.length > 0) {
+    throw new RepositoryRefusedError(refusal)
+  }
   const blockedBy = getNetworkBlock(path, args)
   if (blockedBy !== null) {
     throw new RepositoryNetworkBlockedError(blockedBy)

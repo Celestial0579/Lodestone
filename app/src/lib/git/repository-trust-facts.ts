@@ -5,7 +5,12 @@
  */
 
 import { exec } from 'dugite'
-import { readdir, readFile, stat } from 'fs/promises'
+import { lstat, readdir, readFile, stat } from 'fs/promises'
+import {
+  findNetworkPathsInGitDirectory,
+  isNetworkPath,
+} from './repository-trust-paths'
+import { setRepositoryRefusal } from './repository-trust-state'
 import * as Path from 'path'
 import {
   findRepositoryFindings,
@@ -69,13 +74,17 @@ async function collectModuleDirectories(
     return
   }
 
-  for (const name of await readdir(modules).catch(() => [])) {
-    const directory = Path.join(modules, name)
-    const info = await stat(directory).catch(() => null)
+  // Directory entries as they are: a link or junction is not a directory here.
+  const entries = await readdir(modules, { withFileTypes: true }).catch(
+    () => []
+  )
 
-    if (info === null || !info.isDirectory()) {
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
       continue
     }
+
+    const directory = Path.join(modules, entry.name)
 
     if (await isGitDirectory(directory)) {
       found.add(directory)
@@ -97,7 +106,8 @@ async function collectModuleDirectories(
 async function findSubmoduleDirectories(
   path: string,
   workTree: string,
-  commonDir: string
+  commonDir: string,
+  notes: string[]
 ): Promise<ReadonlyArray<string>> {
   const found = new Set<string>()
   await collectModuleDirectories(Path.join(commonDir, 'modules'), found)
@@ -115,7 +125,7 @@ async function findSubmoduleDirectories(
 
     const submodulePath = Path.join(workTree, match[1])
     const dotGit = Path.join(submodulePath, '.git')
-    const info = await stat(dotGit).catch(() => null)
+    const info = await lstat(dotGit).catch(() => null)
 
     if (info === null) {
       continue
@@ -123,15 +133,35 @@ async function findSubmoduleDirectories(
 
     if (info.isDirectory()) {
       found.add(dotGit)
-    } else {
-      const text = await readFile(dotGit, 'utf8').catch(() => '')
-      const target = /^gitdir:\s*(.+?)\s*$/m.exec(text)?.[1]
-      if (target !== undefined) {
-        const directory = Path.resolve(submodulePath, target)
-        found.add(directory)
-        await collectModuleDirectories(Path.join(directory, 'modules'), found)
-      }
+      continue
     }
+
+    // A .git file can point anywhere, a network path included. Only a small
+    // regular file is read, and only a target inside this repository's own
+    // Git directory is followed; any other target is a finding, not read.
+    const text =
+      info.isFile() && info.size <= 4096
+        ? await readFile(dotGit, 'utf8').catch(() => '')
+        : ''
+    const target = /^gitdir:\s*(.+?)\s*$/m.exec(text)?.[1]
+
+    if (target === undefined) {
+      notes.push(
+        `submodule ${match[1]}: its .git entry is not a plain gitdir file`
+      )
+      continue
+    }
+
+    const directory = Path.resolve(submodulePath, target)
+    if (isNetworkPath(target) || !isInside(commonDir, directory)) {
+      notes.push(
+        `submodule ${match[1]}: its .git file points outside this repository's .git directory: ${target}`
+      )
+      continue
+    }
+
+    found.add(directory)
+    await collectModuleDirectories(Path.join(directory, 'modules'), found)
   }
 
   return [...found].sort()
@@ -229,11 +259,25 @@ export async function readRepositoryFindings(
       ? null
       : Path.resolve(workTree, hooksPathEntry.value)
 
+  const notes = new Array<string>()
   const submoduleDirectories = await findSubmoduleDirectories(
     path,
     workTree,
-    gitDirectories[1]
+    gitDirectories[1],
+    notes
   )
+  // A submodule's configuration and alternates name paths Git opens too.
+  const submoduleNetworkPaths = new Array<string>()
+  for (const directory of submoduleDirectories) {
+    submoduleNetworkPaths.push(
+      ...(await findNetworkPathsInGitDirectory(directory))
+    )
+  }
+  if (submoduleNetworkPaths.length > 0) {
+    setRepositoryRefusal(path, submoduleNetworkPaths)
+    return null
+  }
+
   const submoduleEntries = new Array<IConfigEntry>()
   const submoduleHooks = new Array<IHookFile>()
 
@@ -278,5 +322,6 @@ export async function readRepositoryFindings(
   return {
     ...findings,
     hooksPathInWorkTree: hooksPath !== null && isInWorkTree(hooksPath),
+    notes,
   }
 }

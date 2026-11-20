@@ -10,6 +10,7 @@
  * The record holds paths, key names and hashes, no secrets.
  */
 
+import { findNetworkPaths } from '../git/repository-trust-paths'
 import { readRepositoryFindings } from '../git/repository-trust-facts'
 import {
   describeFindings,
@@ -24,6 +25,8 @@ import {
   repositoryPolicyKey,
   RepositoryTrust,
   setRepositoryGitPolicy,
+  NotCheckedYet,
+  setRepositoryRefusal,
 } from '../git/repository-trust-state'
 
 /** What was answered for one folder. */
@@ -87,6 +90,18 @@ export class RepositoryTrustStore {
   /** Until a repository has been looked at, nothing it names runs. */
   public markPending(path: string) {
     setRepositoryGitPolicy(path, pendingPolicy())
+    // No Git runs in it until its files have been read (see inspectPaths).
+    setRepositoryRefusal(path, [NotCheckedYet])
+  }
+
+  /**
+   * Read the files that name paths Git opens on every call, and refuse the
+   * folder if one is a network or device path. Without Git touching it.
+   */
+  public async inspectPaths(path: string): Promise<ReadonlyArray<string>> {
+    const found = await findNetworkPaths(path)
+    setRepositoryRefusal(path, found)
+    return found
   }
 
   /**
@@ -95,7 +110,8 @@ export class RepositoryTrustStore {
    * repository's own files.
    */
   public async evaluate(path: string): Promise<ITrustEvaluation> {
-    const findings = await this.readFindings(path)
+    const refusal = await this.inspectPaths(path)
+    const findings = refusal.length > 0 ? null : await this.readFindings(path)
 
     if (findings === null) {
       // Git could not be asked: the repository stays as it is until it can.

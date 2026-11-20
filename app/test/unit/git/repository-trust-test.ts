@@ -350,6 +350,7 @@ const vectors: ReadonlyArray<IVector> = [
       )
     },
     operations: [fetchOp],
+    noTrustedProofOnWindows: true,
   },
   {
     key: 'protocol.ext.allow (an ext:: remote)',

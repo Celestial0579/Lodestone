@@ -135,6 +135,8 @@ export interface IRepositoryFindings {
   readonly hooksPathInWorkTree: boolean
   /** Included configuration files that lie in the work tree. */
   readonly includesInWorkTree: ReadonlyArray<string>
+  /** Things found that are not config keys or hooks, as text (a submodule whose .git file points elsewhere). */
+  readonly notes: ReadonlyArray<string>
 }
 
 /**
@@ -165,6 +167,7 @@ export function findRepositoryFindings(
     hooksPathInWorkTree:
       hooksPath !== undefined && isInWorkTree(hooksPath.value),
     includesInWorkTree: includes,
+    notes: [],
   }
 }
 
@@ -173,7 +176,8 @@ export function hasFindings(findings: IRepositoryFindings): boolean {
   return (
     findings.commandEntries.length > 0 ||
     findings.transportEntries.length > 0 ||
-    findings.hooks.length > 0
+    findings.hooks.length > 0 ||
+    findings.notes.length > 0
   )
 }
 
@@ -190,6 +194,7 @@ export function fingerprintFindings(findings: IRepositoryFindings): string {
     command: lines(findings.commandEntries),
     transport: lines(findings.transportEntries),
     hooks: findings.hooks.map(h => JSON.stringify([h.name, h.sha256])).sort(),
+    notes: [...findings.notes].sort(),
   })
 
   return createHash('sha256').update(body).digest('hex')
@@ -322,6 +327,10 @@ export function describeFindings(
 
   for (const h of findings.hooks) {
     lines.push(`hook: ${makeVisible(h.name)}`)
+  }
+
+  for (const n of findings.notes) {
+    lines.push(makeVisible(n))
   }
 
   return lines

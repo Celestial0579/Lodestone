@@ -62,6 +62,41 @@ export function setEmptyHooksDirectory(path: string) {
   emptyHooksDirectory = path
 }
 
+const refusals = new Map<string, ReadonlyArray<string>>()
+
+/** Record why Git is not to run in a folder at all (it names a network path), or clear it. */
+export function setRepositoryRefusal(
+  path: string,
+  reasons: ReadonlyArray<string>
+) {
+  const key = repositoryPolicyKey(path)
+  if (reasons.length === 0) {
+    refusals.delete(key)
+  } else {
+    refusals.set(key, reasons)
+  }
+}
+
+export function getRepositoryRefusal(path: string): ReadonlyArray<string> {
+  return refusals.get(repositoryPolicyKey(path)) ?? []
+}
+
+/** The reason while a folder's Git files have not been read yet. */
+export const NotCheckedYet = '(not checked yet)'
+
+export class RepositoryRefusedError extends Error {
+  public constructor(public readonly reasons: ReadonlyArray<string>) {
+    super(
+      reasons[0] === NotCheckedYet
+        ? 'Lodestone is still checking this folder before it runs Git in it.'
+        : `Lodestone does not run Git in this folder: its Git files name a network or device path (${reasons.join(
+            '; '
+          )}). Reading such a path connects to another machine and can send your Windows credentials to it.`
+    )
+    this.name = 'RepositoryRefusedError'
+  }
+}
+
 /** Record how Git is to be run in a repository. */
 export function setRepositoryGitPolicy(
   path: string,

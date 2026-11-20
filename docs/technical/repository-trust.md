@@ -29,6 +29,10 @@ Trusted works like the Git command line: nothing is overridden.
 
 Lodestone stores a fingerprint (keys, values, origin files, hook names and the SHA-256 of each hook) per repository path in the app's local storage. It holds no secrets. After operations that change the work tree and on refresh the fingerprint is compared; any difference asks again, and the repository is untrusted until you answer. Revoke a decision in Settings, Advanced, Trusted repositories.
 
+## Network paths
+
+On Windows, reading `\\host\share\...` connects to that host and sends the user's credentials. So before Git runs in a folder, Lodestone reads the files that name paths Git opens on every call (the `.git` file, `config` and `config.worktree`, local include files, the alternates file) with Git's own config parser run from a folder outside the repository (`git config --file <file> --no-includes --list -z`; includes followed to a depth of 10, alternates to 5, subsection names such as `url.<base>.insteadOf` checked too), without following links, and refuses a repository that names a network or device path (`\\`, `//`, `\\?\\UNC\\`, `\\.\\`). Git is not run in it at all. A submodule's `.git` file is followed only when its target lies inside the repository's own `.git` directory; any other target is shown in the question and not read.
+
 ## Always on
 
 - A path the app does not know (not in the list, not yet added) gets the overrides of an untrusted repository, except for `clone` and `init`.

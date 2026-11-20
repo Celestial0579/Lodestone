@@ -355,6 +355,7 @@ import { isAttributableEmailFor } from '../email'
 import { TrashNameLabel } from '../../ui/lib/context-menu'
 import { GitError as DugiteError } from 'dugite'
 import { RepositoryTrustStore } from './repository-trust-store'
+import { findNetworkPathsUpward } from '../git/repository-trust-paths'
 import {
   getRepositoryGitPolicy,
   setEmptyHooksDirectory,
@@ -1067,7 +1068,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.accountsStore.onDidError(error => this.emitError(error))
 
     this.repositoriesStore.onDidUpdate(updateRepositories => {
-      this.markRepositoriesPending(updateRepositories)
+      void this.markRepositoriesPending(updateRepositories)
       this.repositories = updateRepositories
       this.updateRepositorySelectionAfterRepositoriesChanged()
       this.emitUpdate()
@@ -2440,12 +2441,19 @@ export class AppStore extends TypedBaseStore<IAppState> {
    * Until a repository has been looked at, nothing it names runs and nothing
    * goes over the network from it (#98).
    */
-  private markRepositoriesPending(repositories: ReadonlyArray<Repository>) {
-    for (const r of repositories) {
-      if (getRepositoryGitPolicy(r.path) === null) {
-        this.repositoryTrustStore.markPending(r.path)
-      }
+  private async markRepositoriesPending(
+    repositories: ReadonlyArray<Repository>
+  ) {
+    const fresh = repositories.filter(
+      r => getRepositoryGitPolicy(r.path) === null
+    )
+    // No Git runs in them until their files have been read for network paths.
+    for (const r of fresh) {
+      this.repositoryTrustStore.markPending(r.path)
     }
+    await Promise.all(
+      fresh.map(r => this.repositoryTrustStore.inspectPaths(r.path))
+    )
   }
 
   /**
@@ -2528,7 +2536,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     }
 
     // Before anything runs Git in them, and before they are looked at.
-    this.markRepositoriesPending(repositories)
+    await this.markRepositoriesPending(repositories)
     // A path the app does not know gets the cautious policy from here on.
     setFailClosed(true)
     this.repositories = repositories
@@ -8230,6 +8238,20 @@ export class AppStore extends TypedBaseStore<IAppState> {
     const redirectedPaths = new Array<string>()
 
     for (const path of paths) {
+      // Before any Git call: Git would open a network path it names.
+      const networkPaths = await findNetworkPathsUpward(path)
+      if (networkPaths.length > 0) {
+        log.warn(`[AppStore] refusing ${path}: ${networkPaths.join('; ')}`)
+        this.emitError(
+          new Error(
+            `${path}: its Git files name a network or device path (${networkPaths.join(
+              '; '
+            )}). Reading such a path connects to another machine and can send your Windows credentials to it. Lodestone does not open it.`
+          )
+        )
+        continue
+      }
+
       const repositoryType = await getRepositoryType(path).catch(e => {
         log.error('Could not determine repository type', e)
         return { kind: 'missing' } as RepositoryType
@@ -8275,7 +8297,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
         // Nothing it names runs, and nothing goes over the network, until it
         // has been looked at.
-        this.markRepositoriesPending([addedRepo])
+        await this.markRepositoriesPending([addedRepo])
 
         // initialize the remotes for this new repository to ensure it can fetch
         // it's GitHub-related details using the GitHub API (if applicable)

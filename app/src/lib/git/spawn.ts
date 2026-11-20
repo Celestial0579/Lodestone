@@ -5,6 +5,8 @@ import {
   getGitArgumentsFor,
   getGitEnvironmentFor,
   getNetworkBlock,
+  getRepositoryRefusal,
+  RepositoryRefusedError,
   getSubmoduleBlock,
   RepositoryNetworkBlockedError,
   RepositorySubmoduleBlockedError,
@@ -32,6 +34,10 @@ export const spawnGit = (
   name: string,
   options?: SpawnOptions
 ) => {
+  const refusal = getRepositoryRefusal(path)
+  if (refusal.length > 0) {
+    return Promise.reject(new RepositoryRefusedError(refusal))
+  }
   const blockedBy = getNetworkBlock(path, args)
   if (blockedBy !== null) {
     return Promise.reject(new RepositoryNetworkBlockedError(blockedBy))

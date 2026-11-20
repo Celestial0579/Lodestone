@@ -11,6 +11,7 @@ import {
   hasTrailingDotOrSpace,
   hasWindowsForbiddenCharacter,
   msys2Name,
+  windowsLookName,
   isNetworkPath,
   parseGitFile,
   PathKeys,
@@ -858,7 +859,7 @@ describe('errors other than "not there" (#104)', () => {
     }
   })
 
-  it('reads a drive-relative user.signingkey and one with a stream as Windows does (#109)', async t => {
+  it('reads a drive-relative user.signingkey as Windows does (#109)', async t => {
     const elsewhere = await createTempDirectory(t)
 
     const refused = async (linkName: string, value: string) => {
@@ -881,15 +882,10 @@ describe('errors other than "not there" (#104)', () => {
       process.platform === 'win32'
         ? await refused('lnk', `${drive}lnk/key`)
         : await refused('C:lnk', 'C:lnk/key')
-    const stream = await refused('lnk', 'lnk:stream')
-    const streamInFolder = await refused('lnk', 'lnk/id:stream')
-
-    if (driveRelative === null || stream === null) {
+    if (driveRelative === null) {
       return t.skip('this system does not let the test make links')
     }
     assert.equal(driveRelative, true, 'drive-relative')
-    assert.equal(stream, true, 'stream')
-    assert.equal(streamInFolder, true, 'stream in a folder')
 
     // Ids and addresses are still not refused.
     const plain = await repo(t)
@@ -941,6 +937,127 @@ describe('errors other than "not there" (#104)', () => {
       await exec(['config', 'user.signingkey', value], plain)
       assert.deepEqual(await findNetworkPaths(plain), [], value)
     }
+  })
+
+  it('cuts a name at a stream colon and maps forbidden characters (windowsLookName, #114)', () => {
+    assert.equal(windowsLookName('lnk:stream'), 'lnk')
+    assert.equal(windowsLookName('lnk:stream:$DATA'), 'lnk')
+    assert.equal(windowsLookName('lnk::$DATA'), 'lnk')
+    assert.equal(windowsLookName('notes.vbs:x'), 'notes.vbs')
+    assert.equal(windowsLookName('plain.txt'), 'plain.txt')
+    assert.equal(windowsLookName(':weird'), ':weird')
+    assert.equal(windowsLookName('a<b'), 'a\uF03Cb')
+    assert.equal(windowsLookName('a<b:s'), 'a\uF03Cb')
+  })
+
+  it('refuses a stream name whose file is a junction, for every key (Windows, #114)', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const elsewhere = await createTempDirectory(t)
+
+    for (const [key, value] of [
+      ['diff.orderFile', 'lnk:stream'],
+      ['core.excludesFile', 'dir/lnk:stream'],
+      ['user.signingkey', 'lnk:stream'],
+      ['format.signatureFile', 'lnk::$DATA'],
+    ]) {
+      const path = await repo(t)
+      await mkdir(join(path, 'dir'))
+      try {
+        await symlink(elsewhere, join(path, 'lnk'), 'junction')
+        await symlink(elsewhere, join(path, 'dir', 'lnk'), 'junction')
+      } catch {
+        return t.skip('this system does not let the test make links')
+      }
+      await exec(['config', key, value], path)
+      assert.ok(
+        (await findNetworkPaths(path)).some(l =>
+          l.includes('link or junction')
+        ),
+        `${key} = ${value}`
+      )
+    }
+  })
+
+  it('does not refuse a plain file with a stream (Windows)', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const path = await repo(t)
+    await writeFile(join(path, 'order.txt'), 'x\n')
+    await exec(['config', 'diff.orderFile', 'order.txt:stream'], path)
+    assert.deepEqual(await findNetworkPaths(path), [])
+  })
+
+  it('refuses a name that ends in a dot or a space where Windows drops them (Windows)', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const path = await repo(t)
+    await mkdir(join(path, 'dir'))
+    for (const value of ['order.', 'order ', 'dir/order..']) {
+      await exec(['config', 'diff.orderFile', value], path)
+      assert.ok(
+        (await findNetworkPaths(path)).some(l => l.includes('dot or a space')),
+        value
+      )
+    }
+  })
+
+  it('compares names without regard to case on Windows', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const elsewhere = await createTempDirectory(t)
+    const path = await repo(t)
+    try {
+      await symlink(elsewhere, join(path, 'lnk'), 'junction')
+    } catch {
+      return t.skip('this system does not let the test make links')
+    }
+    await exec(['config', 'diff.orderFile', 'LNK/Order'], path)
+    assert.ok(
+      (await findNetworkPaths(path)).some(l => l.includes('link or junction'))
+    )
+  })
+
+  it('looks at a junction named by its 8.3 short name (Windows)', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const { spawnSync } = await import('child_process')
+    const elsewhere = await createTempDirectory(t)
+    const path = await repo(t)
+    const junction = join(path, 'a long junction name')
+    try {
+      await symlink(elsewhere, junction, 'junction')
+    } catch {
+      return t.skip('this system does not let the test make links')
+    }
+
+    let short = junction
+    try {
+      // Verbatim arguments: node would otherwise quote the whole command.
+      short = spawnSync(
+        'cmd.exe',
+        ['/d', '/s', '/c', `"for %I in ("${junction}") do @echo %~sI"`],
+        { windowsVerbatimArguments: true, encoding: 'utf8' }
+      ).stdout.trim()
+    } catch {
+      return t.skip('cannot ask for the short name')
+    }
+    if (short === junction || !short.includes('~') || /["']/.test(short)) {
+      return t.skip(`8.3 names are off, or not readable here: ${short}`)
+    }
+
+    await exec(['config', 'diff.orderFile', `${short}\\order`], path)
+    const found = await findNetworkPaths(path)
+    t.diagnostic(`8.3: short=${short} found=${JSON.stringify(found)}`)
+    assert.ok(
+      found.some(l => l.includes('link or junction')),
+      JSON.stringify(found)
+    )
   })
 
   it('maps forbidden characters to the private use area, as MSYS2 does', () => {

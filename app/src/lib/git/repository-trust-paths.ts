@@ -129,6 +129,18 @@ export function msys2Name(name: string): string {
   )
 }
 
+/**
+ * The name to look at for one part of a path on Windows. A colon after the
+ * first character names a stream: the file is the part before it, so that
+ * `lnk:stream` looks at `lnk`, which a junction may be. Characters Windows
+ * forbids become their MSYS2 names. A plain name is returned as it is.
+ */
+export function windowsLookName(name: string): string {
+  const colon = name.indexOf(':')
+  const file = colon > 0 ? name.slice(0, colon) : name
+  return hasWindowsForbiddenCharacter(file) ? msys2Name(file) : file
+}
+
 /** Whether the last part of a path ends in a dot or a space (not `.` or `..`). */
 export function hasTrailingDotOrSpace(path: string): boolean {
   const name = path.split(/[\\/]/).pop() ?? ''
@@ -229,18 +241,17 @@ async function lookAt(scan: IScan, path: string): Promise<Stats | null> {
       return null
     }
 
-    // `< > " | ? *` are not allowed in a Windows name: it ends the walk, as a
-    // name that is not there. An MSYS2 program (the ssh-keygen of Git for
-    // Windows) maps each to U+F000 plus the character, and that name can
-    // exist: then it is looked at instead.
-    if (isWindows() && hasWindowsForbiddenCharacter(Path.basename(part))) {
-      const mapped = Path.join(
-        Path.dirname(part),
-        msys2Name(Path.basename(part))
-      )
-      renamedFrom = original
-      renamedTo = mapped
-      part = mapped
+    // What Windows or an MSYS2 program opens for this name: a stream colon cuts
+    // the name (`lnk:stream` opens `lnk`, which lstat would not follow), and
+    // `< > " | ? *` end the walk as not there unless the MSYS2 name exists.
+    if (isWindows()) {
+      const name = Path.basename(part)
+      const looked = windowsLookName(name)
+      if (looked !== name) {
+        renamedFrom = original
+        renamedTo = Path.join(Path.dirname(part), looked)
+        part = renamedTo
+      }
     }
 
     try {
@@ -452,9 +463,10 @@ function pathNamedBy(lower: string, value: string): string | null {
   // user.signingkey is a key id, an e-mail address, a name with an address or
   // a path, and ssh-keygen opens it as a file. Only `key::` and `ssh-` mark a
   // literal key, exactly as Git reads it (is_literal_ssh_key). Every other
-  // value is looked at: a link named like an id is opened as a file. Values
-  // that Windows cannot name at all (`Name <me@example.com>`) are no path.
-  // A drive-relative path and a name with a stream are read as Windows does.
+  // value is looked at: a link named like an id is opened as a file. A value
+  // that Windows cannot name (`Name <me@example.com>`) ends lookAt's walk as
+  // not there. A drive-relative path and a name with a stream are read as Windows does
+  // by Path.resolve and by lookAt.
   if (lower === 'user.signingkey') {
     if (/^(key::|ssh-)/.test(value)) {
       return null
@@ -462,17 +474,6 @@ function pathNamedBy(lower: string, value: string): string | null {
     // A value with `< > " | ? *` (`Name <me@example.com>`) is resolved like any
     // other: the parts before such a character are looked at (`lnk/a<b`), and
     // lookAt ends the walk at the part that holds it.
-
-    // A drive-relative path (`C:lnk/key`) is resolved like any other path,
-    // which reads it as Windows does. A colon after that names a stream
-    // (`lnk:stream`): look at the part before it.
-    const drive = /^[A-Za-z]:/.exec(value)?.[0] ?? ''
-    const rest = value.slice(drive.length)
-    const colon = rest.indexOf(':')
-    if (colon !== -1) {
-      const before = drive + rest.slice(0, colon)
-      return before === '' ? null : before
-    }
   }
 
   return value

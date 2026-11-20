@@ -856,6 +856,53 @@ describe('errors other than "not there" (#104)', () => {
     }
   })
 
+  it('reads a drive-relative user.signingkey and one with a stream as Windows does (#109)', async t => {
+    const elsewhere = await createTempDirectory(t)
+
+    const refused = async (linkName: string, value: string) => {
+      const path = await repo(t)
+      try {
+        await symlink(elsewhere, join(path, linkName), 'junction')
+      } catch {
+        return null
+      }
+      await exec(['config', 'user.signingkey', value], path)
+      return (await findNetworkPaths(path)).some(l =>
+        l.includes('link or junction')
+      )
+    }
+
+    // On the drive of the repository, `X:lnk/key` is `lnk/key` in its folder.
+    const probe = await repo(t)
+    const drive = process.platform === 'win32' ? probe.slice(0, 2) : 'C:'
+    const driveRelative =
+      process.platform === 'win32'
+        ? await refused('lnk', `${drive}lnk/key`)
+        : await refused('C:lnk', 'C:lnk/key')
+    const stream = await refused('lnk', 'lnk:stream')
+    const streamInFolder = await refused('lnk', 'lnk/id:stream')
+
+    if (driveRelative === null || stream === null) {
+      return t.skip('this system does not let the test make links')
+    }
+    assert.equal(driveRelative, true, 'drive-relative')
+    assert.equal(stream, true, 'stream')
+    assert.equal(streamInFolder, true, 'stream in a folder')
+
+    // Ids and addresses are still not refused.
+    const plain = await repo(t)
+    for (const value of [
+      'ABCDEF0123456789',
+      'me@example.com',
+      'Name <me@example.com>',
+      'key::ssh-ed25519 AAAA',
+      'ssh-ed25519 AAAA',
+    ]) {
+      await exec(['config', 'user.signingkey', value], plain)
+      assert.deepEqual(await findNetworkPaths(plain), [], value)
+    }
+  })
+
   it('refuses a diff.orderFile that goes through a junction', async t => {
     const elsewhere = await createTempDirectory(t)
     const path = await repo(t)

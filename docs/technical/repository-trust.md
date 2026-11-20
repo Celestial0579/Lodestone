@@ -55,6 +55,23 @@ Windows reads a path differently from Node's `lstat`, and a link that `lstat` mi
 | Case | every part from the drive root is looked at, whatever its case; `lstat` ignores case on NTFS | "compares names without regard to case on Windows" (Windows) |
 | Link or junction on the way | refused at the first one, every part from the root is looked at | "refuses links and junctions where the repository has its own files" |
 
+### Two readers on Windows
+
+Git, libcurl and Windows' own OpenSSH read a name by the Windows rules above. Git hands three values to `ssh-keygen`: `user.signingkey` (when it is not a literal `key::` or `ssh-` key), `gpg.ssh.allowedSignersFile` and `gpg.ssh.revocationFile`. The `ssh-keygen` that Git starts is the first one on `PATH`; the bundled MinGit has none, and on a machine where Git for Windows' `usr\bin`, MSYS2 or Cygwin come first, it is an MSYS2 or Cygwin build that reads names by the Cygwin rules. For these three keys the check looks at both readings.
+
+| Rule (Cygwin / MSYS2 reader) | How the check handles it | Test |
+| --- | --- | --- |
+| Control characters 1 to 31 and `" * : < > ? \|` become U+F000 plus the code (`lnk:s` is `lnk` U+F03A `s`, not a stream; `C:lnk` is the relative name `C` U+F03A `lnk`) | the mapped name is looked at as well as the Windows reading | "maps control characters and ... (cygwinName)", "looks at the Cygwin reading of lnk:s, C:lnk and a control character" (Windows) |
+| A single leading `/` is a POSIX path (`/proc/self/cwd` is the repository, `/c/`, `/tmp/` use the mount table) | refused for these three keys | "reads a value the way an MSYS2 ssh-keygen does", "refuses a POSIX absolute path for the three ssh-keygen keys only" (Windows) |
+| Only `X:\` and `X:/` are Windows paths | those are looked at only by the Windows reading | "reads a value the way an MSYS2 ssh-keygen does" |
+| A link written as a small file that starts `!<symlink>` (`MSYS=winsymlinks:sys`) or with the Interix cookie, which `lstat` reports as a plain file | refused wherever the walk meets one, for every key | "knows the cookies of Cygwin and Interix links", "refuses a link made by MSYS2 ln with winsymlinks:sys" (Windows) |
+| A `.lnk` shortcut (`MSYS=winsymlinks:lnk`), also when `foo` is opened and only `foo.lnk` exists | a `.lnk` file is refused, and so is a missing name that has `<name>.lnk` next to it, for every key | "refuses a link made by MSYS2 ln with winsymlinks:lnk" (Windows) |
+| A WSL symlink (`IO_REPARSE_TAG_LX_SYMLINK`) | Node's `lstat` and `readdir` report it as a symbolic link (seen on the Windows runner), so it is refused like any link | "refuses a WSL symlink, which lstat reports as a link" (Windows) |
+| `..` after a link (`lnk/../key` passes through `lnk` before the `..` is dropped) | for the three keys every path up to a `..` is looked at as well | "looks at every part before a .. that Cygwin resolves through a link" (Windows) |
+| A link file of any size | the first bytes of every regular file part are read, there is no size limit | "reads a Cygwin link file of any size" (Windows) |
+| A missing last part is opened as `name.exe` and `name.lnk` | for the three keys a missing last part with `<name>.exe` beside it is refused (`.lnk` as above) | "looks at name.exe for a missing last part, for the ssh-keygen keys only" (Windows) |
+| The parts after the drive of `X:\\` and `X:/` are mapped too | mapped the same way | "maps the parts after the drive of an absolute value" (Windows) |
+
 ## Always on
 
 - A path the app does not know (not in the list, not yet added) gets the overrides of an untrusted repository, except for `clone` and `init`.

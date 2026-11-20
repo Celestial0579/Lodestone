@@ -1299,7 +1299,7 @@ describe('Cygwin and MSYS2 readings for ssh-keygen (#116)', () => {
 
   // A Windows-only test is first run with PROBE = true on a branch of its own:
   // it then reports what it saw (t.diagnostic) and cannot fail.
-  const PROBE = false
+  const PROBE = true
   const expectThat = (
     t: { diagnostic: (m: string) => void },
     ok: boolean,

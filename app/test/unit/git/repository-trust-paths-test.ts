@@ -1026,7 +1026,7 @@ describe('errors other than "not there" (#104)', () => {
     if (process.platform !== 'win32') {
       return t.skip('Windows names only')
     }
-    const { execFileSync } = await import('child_process')
+    const { spawnSync } = await import('child_process')
     const elsewhere = await createTempDirectory(t)
     const path = await repo(t)
     const junction = join(path, 'a long junction name')
@@ -1039,13 +1039,11 @@ describe('errors other than "not there" (#104)', () => {
     let short = junction
     try {
       // Verbatim arguments: node would otherwise quote the whole command.
-      short = execFileSync(
+      short = spawnSync(
         'cmd.exe',
         ['/d', '/s', '/c', `"for %I in ("${junction}") do @echo %~sI"`],
-        { windowsVerbatimArguments: true }
-      )
-        .toString()
-        .trim()
+        { windowsVerbatimArguments: true, encoding: 'utf8' }
+      ).stdout.trim()
     } catch {
       return t.skip('cannot ask for the short name')
     }

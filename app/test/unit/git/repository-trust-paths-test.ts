@@ -21,6 +21,8 @@ import {
   hasFindings,
 } from '../../../src/lib/git/repository-trust'
 
+const fwd = (p: string) => p.replace(/\\/g, '/')
+
 const memory = () => {
   let data = {}
   return { read: () => data, write: (d: object) => void (data = d) }
@@ -115,7 +117,7 @@ describe('findNetworkPaths', () => {
     for (let i = 0; i < 9; i++) {
       await writeFile(
         join(dir, `i${i}`),
-        `[include]\n\tpath = ${join(dir, `i${i + 1}`)}\n`
+        `[include]\n\tpath = ${fwd(join(dir, `i${i + 1}`))}\n`
       )
     }
     await writeFile(join(dir, 'i9'), '[core]\n\texcludesFile = //host/x\n')
@@ -128,7 +130,8 @@ describe('findNetworkPaths', () => {
       await mkdir(join(base, `o${i}`, 'info'), { recursive: true })
       await writeFile(
         join(base, `o${i}`, 'info', 'alternates'),
-        `${join(base, `o${i + 1}`)}\n`
+        `${fwd(join(base, `o${i + 1}`))}
+`
       )
     }
     await mkdir(join(base, 'o4', 'info'), { recursive: true })
@@ -136,7 +139,7 @@ describe('findNetworkPaths', () => {
     await mkdir(join(path2, '.git', 'objects', 'info'), { recursive: true })
     await writeFile(
       join(path2, '.git', 'objects', 'info', 'alternates'),
-      `${join(base, 'o0')}\n`
+      `${fwd(join(base, 'o0'))}\n`
     )
     assert.equal((await findNetworkPaths(path2)).length, 1)
   })

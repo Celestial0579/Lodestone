@@ -16,6 +16,14 @@
  * 5, whatever the conditions say. Keys are checked as well as values, since a
  * network path can be a subsection name (`url.<base>.insteadOf`).
  *
+ * Before the first Git call, every Git directory (the main one, the common one,
+ * the modules, the targets of submodules' `.git` files) is walked completely
+ * with `readdir(..., { withFileTypes })`, and any link or junction in it is a
+ * refusal, because Git opens most of what is in there (the index and its lock
+ * file, HEAD, refs, info/exclude, pack files). Path values of
+ * `core.excludesFile`, `core.attributesFile`, `core.hooksPath` and
+ * `mailmap.file` are checked part by part.
+ *
  * Refused as well: a file Git cannot parse (Git follows an include as soon as
  * it reaches it, before it fails on a later line), a quoted alternates line
  * that does not decode, a link or junction where the repository's own files
@@ -33,6 +41,9 @@ const MaxBytes = 1024 * 1024
 
 /** Most files looked at for one repository. */
 const MaxFiles = 400
+
+/** Most directory entries one repository's Git directories may have. */
+const MaxEntries = 250_000
 
 const MaxIncludeDepth = 10
 const MaxAlternatesDepth = 5
@@ -73,19 +84,17 @@ export function isNetworkPath(value: string): boolean {
   })
 }
 
-const isInside = (parent: string, child: string) => {
-  const relative = Path.relative(parent, child)
-  return (
-    relative !== '' && !relative.startsWith('..') && !Path.isAbsolute(relative)
-  )
-}
-
 const show = (where: string, value: string) =>
   `${where}: ${value.replace(/[\x00-\x1f\x7f]/g, '?')}`
 
 interface IScan {
+  /** The folder the check is for: paths are checked from where it and they part. */
+  readonly base: string
   /** Why the repository is refused. */
   readonly found: string[]
+  /** Directory entries looked at by the walks, against a limit. */
+  entries: number
+  readonly walked: Set<string>
   /** Files and directories looked at, against a limit. */
   files: number
   /** The smallest include depth a config file was scanned at. */
@@ -94,25 +103,65 @@ interface IScan {
   readonly gitDirectories: Set<string>
 }
 
-const newScan = (): IScan => ({
+const newScan = (base: string): IScan => ({
+  base,
   found: [],
+  entries: 0,
+  walked: new Set(),
   files: 0,
   configs: new Map(),
   alternates: new Map(),
   gitDirectories: new Set(),
 })
 
+const sameName = (a: string, b: string) =>
+  process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b
+
 /**
- * Look at a path without following a link: the path as text first, then every
- * part of it below `base` (for a path outside `base`, its folder and itself).
- * A link or junction is a refusal, because Windows follows one to a remote
- * target. Null for a path that is not there or was refused.
+ * The parts of a path to look at: every part below the deepest folder it
+ * shares with the folder the check is for (the ancestors of the folder the
+ * user chose are theirs to trust), from there down to the path itself.
  */
-async function lookAt(
-  scan: IScan,
-  path: string,
-  base: string | null
-): Promise<Stats | null> {
+function partsToLook(base: string, path: string): ReadonlyArray<string> {
+  const a = Path.resolve(base).split(Path.sep)
+  const target = Path.resolve(path)
+  const b = target.split(Path.sep)
+
+  let shared = 0
+  while (
+    shared < a.length &&
+    shared < b.length &&
+    sameName(a[shared], b[shared])
+  ) {
+    shared++
+  }
+
+  let current: string
+  let rest: string[]
+  if (shared === 0) {
+    current = Path.parse(target).root
+    rest = target.slice(current.length).split(Path.sep)
+  } else {
+    current = Path.resolve(b.slice(0, shared).join(Path.sep) + Path.sep)
+    rest = b.slice(shared)
+  }
+
+  const parts = new Array<string>()
+  for (const part of rest.filter(p => p !== '')) {
+    current = Path.join(current, part)
+    parts.push(current)
+  }
+  return parts
+}
+
+/**
+ * Look at a path without following a link: the path as text first, then
+ * every part of it below the folder it shares with the check's own folder.
+ * A link or junction is a refusal, because Windows follows one to a remote
+ * target and `lstat` itself follows the ones higher up. Null for a path that
+ * is not there or was refused.
+ */
+async function lookAt(scan: IScan, path: string): Promise<Stats | null> {
   if (isNetworkPath(path)) {
     scan.found.push(show('network path', path))
     return null
@@ -125,15 +174,9 @@ async function lookAt(
     return null
   }
 
-  const parts: string[] = []
-  if (base !== null && isInside(base, path)) {
-    let current = base
-    for (const part of Path.relative(base, path).split(Path.sep)) {
-      current = Path.join(current, part)
-      parts.push(current)
-    }
-  } else {
-    parts.push(Path.dirname(path), path)
+  const parts = [...partsToLook(scan.base, path)]
+  if (parts.length === 0) {
+    parts.push(path)
   }
 
   let info: Stats | null = null
@@ -153,13 +196,48 @@ async function lookAt(
   return info
 }
 
+/**
+ * Walk a directory completely and refuse any link or junction in it. Entries
+ * are read as the file system lists them, so nothing is followed.
+ */
+async function walk(scan: IScan, directory: string) {
+  const pending = [directory]
+
+  while (pending.length > 0) {
+    const current = pending.pop()!
+    if (scan.walked.has(current)) {
+      continue
+    }
+    scan.walked.add(current)
+
+    const entries = await readdir(current, { withFileTypes: true }).catch(
+      () => []
+    )
+
+    for (const entry of entries) {
+      if (++scan.entries > MaxEntries) {
+        if (scan.entries === MaxEntries + 1) {
+          scan.found.push(
+            show('too many entries to check in', current) +
+              ' (git gc packs loose objects)'
+          )
+        }
+        return
+      }
+
+      const path = Path.join(current, entry.name)
+      if (entry.isSymbolicLink()) {
+        scan.found.push(show('link or junction', path))
+      } else if (entry.isDirectory()) {
+        pending.push(path)
+      }
+    }
+  }
+}
+
 /** A small regular file's text, or null (missing, or refused and noted). */
-async function readChecked(
-  scan: IScan,
-  path: string,
-  base: string | null
-): Promise<string | null> {
-  const info = await lookAt(scan, path, base)
+async function readChecked(scan: IScan, path: string): Promise<string | null> {
+  const info = await lookAt(scan, path)
 
   if (info === null) {
     return null
@@ -210,24 +288,27 @@ async function listConfigFile(
     })
 }
 
+/** Keys whose value is a path Git opens, or a directory it runs hooks from. */
+const PathKeys: ReadonlySet<string> = new Set([
+  'core.excludesfile',
+  'core.attributesfile',
+  'core.hookspath',
+  'mailmap.file',
+])
+
 /**
  * Check one config file, and follow the files it includes. A file is scanned
  * again when it is reached at a smaller depth than before, because what
  * follows it may then be within the limit.
  */
-async function scanConfig(
-  scan: IScan,
-  file: string,
-  base: string | null,
-  depth: number
-) {
+async function scanConfig(scan: IScan, file: string, depth: number) {
   const before = scan.configs.get(file)
   if (depth > MaxIncludeDepth || (before !== undefined && before <= depth)) {
     return
   }
   scan.configs.set(file, depth)
 
-  if ((await readChecked(scan, file, base)) === null) {
+  if ((await readChecked(scan, file)) === null) {
     return
   }
 
@@ -252,12 +333,18 @@ async function scanConfig(
       lower === 'include.path' ||
       /^includeif\..+\.path$/.test(lower)
     ) {
-      await scanConfig(
-        scan,
-        Path.resolve(Path.dirname(file), value),
-        base,
-        depth + 1
-      )
+      await scanConfig(scan, Path.resolve(Path.dirname(file), value), depth + 1)
+    } else if (PathKeys.has(lower) && value !== '') {
+      // Git opens (or runs hooks from) this path: look at it part by part.
+      const target = value.startsWith('~')
+        ? null
+        : Path.resolve(scan.base, value)
+      if (target !== null) {
+        await lookAt(scan, target)
+        if (lower === 'core.hookspath') {
+          await walk(scan, target)
+        }
+      }
     }
   }
 }
@@ -319,12 +406,7 @@ export function unquoteAlternate(line: string): string | null {
 }
 
 /** Follow an alternates file and those its entries have, to a depth of 5. */
-async function scanAlternates(
-  scan: IScan,
-  objects: string,
-  base: string | null,
-  depth: number
-) {
+async function scanAlternates(scan: IScan, objects: string, depth: number) {
   const file = Path.join(objects, 'info', 'alternates')
   const before = scan.alternates.get(file)
   if (depth > MaxAlternatesDepth || (before !== undefined && before <= depth)) {
@@ -332,7 +414,7 @@ async function scanAlternates(
   }
   scan.alternates.set(file, depth)
 
-  const text = await readChecked(scan, file, base)
+  const text = await readChecked(scan, file)
 
   for (const raw of text?.split(/\r?\n/) ?? []) {
     const line = raw.trim()
@@ -346,18 +428,50 @@ async function scanAlternates(
     } else if (isNetworkPath(entry)) {
       scan.found.push(show('alternates', entry))
     } else {
-      await scanAlternates(scan, Path.resolve(objects, entry), null, depth + 1)
+      await scanAlternates(scan, Path.resolve(objects, entry), depth + 1)
     }
   }
 }
 
-/** Git directories of submodules under `modules`, never through a link. */
-async function scanModules(
-  scan: IScan,
-  modules: string,
-  base: string | null,
-  depth = 0
-) {
+/** Check one Git directory: walk it, then its files and its common directory. */
+async function scanGitDirectory(scan: IScan, directory: string) {
+  if (scan.gitDirectories.has(directory)) {
+    return
+  }
+  scan.gitDirectories.add(directory)
+
+  // Nothing in it is read, nor does Git run in it, before it is known to hold
+  // no link. The modules of submodules are inside it and are walked with it.
+  if ((await lookAt(scan, directory)) === null) {
+    return
+  }
+  await walk(scan, directory)
+  if (scan.found.length > 0) {
+    return
+  }
+
+  await scanConfig(scan, Path.join(directory, 'config'), 0)
+  await scanConfig(scan, Path.join(directory, 'config.worktree'), 0)
+  await scanAlternates(scan, Path.join(directory, 'objects'), 0)
+
+  // In a linked work tree the common directory holds config and objects.
+  const common = (
+    await readChecked(scan, Path.join(directory, 'commondir'))
+  )?.trim()
+  if (common !== undefined && common !== '') {
+    if (isNetworkPath(common)) {
+      scan.found.push(show('commondir', common))
+    } else {
+      await scanGitDirectory(scan, Path.resolve(directory, common))
+    }
+  }
+
+  // Submodule Git directories under modules/ have a config of their own.
+  await scanModuleConfigs(scan, Path.join(directory, 'modules'))
+}
+
+/** Scan the config and alternates of the Git directories under `modules`. */
+async function scanModuleConfigs(scan: IScan, modules: string, depth = 0) {
   if (depth > 8) {
     return
   }
@@ -368,56 +482,24 @@ async function scanModules(
 
   for (const entry of entries) {
     const directory = Path.join(modules, entry.name)
-
-    if (entry.isSymbolicLink()) {
-      scan.found.push(show('link or junction', directory))
-    } else if (entry.isDirectory()) {
-      if (await lstat(Path.join(directory, 'HEAD')).catch(() => null)) {
-        await scanGitDirectory(scan, directory, base)
-      } else {
-        await scanModules(scan, directory, base, depth + 1)
-      }
+    if (!entry.isDirectory()) {
+      continue
     }
-  }
-}
 
-/** Check one Git directory: its files, its common directory and its modules. */
-async function scanGitDirectory(
-  scan: IScan,
-  directory: string,
-  base: string | null
-) {
-  if (scan.gitDirectories.has(directory)) {
-    return
-  }
-  scan.gitDirectories.add(directory)
-
-  await scanConfig(scan, Path.join(directory, 'config'), base, 0)
-  await scanConfig(scan, Path.join(directory, 'config.worktree'), base, 0)
-  await scanAlternates(scan, Path.join(directory, 'objects'), base, 0)
-
-  // In a linked work tree the common directory holds config and objects.
-  const common = (
-    await readChecked(scan, Path.join(directory, 'commondir'), base)
-  )?.trim()
-  if (common !== undefined && common !== '') {
-    if (isNetworkPath(common)) {
-      scan.found.push(show('commondir', common))
+    if (await lstat(Path.join(directory, 'HEAD')).catch(() => null)) {
+      await scanGitDirectory(scan, directory)
     } else {
-      await scanGitDirectory(scan, Path.resolve(directory, common), null)
+      await scanModuleConfigs(scan, directory, depth + 1)
     }
   }
-
-  await scanModules(scan, Path.join(directory, 'modules'), base)
 }
 
 /** The target of a `.git` file, or null when it is not a plain gitdir file. */
 async function gitFileTarget(
   scan: IScan,
-  file: string,
-  base: string | null
+  file: string
 ): Promise<string | null> {
-  const text = await readChecked(scan, file, base)
+  const text = await readChecked(scan, file)
   const target =
     text === null || text.length > 4096
       ? undefined
@@ -437,19 +519,19 @@ async function gitFileTarget(
 }
 
 /** A `.git` entry (a directory, or a file naming one): scan what it leads to. */
-async function scanDotGit(scan: IScan, dotGit: string, base: string | null) {
-  const info = await lookAt(scan, dotGit, base)
+async function scanDotGit(scan: IScan, dotGit: string) {
+  const info = await lookAt(scan, dotGit)
 
   if (info === null) {
     return
   }
 
   if (info.isDirectory()) {
-    await scanGitDirectory(scan, dotGit, base)
+    await scanGitDirectory(scan, dotGit)
   } else {
-    const target = await gitFileTarget(scan, dotGit, base)
+    const target = await gitFileTarget(scan, dotGit)
     if (target !== null) {
-      await scanGitDirectory(scan, target, null)
+      await scanGitDirectory(scan, target)
     }
   }
 }
@@ -482,8 +564,8 @@ async function gitlinkPaths(folder: string): Promise<ReadonlyArray<string>> {
 export async function findNetworkPathsInGitDirectory(
   directory: string
 ): Promise<ReadonlyArray<string>> {
-  const scan = newScan()
-  await scanGitDirectory(scan, directory, null)
+  const scan = newScan(directory)
+  await scanGitDirectory(scan, directory)
   return scan.found
 }
 
@@ -496,19 +578,19 @@ export async function findNetworkPathsInGitDirectory(
 export async function findNetworkPaths(
   folder: string
 ): Promise<ReadonlyArray<string>> {
-  const scan = newScan()
+  const scan = newScan(folder)
   const dotGit = Path.join(folder, '.git')
 
   if (!(await lstat(dotGit).catch(() => null))) {
     return []
   }
 
-  await scanDotGit(scan, dotGit, folder)
+  await scanDotGit(scan, dotGit)
 
   // Only now is it safe to ask Git for the index, to find the submodules.
   if (scan.found.length === 0) {
     for (const submodule of await gitlinkPaths(folder)) {
-      await scanDotGit(scan, Path.join(folder, submodule, '.git'), folder)
+      await scanDotGit(scan, Path.join(folder, submodule, '.git'))
     }
   }
 

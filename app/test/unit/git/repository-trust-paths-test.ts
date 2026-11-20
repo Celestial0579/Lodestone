@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { exec } from 'dugite'
-import { mkdir, symlink, writeFile } from 'fs/promises'
+import { mkdir, rm, symlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { createTempDirectory } from '../../helpers/temp'
 import {
@@ -370,5 +370,124 @@ describe('network paths: gaps found in review (#103)', () => {
     if (tried === 0) {
       t.skip('this system does not let the test make links')
     }
+  })
+})
+
+describe('links anywhere in a Git directory (#103)', () => {
+  /** Makes a link, or says the system does not allow it here. */
+  async function link(
+    target: string,
+    path: string,
+    kind: 'file' | 'junction'
+  ): Promise<boolean> {
+    try {
+      await symlink(target, path, kind)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async function repoWithCommit(t: Parameters<typeof createTempDirectory>[0]) {
+    const path = await createTempDirectory(t)
+    await exec(['init', '-q', '-b', 'main'], path)
+    await exec(['config', 'user.name', 't'], path)
+    await exec(['config', 'user.email', 't@e.x'], path)
+    await writeFile(join(path, 'a.txt'), 'a\n')
+    await exec(['add', '.'], path)
+    await exec(['commit', '-q', '-m', 'one'], path)
+    return path
+  }
+
+  const cases: ReadonlyArray<{
+    name: string
+    kind: 'file' | 'junction'
+    at: (git: string) => string
+  }> = [
+    { name: '.git/index', kind: 'file', at: g => join(g, 'index') },
+    { name: '.git/HEAD', kind: 'file', at: g => join(g, 'HEAD') },
+    { name: '.git/refs', kind: 'junction', at: g => join(g, 'refs') },
+    {
+      name: '.git/info/exclude',
+      kind: 'file',
+      at: g => join(g, 'info', 'exclude'),
+    },
+    {
+      name: '.git/objects/pack',
+      kind: 'junction',
+      at: g => join(g, 'objects', 'pack'),
+    },
+  ]
+
+  for (const c of cases) {
+    it(`refuses a link at ${c.name} before any Git call`, async t => {
+      const path = await repoWithCommit(t)
+      const elsewhere = await createTempDirectory(t)
+      const at = c.at(join(path, '.git'))
+      await mkdir(join(at, '..'), { recursive: true })
+      await rm(at, { recursive: true, force: true })
+
+      if (!(await link(elsewhere, at, c.kind))) {
+        return t.skip('this system does not let the test make links')
+      }
+
+      const found = await findNetworkPaths(path)
+      assert.ok(
+        found.some(l => l.includes('link or junction')),
+        JSON.stringify(found)
+      )
+    })
+  }
+
+  it('refuses a link where a loose object is', async t => {
+    const path = await repoWithCommit(t)
+    const objects = join(path, '.git', 'objects')
+    const { readdir } = await import('fs/promises')
+    const dir = (await readdir(objects)).find(n => /^[0-9a-f]{2}$/.test(n))
+    assert.ok(dir)
+    const elsewhere = await createTempDirectory(t)
+    await rm(join(objects, dir), { recursive: true })
+
+    if (!(await link(elsewhere, join(objects, dir), 'junction'))) {
+      return t.skip('this system does not let the test make links')
+    }
+    assert.ok((await findNetworkPaths(path)).length > 0)
+  })
+
+  it('refuses gitdir: lnk/r.git and core.excludesFile = lnk/x when lnk is a link', async t => {
+    const elsewhere = await createTempDirectory(t)
+
+    const withGitFile = await createTempDirectory(t)
+    await writeFile(join(withGitFile, '.git'), 'gitdir: lnk/r.git\n')
+    if (!(await link(elsewhere, join(withGitFile, 'lnk'), 'junction'))) {
+      return t.skip('this system does not let the test make links')
+    }
+    assert.ok(
+      (await findNetworkPaths(withGitFile)).some(l =>
+        l.includes('link or junction')
+      )
+    )
+
+    const withKey = await repoWithCommit(t)
+    await link(elsewhere, join(withKey, 'lnk'), 'junction')
+    await exec(['config', 'core.excludesFile', 'lnk/x'], withKey)
+    assert.ok(
+      (await findNetworkPaths(withKey)).some(l =>
+        l.includes('link or junction')
+      )
+    )
+  })
+
+  it('refuses a hooks directory that goes through a link and one that holds a link', async t => {
+    const elsewhere = await createTempDirectory(t)
+    const path = await repoWithCommit(t)
+    await mkdir(join(path, 'hk'))
+    if (!(await link(elsewhere, join(path, 'hk', 'pre-commit'), 'file'))) {
+      return t.skip('this system does not let the test make links')
+    }
+    await exec(['config', 'core.hooksPath', 'hk'], path)
+    assert.ok(
+      (await findNetworkPaths(path)).some(l => l.includes('link or junction'))
+    )
   })
 })

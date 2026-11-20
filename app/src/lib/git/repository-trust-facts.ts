@@ -5,7 +5,7 @@
  */
 
 import { exec } from 'dugite'
-import { lstat, readdir, readFile, stat } from 'fs/promises'
+import { lstat, readdir, readFile } from 'fs/promises'
 import {
   findNetworkPathsInGitDirectory,
   isNetworkPath,
@@ -27,12 +27,23 @@ const ReadOnly = ['--no-pager', '-c', 'safe.bareRepository=explicit']
 const MaxHookBytes = 5 * 1024 * 1024
 
 async function readHooks(directory: string): Promise<ReadonlyArray<IHookFile>> {
-  const names = await readdir(directory).catch(() => [])
+  // Entries as the file system lists them: nothing is followed through a link.
+  const entries = await readdir(directory, { withFileTypes: true }).catch(
+    () => []
+  )
   const hooks = new Array<IHookFile>()
 
-  for (const name of names.sort()) {
+  for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : 1))) {
+    const name = entry.name
     const path = Path.join(directory, name)
-    const info = await stat(path).catch(() => null)
+
+    if (entry.isSymbolicLink()) {
+      // Not read; it changes the fingerprint and is asked about as a hook.
+      hooks.push({ name, sha256: 'link' })
+      continue
+    }
+
+    const info = entry.isFile() ? await lstat(path).catch(() => null) : null
 
     if (info === null || !info.isFile()) {
       continue
@@ -59,7 +70,7 @@ const isInside = (parent: string, child: string) => {
 }
 
 const isGitDirectory = (directory: string) =>
-  stat(Path.join(directory, 'HEAD')).then(
+  lstat(Path.join(directory, 'HEAD')).then(
     i => i.isFile(),
     () => false
   )

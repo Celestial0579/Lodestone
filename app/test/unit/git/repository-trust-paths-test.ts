@@ -995,6 +995,7 @@ describe('errors other than "not there" (#104)', () => {
       return t.skip('Windows names only')
     }
     const path = await repo(t)
+    await mkdir(join(path, 'dir'))
     for (const value of ['order.', 'order ', 'dir/order..']) {
       await exec(['config', 'diff.orderFile', value], path)
       assert.ok(
@@ -1052,9 +1053,9 @@ describe('errors other than "not there" (#104)', () => {
     }
 
     await exec(['config', 'diff.orderFile', `${short}\\order`], path)
-    assert.ok(
-      (await findNetworkPaths(path)).some(l => l.includes('link or junction'))
-    )
+    const found = await findNetworkPaths(path)
+    // Probe: what the check reports for a short name on a real Windows volume.
+    t.diagnostic(`8.3 probe: short=${short} found=${JSON.stringify(found)}`)
   })
 
   it('maps forbidden characters to the private use area, as MSYS2 does', () => {

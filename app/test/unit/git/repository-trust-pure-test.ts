@@ -302,7 +302,33 @@ describe('getOverrideArguments', () => {
       'core.hooksPath=/empty',
       '-c',
       'core.fsmonitor=false',
+      '-c',
+      'submodule.recurse=false',
     ])
+  })
+
+  it('neutralises core.alternateRefsCommand and treats protocol.* as a transport key', () => {
+    const entries = [
+      {
+        scope: 'local',
+        origin: 'file:c',
+        key: 'core.alternaterefscommand',
+        value: 'evil',
+      },
+      {
+        scope: 'local',
+        origin: 'file:c',
+        key: 'protocol.ext.allow',
+        value: 'always',
+      },
+    ]
+    const findings = findRepositoryFindings(entries, [])
+    assert.ok(
+      getOverrideArguments(findings, '/e').includes(
+        'core.alternaterefscommand=true'
+      )
+    )
+    assert.deepEqual(getTransportBlockKeys(findings), ['protocol.ext.allow'])
   })
 })
 

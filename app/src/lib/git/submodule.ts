@@ -12,6 +12,7 @@ import { IRemote } from '../../models/remote'
 import { Progress } from '../../models/progress'
 import { join, resolve } from 'path'
 import { readFile } from 'fs/promises'
+import { getSubmoduleBlock } from './repository-trust-state'
 
 /**
  * Update submodules after a git operation.
@@ -35,6 +36,12 @@ export async function updateSubmodulesAfterOperation<T extends Progress>(
   targetOrRemote: string,
   allowFileProtocol: boolean
 ): Promise<void> {
+  // An untrusted repository never updates its submodules (#98).
+  if (getSubmoduleBlock(repository.path, ['submodule', 'update']) !== null) {
+    log.info('Not updating submodules of a repository that is not trusted')
+    return
+  }
+
   const opts: IGitStringExecutionOptions = {
     env: await envForRemoteOperation(
       getFallbackUrlForProxyResolve(repository, remote)
@@ -201,6 +208,11 @@ export async function resetSubmodulePaths(
   paths: ReadonlyArray<string>
 ): Promise<void> {
   if (paths.length === 0) {
+    return
+  }
+
+  if (getSubmoduleBlock(repository.path, ['submodule', 'update']) !== null) {
+    log.info('Not resetting submodules of a repository that is not trusted')
     return
   }
 

@@ -10,7 +10,7 @@
 import { afterEach, describe, it, TestContext } from 'node:test'
 import assert from 'node:assert'
 import { exec } from 'dugite'
-import { chmod, mkdir, stat, writeFile } from 'fs/promises'
+import { chmod, mkdir, stat, utimes, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { createTempDirectory } from '../../helpers/temp'
 import { Repository } from '../../../src/models/repository'
@@ -22,10 +22,17 @@ import { createCommit } from '../../../src/lib/git/commit'
 import { checkoutBranch } from '../../../src/lib/git/checkout'
 import { getBranches } from '../../../src/lib/git/for-each-ref'
 import { readRepositoryFindings } from '../../../src/lib/git/repository-trust-facts'
-import { hasFindings } from '../../../src/lib/git/repository-trust'
+import {
+  describeFindings,
+  hasFindings,
+} from '../../../src/lib/git/repository-trust'
 import {
   buildRepositoryGitPolicy,
+  getGitArgumentsFor,
+  getGitEnvironmentFor,
   RepositoryNetworkBlockedError,
+  RepositorySubmoduleBlockedError,
+  setFailClosed,
   setEmptyHooksDirectory,
   setRepositoryGitPolicy,
 } from '../../../src/lib/git/repository-trust-state'
@@ -48,6 +55,9 @@ const exists = (path: string) =>
 /** A path as the shell that runs Git's commands reads it. */
 const shPath = (path: string) =>
   __WIN32__ ? path.replace(/^([A-Za-z]):/, '/$1').replace(/\\/g, '/') : path
+
+/** An ext:: remote that runs a command writing the marker ('% ' is a space in it). */
+const extRemote = (marker: string) => `ext::sh -c echo% x% >% ${shPath(marker)}`
 
 const marks = (marker: string) => `echo x > "${shPath(marker)}"`
 
@@ -324,6 +334,36 @@ const vectors: ReadonlyArray<IVector> = [
     mayFail: true,
     noTrustedProofOnWindows: true,
   },
+  {
+    key: 'core.alternateRefsCommand',
+    setup: async f => {
+      const alternate = join(f.base, 'alternate')
+      await mkdir(alternate)
+      await run(['init', '-q'], alternate)
+      await writeFile(
+        join(f.repo.path, '.git', 'objects', 'info', 'alternates'),
+        `${shPath(join(alternate, '.git', 'objects'))}\n`
+      )
+      await run(
+        ['config', 'core.alternateRefsCommand', marks(f.marker)],
+        f.repo.path
+      )
+    },
+    operations: [fetchOp],
+  },
+  {
+    key: 'protocol.ext.allow (an ext:: remote)',
+    setup: async f => {
+      await run(['config', 'protocol.ext.allow', 'always'], f.repo.path)
+      await run(
+        ['remote', 'set-url', 'origin', extRemote(f.marker)],
+        f.repo.path
+      )
+    },
+    operations: [fetchOp],
+    mayFail: true,
+    noTrustedProofOnWindows: true,
+  },
 ]
 
 /** Looks at the repository the way the app does and sets its policy. */
@@ -440,4 +480,145 @@ describe('repository trust: transport keys', () => {
       await fetchOp.worked(f)
     })
   }
+})
+
+describe('repository trust: submodules, protocols and unknown paths', () => {
+  it('asks about a submodule whose own configuration runs a filter, and runs nothing meanwhile', async t => {
+    const f = await fixture(t)
+    const sub = join(f.base, 'sub')
+    await mkdir(sub)
+    await run(['init', '-q', '-b', 'main'], sub)
+    await run(['config', 'user.name', 't'], sub)
+    await run(['config', 'user.email', 't@example.com'], sub)
+    await writeFile(join(sub, '.gitattributes'), '* filter=x\n')
+    await writeFile(join(sub, 's.txt'), 'content\n')
+    await run(['add', '.'], sub)
+    await run(['commit', '-q', '-m', 'sub'], sub)
+    await run(
+      ['-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', sub, 'sm'],
+      f.repo.path
+    )
+    // The submodule's own configuration, in .git/modules/sm/config.
+    await run(
+      ['config', 'filter.x.clean', `${marks(f.marker)}; cat`],
+      join(f.repo.path, 'sm')
+    )
+    // Stat data that no longer matches the index: Git hashes the file again.
+    const file = join(f.repo.path, 'sm', 's.txt')
+    await writeFile(file, 'content\n')
+    const later = new Date(Date.now() + 60_000)
+    await utimes(file, later, later)
+    await run(['config', 'filter.x.smudge', 'cat'], join(f.repo.path, 'sm'))
+
+    const findings = await readRepositoryFindings(f.repo.path)
+    assert.ok(findings)
+    assert.equal(hasFindings(findings), true, 'the submodule is asked about')
+    assert.ok(
+      describeFindings(findings).some(l => l.startsWith('[submodule ')),
+      'the question names the submodule'
+    )
+
+    setRepositoryGitPolicy(
+      f.repo.path,
+      buildRepositoryGitPolicy('untrusted', findings)
+    )
+    t.after(() => setRepositoryGitPolicy(f.repo.path, null))
+
+    await removeMarker(f)
+    const s = await getStatus(f.repo)
+    assert.ok(s, 'status still works')
+    assert.equal(await exists(f.marker), false, 'the filter did not run')
+
+    await assert.rejects(
+      git(['submodule', 'update', '--init'], f.repo.path, 'test'),
+      RepositorySubmoduleBlockedError
+    )
+
+    // Control: as the Git command line does it, the filter runs.
+    setRepositoryGitPolicy(
+      f.repo.path,
+      buildRepositoryGitPolicy('trusted', findings)
+    )
+    await removeMarker(f)
+    await getStatus(f.repo)
+    assert.equal(await exists(f.marker), true, 'the vector is not real')
+  })
+
+  it('keeps an untrusted repository out of submodules on status, fetch and pull', async t => {
+    const f = await fixture(t)
+    const findings = await readRepositoryFindings(f.repo.path)
+    assert.ok(findings)
+    setRepositoryGitPolicy(
+      f.repo.path,
+      buildRepositoryGitPolicy('untrusted', findings)
+    )
+    t.after(() => setRepositoryGitPolicy(f.repo.path, null))
+
+    const args = (a: string[]) => getGitArgumentsFor(f.repo.path, a)
+    assert.ok(
+      args(['-c', 'x=y', 'status', '--porcelain']).includes(
+        '--ignore-submodules=all'
+      )
+    )
+    assert.ok(
+      args(['fetch', '--recurse-submodules=on-demand', 'origin']).includes(
+        '--no-recurse-submodules'
+      )
+    )
+    assert.ok(
+      !args(['fetch', '--recurse-submodules=on-demand', 'origin']).includes(
+        '--recurse-submodules=on-demand'
+      )
+    )
+    assert.ok(
+      args(['pull', '--recurse-submodules']).includes('--no-recurse-submodules')
+    )
+    assert.ok(args(['checkout', 'main']).includes('submodule.recurse=false'))
+  })
+
+  it('treats protocol.* of the repository as a transport key and limits the protocols', async t => {
+    const f = await fixture(t)
+    await run(['config', 'protocol.ext.allow', 'always'], f.repo.path)
+    const findings = await readRepositoryFindings(f.repo.path)
+    assert.ok(findings)
+    assert.equal(hasFindings(findings), true, 'the key is asked about')
+
+    const policy = buildRepositoryGitPolicy('untrusted', findings)
+    assert.deepEqual(policy.transportKeys, ['protocol.ext.allow'])
+    setRepositoryGitPolicy(f.repo.path, policy)
+    t.after(() => setRepositoryGitPolicy(f.repo.path, null))
+
+    // The variable alone, without the block, keeps ext:: from running.
+    await run(['remote', 'set-url', 'origin', extRemote(f.marker)], f.repo.path)
+    const env = getGitEnvironmentFor(f.repo.path, ['fetch'])
+    assert.ok(env.GIT_ALLOW_PROTOCOL)
+    await removeMarker(f)
+    await exec(['fetch', 'origin'], f.repo.path, { env })
+    assert.equal(await exists(f.marker), false)
+  })
+
+  it('gives a path the app does not know the cautious policy once the app has loaded', () => {
+    const unknown = join(process.cwd(), 'not-a-known-repository')
+    setFailClosed(true)
+    try {
+      const args = getGitArgumentsFor(unknown, ['status'])
+      assert.ok(args.some(a => a.startsWith('core.hooksPath=')))
+      assert.ok(args.includes('core.fsmonitor=false'))
+      assert.equal(
+        getGitArgumentsFor(unknown, ['clone', 'x', 'y']).some(a =>
+          a.startsWith('core.hooksPath=')
+        ),
+        false,
+        'a clone has no repository yet'
+      )
+    } finally {
+      setFailClosed(false)
+    }
+    assert.equal(
+      getGitArgumentsFor(unknown, ['status']).some(a =>
+        a.startsWith('core.hooksPath=')
+      ),
+      false
+    )
+  })
 })

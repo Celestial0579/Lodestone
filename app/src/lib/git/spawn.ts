@@ -5,7 +5,9 @@ import {
   getGitArgumentsFor,
   getGitEnvironmentFor,
   getNetworkBlock,
+  getSubmoduleBlock,
   RepositoryNetworkBlockedError,
+  RepositorySubmoduleBlockedError,
 } from './repository-trust-state'
 
 type SpawnOptions = IGitSpawnOptions & {
@@ -34,6 +36,10 @@ export const spawnGit = (
   if (blockedBy !== null) {
     return Promise.reject(new RepositoryNetworkBlockedError(blockedBy))
   }
+  const submoduleBlock = getSubmoduleBlock(path, args)
+  if (submoduleBlock !== null) {
+    return Promise.reject(new RepositorySubmoduleBlockedError(submoduleBlock))
+  }
   args = [...getGitArgumentsFor(path, args)]
 
   return withTrampolineEnv(
@@ -44,7 +50,7 @@ export const spawnGit = (
           env: {
             ...options?.env,
             ...trampolineEnv,
-            ...getGitEnvironmentFor(path),
+            ...getGitEnvironmentFor(path, args),
           },
         })
       ),

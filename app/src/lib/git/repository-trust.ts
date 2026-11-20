@@ -24,6 +24,8 @@ export interface IConfigEntry {
   readonly origin: string
   readonly key: string
   readonly value: string
+  /** Set when the entry comes from a submodule's own configuration: where that is. */
+  readonly submodule?: string
 }
 
 /**
@@ -76,6 +78,7 @@ const CommandKeyPatterns: ReadonlyArray<RegExp> = [
   /^gpg\..+\.program$/,
   /^gpg\.ssh\.defaultkeycommand$/,
   /^remote\..+\.(uploadpack|receivepack)$/,
+  /^core\.alternaterefscommand$/,
 ]
 
 /** Keys that change where Git connects or what it trusts when it does. */
@@ -83,6 +86,8 @@ const TransportKeyPatterns: ReadonlyArray<RegExp> = [
   /^http\.(sslverify|sslcainfo|sslcapath|proxy|cookiefile|savecookies)$/,
   /^http\..+\.(sslverify|sslcainfo|sslcapath|proxy|cookiefile|savecookies)$/,
   /^url\..+\.(insteadof|pushinsteadof)$/,
+  // protocol.ext.allow=always lets an ext:: remote run a command.
+  /^protocol\..+$/,
 ]
 
 /**
@@ -232,6 +237,9 @@ function neutralValue(key: string, emptyHooksDirectory: string): string {
   if (/^submodule\..+\.update$/.test(k)) {
     return 'checkout'
   }
+  if (k === 'core.alternaterefscommand') {
+    return 'true'
+  }
 
   return ''
 }
@@ -255,6 +263,8 @@ export function getOverrideArguments(
   // whether it sets them or not.
   keys.set('core.hooksPath', emptyHooksDirectory)
   keys.set('core.fsmonitor', 'false')
+  // Nothing goes into a submodule, whose own configuration is not the one asked about.
+  keys.set('submodule.recurse', 'false')
 
   return [...keys].flatMap(([key, value]) => ['-c', `${key}=${value}`])
 }
@@ -303,7 +313,11 @@ export function describeFindings(
   const lines = new Array<string>()
 
   for (const e of [...findings.commandEntries, ...findings.transportEntries]) {
-    lines.push(`${makeVisible(e.key)} = ${makeVisible(e.value)}`)
+    const where =
+      e.submodule === undefined
+        ? ''
+        : `[submodule ${makeVisible(e.submodule)}] `
+    lines.push(`${where}${makeVisible(e.key)} = ${makeVisible(e.value)}`)
   }
 
   for (const h of findings.hooks) {

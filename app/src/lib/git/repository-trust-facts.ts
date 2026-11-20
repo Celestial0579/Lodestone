@@ -9,6 +9,7 @@ import { readdir, readFile, stat } from 'fs/promises'
 import * as Path from 'path'
 import {
   findRepositoryFindings,
+  IConfigEntry,
   IHookFile,
   IRepositoryFindings,
   parseConfigList,
@@ -50,6 +51,122 @@ const isInside = (parent: string, child: string) => {
   return (
     relative !== '' && !relative.startsWith('..') && !Path.isAbsolute(relative)
   )
+}
+
+const isGitDirectory = (directory: string) =>
+  stat(Path.join(directory, 'HEAD')).then(
+    i => i.isFile(),
+    () => false
+  )
+
+/** Git directories under a `modules` directory, nested modules included. */
+async function collectModuleDirectories(
+  modules: string,
+  found: Set<string>,
+  depth = 0
+) {
+  if (depth > 8) {
+    return
+  }
+
+  for (const name of await readdir(modules).catch(() => [])) {
+    const directory = Path.join(modules, name)
+    const info = await stat(directory).catch(() => null)
+
+    if (info === null || !info.isDirectory()) {
+      continue
+    }
+
+    if (await isGitDirectory(directory)) {
+      found.add(directory)
+      await collectModuleDirectories(
+        Path.join(directory, 'modules'),
+        found,
+        depth + 1
+      )
+    } else {
+      await collectModuleDirectories(directory, found, depth + 1)
+    }
+  }
+}
+
+/**
+ * The Git directories of the submodules: those under `modules`, and the target
+ * of the `.git` file in every populated submodule, which can point anywhere.
+ */
+async function findSubmoduleDirectories(
+  path: string,
+  workTree: string,
+  commonDir: string
+): Promise<ReadonlyArray<string>> {
+  const found = new Set<string>()
+  await collectModuleDirectories(Path.join(commonDir, 'modules'), found)
+
+  const staged = await exec(
+    [...ReadOnly, 'ls-files', '--stage', '-z'],
+    path
+  ).catch(() => null)
+
+  for (const record of staged?.stdout.split('\0') ?? []) {
+    const match = /^160000 [0-9a-f]+ \d\t(.+)$/.exec(record)
+    if (match === null) {
+      continue
+    }
+
+    const submodulePath = Path.join(workTree, match[1])
+    const dotGit = Path.join(submodulePath, '.git')
+    const info = await stat(dotGit).catch(() => null)
+
+    if (info === null) {
+      continue
+    }
+
+    if (info.isDirectory()) {
+      found.add(dotGit)
+    } else {
+      const text = await readFile(dotGit, 'utf8').catch(() => '')
+      const target = /^gitdir:\s*(.+?)\s*$/m.exec(text)?.[1]
+      if (target !== undefined) {
+        const directory = Path.resolve(submodulePath, target)
+        found.add(directory)
+        await collectModuleDirectories(Path.join(directory, 'modules'), found)
+      }
+    }
+  }
+
+  return [...found].sort()
+}
+
+/** A submodule's own configuration, read as if it were the repository's. */
+async function readSubmoduleConfig(
+  path: string,
+  directory: string,
+  label: string
+): Promise<ReadonlyArray<IConfigEntry>> {
+  const result = await exec(
+    [
+      ...ReadOnly,
+      'config',
+      '--list',
+      '--show-origin',
+      '--show-scope',
+      '-z',
+      '--includes',
+      '--file',
+      Path.join(directory, 'config'),
+    ],
+    path
+  ).catch(() => null)
+
+  if (result === null || result.exitCode !== 0) {
+    return []
+  }
+
+  return parseConfigList(result.stdout).map(e => ({
+    ...e,
+    scope: 'local',
+    submodule: label,
+  }))
 }
 
 /**
@@ -112,7 +229,31 @@ export async function readRepositoryFindings(
       ? null
       : Path.resolve(workTree, hooksPathEntry.value)
 
+  const submoduleDirectories = await findSubmoduleDirectories(
+    path,
+    workTree,
+    gitDirectories[1]
+  )
+  const submoduleEntries = new Array<IConfigEntry>()
+  const submoduleHooks = new Array<IHookFile>()
+
+  for (const directory of submoduleDirectories) {
+    const label = isInside(workTree, directory)
+      ? Path.relative(workTree, directory)
+      : directory
+    submoduleEntries.push(
+      ...(await readSubmoduleConfig(path, directory, label))
+    )
+    for (const h of await readHooks(Path.join(directory, 'hooks'))) {
+      submoduleHooks.push({
+        name: `submodule ${label}/hooks/${h.name}`,
+        sha256: h.sha256,
+      })
+    }
+  }
+
   const hooks = [
+    ...submoduleHooks,
     ...(await readHooks(Path.join(gitDirectories[1], 'hooks'))),
     ...(hooksPath === null
       ? []
@@ -123,11 +264,13 @@ export async function readRepositoryFindings(
   ]
 
   const findings = findRepositoryFindings(
-    entries.map(e =>
-      e.origin.startsWith('file:')
-        ? { ...e, origin: `file:${resolveOrigin(e.origin.slice(5))}` }
-        : e
-    ),
+    entries
+      .map(e =>
+        e.origin.startsWith('file:')
+          ? { ...e, origin: `file:${resolveOrigin(e.origin.slice(5))}` }
+          : e
+      )
+      .concat(submoduleEntries),
     hooks,
     isInWorkTree
   )

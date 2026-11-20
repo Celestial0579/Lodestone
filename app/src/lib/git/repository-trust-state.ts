@@ -82,6 +82,55 @@ export function getRepositoryGitPolicy(
   return policies.get(repositoryPolicyKey(path)) ?? null
 }
 
+/**
+ * Whether a path that has no policy is treated as one not looked at yet. The
+ * app turns this on once it has loaded its repositories; a path it does not
+ * know then gets the overrides of an untrusted one, except for the commands
+ * that create a repository.
+ */
+let failClosed = false
+
+export function setFailClosed(value: boolean) {
+  failClosed = value
+}
+
+/** What a path without a policy gets: nothing it names runs, but it may connect. */
+const unregisteredPolicy = (): IRepositoryGitPolicy => ({
+  ...pendingPolicy(),
+  transportKeys: [],
+  environment: {},
+})
+
+/**
+ * The policy to apply, or null for plain Git: a repository's own, the cautious
+ * one for a path the app does not know, or none for a command that creates a
+ * repository (clone, init).
+ */
+function effectivePolicy(
+  path: string,
+  args: ReadonlyArray<string>
+): IRepositoryGitPolicy | null {
+  const policy = getRepositoryGitPolicy(path)
+
+  if (policy !== null || !failClosed) {
+    return policy
+  }
+
+  const command = getGitCommand(args)
+  return command === 'clone' || command === 'init' ? null : unregisteredPolicy()
+}
+
+/**
+ * The transports an untrusted repository may use. The variable outranks every
+ * protocol.* key, so a repository cannot allow ext:: for itself, and child
+ * processes inherit it. `file` stays: a remote that is a local path is
+ * ordinary, and the way it is misused (a local path named by a submodule) is
+ * closed because an untrusted repository never updates submodules.
+ */
+const ProtocolEnvironment: Readonly<Record<string, string>> = {
+  GIT_ALLOW_PROTOCOL: 'git:http:https:ssh:file',
+}
+
 /** The policy of a repository that has not been looked at: nothing it names may run. */
 export function pendingPolicy(): IRepositoryGitPolicy {
   return {
@@ -91,10 +140,12 @@ export function pendingPolicy(): IRepositoryGitPolicy {
       'core.fsmonitor=false',
       '-c',
       `core.hooksPath=${getEmptyHooksDirectory()}`,
+      '-c',
+      'submodule.recurse=false',
     ],
     // Until the repository has been looked at, nothing goes over the network.
     transportKeys: ['(not checked yet)'],
-    environment: {},
+    environment: { ...ProtocolEnvironment },
     overridesUploadPack: false,
     overridesReceivePack: false,
   }
@@ -112,7 +163,10 @@ export function buildRepositoryGitPolicy(
     trust,
     overrideArguments: getOverrideArguments(findings, getEmptyHooksDirectory()),
     transportKeys: getTransportBlockKeys(findings),
-    environment: has(/^core\.gitproxy$/) ? { GIT_PROXY_COMMAND: '' } : {},
+    environment: {
+      ...ProtocolEnvironment,
+      ...(has(/^core\.gitproxy$/) ? { GIT_PROXY_COMMAND: '' } : {}),
+    },
     overridesUploadPack: has(/^remote\..+\.uploadpack$/),
     overridesReceivePack: has(/^remote\..+\.receivepack$/),
   }
@@ -135,7 +189,7 @@ export function getGitArgumentsFor(
   path: string,
   args: ReadonlyArray<string> = []
 ): ReadonlyArray<string> {
-  const policy = getRepositoryGitPolicy(path)
+  const policy = effectivePolicy(path, args)
 
   if (policy === null || policy.trust === 'trusted') {
     return [...AlwaysArguments, ...args]
@@ -154,14 +208,28 @@ export function getGitArgumentsFor(
     withOptions.splice(at + 1, 0, '--receive-pack=git-receive-pack')
   }
 
-  return [...AlwaysArguments, ...policy.overrideArguments, ...withOptions]
+  // An untrusted repository never goes into a submodule: the configuration of
+  // a submodule is not what was asked about.
+  const without = (prefix: string) =>
+    withOptions.filter((a, i) => i <= at || !a.startsWith(prefix))
+  let finalArgs: string[] = withOptions
+  if (at !== -1 && command === 'status') {
+    finalArgs = without('--ignore-submodules')
+    finalArgs.splice(at + 1, 0, '--ignore-submodules=all')
+  } else if (at !== -1 && (command === 'fetch' || command === 'pull')) {
+    finalArgs = without('--recurse-submodules')
+    finalArgs.splice(at + 1, 0, '--no-recurse-submodules')
+  }
+
+  return [...AlwaysArguments, ...policy.overrideArguments, ...finalArgs]
 }
 
 /** Environment variables for a Git run in `path`. */
 export function getGitEnvironmentFor(
-  path: string
+  path: string,
+  args: ReadonlyArray<string> = []
 ): Readonly<Record<string, string>> {
-  const policy = getRepositoryGitPolicy(path)
+  const policy = effectivePolicy(path, args)
   return policy === null || policy.trust === 'trusted' ? {} : policy.environment
 }
 
@@ -200,7 +268,7 @@ export function getNetworkBlock(
   path: string,
   args: ReadonlyArray<string>
 ): ReadonlyArray<string> | null {
-  const policy = getRepositoryGitPolicy(path)
+  const policy = effectivePolicy(path, args)
 
   if (
     policy === null ||
@@ -227,5 +295,37 @@ export class RepositoryNetworkBlockedError extends Error {
       )}, which changes where Git connects or what it trusts. Lodestone does not connect to other machines from it. Trust the repository in its settings, or remove those entries, to fetch, pull or push.`
     )
     this.name = 'RepositoryNetworkBlockedError'
+  }
+}
+
+/**
+ * A command that would start Git inside a submodule: `submodule update` and
+ * `submodule foreach`. Not for an untrusted repository. Returns the command
+ * for the message, or null.
+ */
+export function getSubmoduleBlock(
+  path: string,
+  args: ReadonlyArray<string>
+): string | null {
+  const policy = effectivePolicy(path, args)
+
+  if (policy === null || policy.trust === 'trusted') {
+    return null
+  }
+
+  const at = args.indexOf('submodule')
+  if (getGitCommand(args) !== 'submodule' || at === -1) {
+    return null
+  }
+
+  return ['update', 'foreach'].find(c => args.includes(c)) ?? null
+}
+
+export class RepositorySubmoduleBlockedError extends Error {
+  public constructor(command: string) {
+    super(
+      `This repository is not trusted. Lodestone does not run "git submodule ${command}" in it, because that starts Git inside the submodules, which bring their own configuration. Trust the repository in its settings to update its submodules.`
+    )
+    this.name = 'RepositorySubmoduleBlockedError'
   }
 }

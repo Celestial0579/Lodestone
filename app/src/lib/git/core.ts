@@ -21,7 +21,9 @@ import {
   getGitArgumentsFor,
   getGitEnvironmentFor,
   getNetworkBlock,
+  getSubmoduleBlock,
   RepositoryNetworkBlockedError,
+  RepositorySubmoduleBlockedError,
 } from './repository-trust-state'
 
 export const isMaxBufferExceededError = (
@@ -248,6 +250,10 @@ export async function git(
   if (blockedBy !== null) {
     throw new RepositoryNetworkBlockedError(blockedBy)
   }
+  const submoduleBlock = getSubmoduleBlock(path, args)
+  if (submoduleBlock !== null) {
+    throw new RepositorySubmoduleBlockedError(submoduleBlock)
+  }
   args = [...getGitArgumentsFor(path, args)]
 
   // The combined contents of stdout and stderr with some light processing
@@ -305,7 +311,7 @@ export async function git(
                 ...opts.env,
                 ...hooksEnv,
                 ...env,
-                ...getGitEnvironmentFor(path),
+                ...getGitEnvironmentFor(path, args),
               },
             })
           ).catch(err => {

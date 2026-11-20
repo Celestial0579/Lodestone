@@ -358,6 +358,7 @@ import { RepositoryTrustStore } from './repository-trust-store'
 import {
   getRepositoryGitPolicy,
   setEmptyHooksDirectory,
+  setFailClosed,
 } from '../git/repository-trust-state'
 import { getPath } from '../../ui/main-process-proxy'
 import { mkdir as mkdirAsync } from 'fs/promises'
@@ -2528,6 +2529,8 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
     // Before anything runs Git in them, and before they are looked at.
     this.markRepositoriesPending(repositories)
+    // A path the app does not know gets the cautious policy from here on.
+    setFailClosed(true)
     this.repositories = repositories
 
     this.updateRepositorySelectionAfterRepositoriesChanged()

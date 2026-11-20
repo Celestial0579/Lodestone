@@ -8,9 +8,10 @@ When a repository is first opened, and once after the update for repositories al
 
 It looks for:
 
-- keys that make Git run a program: `core.fsmonitor` (when not a plain on/off), `core.hooksPath`, `core.sshCommand`, `core.askPass`, `core.gitProxy`, `core.pager`, `core.editor`, `pager.*`, `sequence.editor`, `diff.external`, `diff.*.textconv`, `diff.*.command`, `merge.*.driver`, `filter.*.clean/smudge/process`, `credential.helper`, `gpg.program` and its variants, `remote.*.uploadpack/receivepack`, and `submodule.*.update` set to a command;
-- keys that change where Git connects or what it trusts: `http.sslVerify`, `http.sslCAInfo`, `http.sslCAPath`, `http.proxy`, `http.cookieFile`, `http.saveCookies` (also per URL) and `url.*.insteadOf`/`pushInsteadOf`;
-- hooks.
+- keys that make Git run a program: `core.fsmonitor` (when not a plain on/off), `core.hooksPath`, `core.sshCommand`, `core.askPass`, `core.gitProxy`, `core.pager`, `core.editor`, `pager.*`, `sequence.editor`, `diff.external`, `diff.*.textconv`, `diff.*.command`, `merge.*.driver`, `filter.*.clean/smudge/process`, `credential.helper`, `gpg.program` and its variants, `remote.*.uploadpack/receivepack`, `core.alternateRefsCommand`, and `submodule.*.update` set to a command;
+- keys that change where Git connects or what it trusts: `http.sslVerify`, `http.sslCAInfo`, `http.sslCAPath`, `http.proxy`, `http.cookieFile`, `http.saveCookies` (also per URL) and `url.*.insteadOf`/`pushInsteadOf`, and every `protocol.*` key (`protocol.ext.allow=always` lets an `ext::` remote run a command);
+- hooks;
+- the same keys and hooks in the Git directory of every submodule (`.git/modules/**`, nested modules, and the target of a populated submodule's `.git` file), because Git reads that configuration when it looks at a submodule.
 
 ## The question
 
@@ -18,7 +19,7 @@ The dialog lists every key, value and hook name as text. Control characters, bid
 
 ## Untrusted
 
-Until you answer, and after you answer no, every Git call for that repository, automatic or started by you, runs with the command keys overridden and hooks pointed at an empty folder. Local operations keep working. If the repository also sets transport keys, it gets no network operations, background fetch included.
+Until you answer, and after you answer no, every Git call for that repository, automatic or started by you, runs with the command keys overridden and hooks pointed at an empty folder. Local operations keep working. Git never goes into a submodule: status runs with `--ignore-submodules=all`, fetch and pull with `--no-recurse-submodules`, `submodule.recurse` is off, and submodules are not updated. Only `git:`, `http:`, `https:`, `ssh:` and `file:` transports are allowed (`GIT_ALLOW_PROTOCOL`), whatever `protocol.*` says. If the repository also sets transport keys, it gets no network operations, background fetch included.
 
 ## Trusted
 
@@ -30,6 +31,7 @@ Lodestone stores a fingerprint (keys, values, origin files, hook names and the S
 
 ## Always on
 
+- A path the app does not know (not in the list, not yet added) gets the overrides of an untrusted repository, except for `clone` and `init`.
 - The work tree is the folder that holds `.git`. A repository whose `core.worktree` points elsewhere is refused. In a subfolder, Lodestone offers the top-level folder.
 - `-c safe.bareRepository=explicit` on every call.
 - Status runs with `core.fsmonitor=false`; diff, log and show run with `--no-ext-diff --no-textconv`.

@@ -1038,24 +1038,28 @@ describe('errors other than "not there" (#104)', () => {
 
     let short = junction
     try {
-      short = execFileSync('cmd.exe', [
-        '/d',
-        '/c',
-        `for %I in ("${junction}") do @echo %~sI`,
-      ])
+      // Verbatim arguments: node would otherwise quote the whole command.
+      short = execFileSync(
+        'cmd.exe',
+        ['/d', '/s', '/c', `"for %I in ("${junction}") do @echo %~sI"`],
+        { windowsVerbatimArguments: true }
+      )
         .toString()
         .trim()
     } catch {
       return t.skip('cannot ask for the short name')
     }
-    if (short === junction || short === '') {
-      return t.skip('8.3 names are off on this volume')
+    if (short === junction || !short.includes('~') || /["']/.test(short)) {
+      return t.skip(`8.3 names are off, or not readable here: ${short}`)
     }
 
     await exec(['config', 'diff.orderFile', `${short}\\order`], path)
     const found = await findNetworkPaths(path)
-    // Probe: what the check reports for a short name on a real Windows volume.
-    t.diagnostic(`8.3 probe: short=${short} found=${JSON.stringify(found)}`)
+    t.diagnostic(`8.3: short=${short} found=${JSON.stringify(found)}`)
+    assert.ok(
+      found.some(l => l.includes('link or junction')),
+      JSON.stringify(found)
+    )
   })
 
   it('maps forbidden characters to the private use area, as MSYS2 does', () => {

@@ -9,6 +9,7 @@ import { lstat, readdir, readFile } from 'fs/promises'
 import {
   findNetworkPathsInGitDirectory,
   isNetworkPath,
+  parseGitFile,
 } from './repository-trust-paths'
 import { setRepositoryRefusal } from './repository-trust-state'
 import * as Path from 'path'
@@ -154,7 +155,7 @@ async function findSubmoduleDirectories(
       info.isFile() && info.size <= 4096
         ? await readFile(dotGit, 'utf8').catch(() => '')
         : ''
-    const target = /^gitdir:\s*(.+?)\s*$/m.exec(text)?.[1]
+    const target = parseGitFile(text) ?? undefined
 
     if (target === undefined) {
       notes.push(

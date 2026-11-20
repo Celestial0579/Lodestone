@@ -31,7 +31,7 @@
  */
 
 import { exec } from 'dugite'
-import { lstat, readdir, readFile } from 'fs/promises'
+import { lstat, mkdir, readdir, readFile } from 'fs/promises'
 import type { Stats } from 'fs'
 import { tmpdir } from 'os'
 import * as Path from 'path'
@@ -114,6 +114,14 @@ const newScan = (base: string): IScan => ({
   gitDirectories: new Set(),
 })
 
+/** Whether the last part of a path ends in a dot or a space (not `.` or `..`). */
+export function hasTrailingDotOrSpace(path: string): boolean {
+  const name = path.split(/[\\/]/).pop() ?? ''
+  return name !== '.' && name !== '..' && /[. ]$/.test(name)
+}
+
+const isWindows = () => process.platform === 'win32'
+
 const sameName = (a: string, b: string) =>
   process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b
 
@@ -181,6 +189,13 @@ async function lookAt(scan: IScan, path: string): Promise<Stats | null> {
 
   let info: Stats | null = null
   for (const part of parts) {
+    // Windows drops trailing dots and spaces from the last part of a name when
+    // Git opens it, but not Node's lstat, which then sees nothing there.
+    if (isWindows() && hasTrailingDotOrSpace(part)) {
+      scan.found.push(show('name ends in a dot or a space', part))
+      return null
+    }
+
     try {
       info = await lstat(part)
     } catch {
@@ -211,8 +226,14 @@ async function walk(scan: IScan, directory: string) {
     scan.walked.add(current)
 
     const entries = await readdir(current, { withFileTypes: true }).catch(
-      () => []
+      () => null
     )
+
+    // A directory that cannot be listed can still be opened by name.
+    if (entries === null) {
+      scan.found.push(show('cannot be listed', current))
+      continue
+    }
 
     for (const entry of entries) {
       if (++scan.entries > MaxEntries) {
@@ -266,11 +287,13 @@ function subsectionOf(key: string): string | null {
 async function listConfigFile(
   file: string
 ): Promise<ReadonlyArray<{ key: string; value: string }> | null> {
-  // From a folder outside the repository, with nothing above it to look in.
+  // From an empty folder of our own, with nothing above it to look in.
+  const cwd = Path.join(tmpdir(), 'lodestone-empty-cwd')
+  await mkdir(cwd, { recursive: true }).catch(() => undefined)
   const result = await exec(
     ['config', '--file', file, '--no-includes', '--list', '-z'],
-    tmpdir(),
-    { env: { GIT_CEILING_DIRECTORIES: Path.dirname(tmpdir()) } }
+    cwd,
+    { env: { GIT_CEILING_DIRECTORIES: tmpdir() } }
   ).catch(() => null)
 
   if (result === null || result.exitCode !== 0) {
@@ -303,10 +326,20 @@ const PathKeys: ReadonlySet<string> = new Set([
  */
 async function scanConfig(scan: IScan, file: string, depth: number) {
   const before = scan.configs.get(file)
-  if (depth > MaxIncludeDepth || (before !== undefined && before <= depth)) {
+  if (
+    depth > MaxIncludeDepth + 1 ||
+    (before !== undefined && before <= depth)
+  ) {
     return
   }
   scan.configs.set(file, depth)
+
+  // Git looks at the include one level past its limit before it stops, so the
+  // file is looked at before the depth is.
+  if (depth > MaxIncludeDepth) {
+    await lookAt(scan, file)
+    return
+  }
 
   if ((await readChecked(scan, file)) === null) {
     return
@@ -409,15 +442,24 @@ export function unquoteAlternate(line: string): string | null {
 async function scanAlternates(scan: IScan, objects: string, depth: number) {
   const file = Path.join(objects, 'info', 'alternates')
   const before = scan.alternates.get(file)
-  if (depth > MaxAlternatesDepth || (before !== undefined && before <= depth)) {
+  if (
+    depth > MaxAlternatesDepth + 1 ||
+    (before !== undefined && before <= depth)
+  ) {
     return
   }
   scan.alternates.set(file, depth)
 
+  // Git looks at the file one level past its limit before it stops.
+  if (depth > MaxAlternatesDepth) {
+    await lookAt(scan, file)
+    return
+  }
+
   const text = await readChecked(scan, file)
 
-  for (const raw of text?.split(/\r?\n/) ?? []) {
-    const line = raw.trim()
+  // Lines as Git reads them: split at a line feed only, nothing trimmed.
+  for (const line of text?.split('\n') ?? []) {
     if (line === '' || line.startsWith('#')) {
       continue
     }
@@ -455,11 +497,12 @@ async function scanGitDirectory(scan: IScan, directory: string) {
   await scanAlternates(scan, Path.join(directory, 'objects'), 0)
 
   // In a linked work tree the common directory holds config and objects.
-  const common = (
-    await readChecked(scan, Path.join(directory, 'commondir'))
-  )?.trim()
+  const raw = await readChecked(scan, Path.join(directory, 'commondir'))
+  const common = raw?.replace(/\n$/, '')
   if (common !== undefined && common !== '') {
-    if (isNetworkPath(common)) {
+    if (/^\s|\s$|\uFEFF|\0/.test(common)) {
+      scan.found.push(show('commondir is not a plain path', common))
+    } else if (isNetworkPath(common)) {
       scan.found.push(show('commondir', common))
     } else {
       await scanGitDirectory(scan, Path.resolve(directory, common))
@@ -494,18 +537,30 @@ async function scanModuleConfigs(scan: IScan, modules: string, depth = 0) {
   }
 }
 
+/**
+ * The target a `.git` file names, byte for byte as Git reads it: the content
+ * must start with exactly `gitdir: `, and only trailing line ends are cut.
+ * Leading spaces belong to the path. Null for anything else, a leading byte
+ * order mark and a second line included.
+ */
+export function parseGitFile(text: string): string | null {
+  if (!text.startsWith('gitdir: ') || text.length > 4096) {
+    return null
+  }
+
+  const target = text.slice('gitdir: '.length).replace(/[\r\n]+$/, '')
+  return target === '' || /[\r\n\0]/.test(target) ? null : target
+}
+
 /** The target of a `.git` file, or null when it is not a plain gitdir file. */
 async function gitFileTarget(
   scan: IScan,
   file: string
 ): Promise<string | null> {
   const text = await readChecked(scan, file)
-  const target =
-    text === null || text.length > 4096
-      ? undefined
-      : /^gitdir:\s*(.+?)\s*$/m.exec(text)?.[1]
+  const target = text === null ? null : parseGitFile(text)
 
-  if (target === undefined) {
+  if (target === null) {
     scan.found.push(show('not a plain gitdir file', file))
     return null
   }

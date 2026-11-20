@@ -1,13 +1,15 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
 import { exec } from 'dugite'
-import { mkdir, rm, symlink, writeFile } from 'fs/promises'
+import { chmod, mkdir, rm, symlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { createTempDirectory } from '../../helpers/temp'
 import {
   findNetworkPaths,
   findNetworkPathsUpward,
+  hasTrailingDotOrSpace,
   isNetworkPath,
+  parseGitFile,
   unquoteAlternate,
 } from '../../../src/lib/git/repository-trust-paths'
 import { readRepositoryFindings } from '../../../src/lib/git/repository-trust-facts'
@@ -489,5 +491,127 @@ describe('links anywhere in a Git directory (#103)', () => {
     assert.ok(
       (await findNetworkPaths(path)).some(l => l.includes('link or junction'))
     )
+  })
+})
+
+describe('files read byte for byte, as Git reads them (#103)', () => {
+  async function repo(t: Parameters<typeof createTempDirectory>[0]) {
+    const path = await createTempDirectory(t)
+    await exec(['init', '-q', '-b', 'main'], path)
+    return path
+  }
+
+  it('reads a .git file the way Git does', () => {
+    assert.equal(parseGitFile('gitdir: evil\n'), 'evil')
+    assert.equal(parseGitFile('gitdir: evil\r\n'), 'evil')
+    assert.equal(parseGitFile('gitdir:  evil\n'), ' evil')
+    assert.equal(parseGitFile('\uFEFFgitdir: evil\n'), null)
+    assert.equal(parseGitFile('gitdir:evil'), null)
+    assert.equal(parseGitFile('gitdir: a\nb\n'), null)
+    assert.equal(parseGitFile('gitdir: \n'), null)
+  })
+
+  it('checks the folder a .git file names with a leading space, as Git opens it', async t => {
+    const path = await createTempDirectory(t)
+    const dir = join(path, ' evil')
+    await mkdir(dir)
+    await writeFile(join(dir, 'config'), '[core]\n\thooksPath = //host/h\n')
+    await writeFile(join(path, '.git'), 'gitdir:  evil\n')
+    assert.ok((await findNetworkPaths(path)).length > 0)
+  })
+
+  it('follows an alternates line that starts with a space and a hash, as Git does', async t => {
+    const path = await repo(t)
+    const base = await createTempDirectory(t)
+    const entry = join(base, ' #x')
+    await mkdir(join(entry, 'info'), { recursive: true })
+    await writeFile(join(entry, 'info', 'alternates'), '//host/objects\n')
+    await writeFile(
+      join(path, '.git', 'objects', 'info', 'alternates'),
+      `${fwd(entry)}\n`
+    )
+    assert.equal((await findNetworkPaths(path)).length, 1)
+
+    // The line itself starts with a space and a hash.
+    const relative = ' #y'
+    await mkdir(join(path, '.git', 'objects', relative, 'info'), {
+      recursive: true,
+    })
+    await writeFile(
+      join(path, '.git', 'objects', relative, 'info', 'alternates'),
+      '//host/z\n'
+    )
+    await writeFile(
+      join(path, '.git', 'objects', 'info', 'alternates'),
+      `${relative}\n`
+    )
+    assert.equal((await findNetworkPaths(path)).length, 1)
+  })
+
+  it('refuses a commondir with whitespace, a carriage return or a byte order mark', async t => {
+    const main = await repo(t)
+    await exec(['config', 'user.name', 't'], main)
+    await exec(['config', 'user.email', 't@e.x'], main)
+    await exec(['commit', '-q', '--allow-empty', '-m', 'one'], main)
+    const linked = join(await createTempDirectory(t), 'linked')
+    await exec(['worktree', 'add', '-q', linked], main)
+    const gitFile = await (
+      await import('fs/promises')
+    ).readFile(join(linked, '.git'), 'utf8')
+    const gitDir = gitFile.replace(/^gitdir:\s*/, '').trim()
+
+    for (const value of [
+      ' ../..\n',
+      '../.. \n',
+      '../..\r\n',
+      '\uFEFF../..\n',
+    ]) {
+      await writeFile(join(gitDir, 'commondir'), value)
+      assert.ok(
+        (await findNetworkPaths(linked)).some(l =>
+          l.includes('commondir is not a plain path')
+        ),
+        JSON.stringify(value)
+      )
+    }
+  })
+
+  it('looks at the include one past the depth limit before it stops', async t => {
+    const path = await repo(t)
+    const dir = await createTempDirectory(t)
+    const f = (n: number) => fwd(join(dir, `i${n}`))
+    for (let i = 1; i <= 10; i++) {
+      await writeFile(join(dir, `i${i}`), `[include]\n\tpath = ${f(i + 1)}\n`)
+    }
+    try {
+      await symlink(dir, join(dir, 'i11'), 'junction')
+    } catch {
+      return t.skip('this system does not let the test make links')
+    }
+    await exec(['config', 'include.path', f(1)], path)
+    assert.ok(
+      (await findNetworkPaths(path)).some(l => l.includes('link or junction'))
+    )
+  })
+
+  it('refuses a directory that cannot be listed', async t => {
+    if (process.platform === 'win32' || process.getuid?.() === 0) {
+      return t.skip('needs a user that modes apply to')
+    }
+    const path = await repo(t)
+    const locked = join(path, '.git', 'refs', 'heads')
+    await chmod(locked, 0o000)
+    t.after(() => chmod(locked, 0o755).catch(() => undefined))
+    assert.ok(
+      (await findNetworkPaths(path)).some(l => l.includes('cannot be listed'))
+    )
+  })
+
+  it('knows names that end in a dot or a space', () => {
+    assert.equal(hasTrailingDotOrSpace('/a/x.cfg.'), true)
+    assert.equal(hasTrailingDotOrSpace('C:\\a\\lnk '), true)
+    assert.equal(hasTrailingDotOrSpace('/a/.'), false)
+    assert.equal(hasTrailingDotOrSpace('/a/..'), false)
+    assert.equal(hasTrailingDotOrSpace('/a/x.cfg'), false)
   })
 })

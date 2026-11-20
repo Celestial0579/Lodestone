@@ -10,7 +10,7 @@ export async function getFilesWithConflictMarkers(
   repositoryPath: string
 ): Promise<Map<string, number>> {
   const { stdout } = await git(
-    ['diff', '--check'],
+    ['diff', '--no-ext-diff', '--no-textconv', '--check'],
     repositoryPath,
     'getFilesWithConflictMarkers',
     { successExitCodes: new Set([0, 2]) }

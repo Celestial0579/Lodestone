@@ -56,6 +56,13 @@ export async function getRepositoryType(path: string): Promise<RepositoryType> {
       }
     }
 
+    // Every Git run of the app passes safe.bareRepository=explicit, so that a
+    // bare repository inside a work tree is never picked up on its own. Git
+    // then names the bare repository it declined to use.
+    if (result.stderr.includes('cannot use bare repository')) {
+      return { kind: 'bare' }
+    }
+
     // Trace output may precede the diagnostic. Match at line boundaries,
     // including the first line, without splitting paths containing newlines.
     const stderr = `\n${result.stderr}`

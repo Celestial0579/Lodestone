@@ -1,6 +1,12 @@
 import { spawn, IGitSpawnOptions } from 'dugite'
 import * as GitPerf from '../../ui/lib/git-perf'
 import { withTrampolineEnv } from '../trampoline/trampoline-environment'
+import {
+  getGitArgumentsFor,
+  getGitEnvironmentFor,
+  getNetworkBlock,
+  RepositoryNetworkBlockedError,
+} from './repository-trust-state'
 
 type SpawnOptions = IGitSpawnOptions & {
   /**
@@ -23,16 +29,27 @@ export const spawnGit = (
   path: string,
   name: string,
   options?: SpawnOptions
-) =>
-  withTrampolineEnv(
+) => {
+  const blockedBy = getNetworkBlock(path, args)
+  if (blockedBy !== null) {
+    return Promise.reject(new RepositoryNetworkBlockedError(blockedBy))
+  }
+  args = [...getGitArgumentsFor(path, args)]
+
+  return withTrampolineEnv(
     trampolineEnv =>
       GitPerf.measure(`${name}: git ${args.join(' ')}`, async () =>
         spawn(args, path, {
           ...options,
-          env: { ...options?.env, ...trampolineEnv },
+          env: {
+            ...options?.env,
+            ...trampolineEnv,
+            ...getGitEnvironmentFor(path),
+          },
         })
       ),
     path,
     options?.isBackgroundTask ?? false,
     options?.env
   )
+}

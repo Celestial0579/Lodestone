@@ -283,6 +283,8 @@ export async function getStashedFiles(
   const args = [
     'stash',
     'show',
+    '--no-ext-diff',
+    '--no-textconv',
     stashSha,
     '--raw',
     '--numstat',

@@ -39,6 +39,22 @@ Files are read byte for byte as Git reads them: a `.git` file must start with ex
 
 A submodule's `.git` file is a refusal if its target is a network path, and its target is checked like any Git directory.
 
+## Windows name rules
+
+Windows reads a path differently from Node's `lstat`, and a link that `lstat` misses can still be followed by Git or `ssh-keygen`. This is how the check handles each rule (`lookAt` in `repository-trust-paths.ts`), and the test that shows it. Tests marked (Windows) run only on Windows CI.
+
+| Rule | How the check handles it | Test (`repository-trust-paths-test.ts`) |
+| --- | --- | --- |
+| Drive-relative path (`C:lnk/key`) | `Path.resolve` reads it as Windows does, against the repository's folder on that drive | "reads a drive-relative user.signingkey as Windows does" |
+| Stream (`lnk:stream`) | the name is cut at the colon: the part before it is looked at (`lnk` may be a junction); a plain file with a stream is not refused | "cuts a name at a stream colon and maps forbidden characters", "refuses a stream name whose file is a junction, for every key" (Windows), "does not refuse a plain file with a stream" (Windows) |
+| `< > " \| ? *` in a name | the walk ends as "not there"; the parts before are looked at; the MSYS2 name (the character as U+F000 plus its code, as `ssh-keygen` of Git for Windows maps it) is looked at instead when it exists | "looks at the parts before a character Windows forbids, and resolves .. first", "maps forbidden characters to the private use area", "looks at the MSYS2 name of a part with a forbidden character when it exists" (Windows) |
+| Trailing dot or space of a name | refused: Git opens the name without them, `lstat` sees nothing | "knows names that end in a dot or a space", "refuses a name that ends in a dot or a space where Windows drops them" (Windows) |
+| `..` in a value | `Path.resolve` removes it before any part is looked at, as Windows does (`a<b/../lnk/key` is `lnk/key`) | "looks at the parts before a character Windows forbids, and resolves .. first" |
+| `\\?\`, `\\.\`, `\??\`, `//`, `\/`, `/\`, `file://host/share` | a network or device path: the repository is refused, nothing is opened | "isNetworkPath" cases |
+| 8.3 short names | a short name of a junction reaches the junction; `lstat` of it reports a link, so it is refused | "looks at a junction named by its 8.3 short name" (Windows, skipped when 8.3 names are off) |
+| Case | every part from the drive root is looked at, whatever its case; `lstat` ignores case on NTFS | "compares names without regard to case on Windows" (Windows) |
+| Link or junction on the way | refused at the first one, every part from the root is looked at | "refuses links and junctions where the repository has its own files" |
+
 ## Always on
 
 - A path the app does not know (not in the list, not yet added) gets the overrides of an untrusted repository, except for `clone` and `init`.

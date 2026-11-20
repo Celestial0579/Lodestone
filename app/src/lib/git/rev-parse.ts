@@ -1,11 +1,18 @@
 import { git } from './core'
 import { directoryExists } from '../directory-exists'
-import { dirname, resolve } from 'path'
+import { dirname, join, resolve } from 'path'
+import { pathExists } from '../path-exists'
 import { realpath } from 'fs/promises'
 
 export type RepositoryType =
   | { kind: 'bare' }
   | { kind: 'regular'; topLevelWorkingDirectory: string; gitDir: string }
+  /**
+   * The repository's configuration points its working tree somewhere other than
+   * the folder that holds `.git` (core.worktree), so Git would read and write
+   * files in another folder. The app does not open such a repository.
+   */
+  | { kind: 'redirected'; topLevelWorkingDirectory: string }
   | { kind: 'missing' }
   | { kind: 'unsafe'; path: string }
 
@@ -46,14 +53,31 @@ export async function getRepositoryType(path: string): Promise<RepositoryType> {
       if (match) {
         const [, isBare, cdup, gitDir] = match
 
-        return isBare === 'true'
-          ? { kind: 'bare' }
-          : {
-              kind: 'regular',
-              topLevelWorkingDirectory: resolve(path, cdup),
-              gitDir: resolve(path, gitDir),
-            }
+        if (isBare === 'true') {
+          return { kind: 'bare' }
+        }
+
+        const topLevelWorkingDirectory = resolve(path, cdup)
+
+        // The work tree must be the folder that holds `.git`, whether `.git`
+        // is a directory or a file. Anything else is core.worktree.
+        if (!(await pathExists(join(topLevelWorkingDirectory, '.git')))) {
+          return { kind: 'redirected', topLevelWorkingDirectory }
+        }
+
+        return {
+          kind: 'regular',
+          topLevelWorkingDirectory,
+          gitDir: resolve(path, gitDir),
+        }
       }
+    }
+
+    // Every Git run of the app passes safe.bareRepository=explicit, so that a
+    // bare repository inside a work tree is never picked up on its own. Git
+    // then names the bare repository it declined to use.
+    if (result.stderr.includes('cannot use bare repository')) {
+      return { kind: 'bare' }
     }
 
     // Trace output may precede the diagnostic. Match at line boundaries,

@@ -211,6 +211,9 @@ export async function getStatus(
 ): Promise<IStatusResult | null> {
   const args = [
     '--no-optional-locks',
+    // Reading the status never runs the repository's file system monitor.
+    '-c',
+    'core.fsmonitor=false',
     'status',
     ...(includeUntracked ? ['--untracked-files=all'] : []),
     '--branch',

@@ -17,6 +17,16 @@ import { withHooksEnv } from '../hooks/with-hooks-env'
 import { parseGitError } from './parse-git-error'
 import { coerceToString } from './coerce-to-string'
 import { pushTerminalChunk } from './push-terminal-chunk'
+import {
+  getGitArgumentsFor,
+  getGitEnvironmentFor,
+  getNetworkBlock,
+  getRepositoryRefusal,
+  RepositoryRefusedError,
+  getSubmoduleBlock,
+  RepositoryNetworkBlockedError,
+  RepositorySubmoduleBlockedError,
+} from './repository-trust-state'
 
 export const isMaxBufferExceededError = (
   error: unknown
@@ -236,6 +246,22 @@ export async function git(
 
   const opts = { ...defaultOptions, ...options }
 
+  // What the repository names must not run unless the user said so, and no
+  // untrusted repository with its own transport settings connects anywhere.
+  const refusal = getRepositoryRefusal(path)
+  if (refusal.length > 0) {
+    throw new RepositoryRefusedError(refusal)
+  }
+  const blockedBy = getNetworkBlock(path, args)
+  if (blockedBy !== null) {
+    throw new RepositoryNetworkBlockedError(blockedBy)
+  }
+  const submoduleBlock = getSubmoduleBlock(path, args)
+  if (submoduleBlock !== null) {
+    throw new RepositorySubmoduleBlockedError(submoduleBlock)
+  }
+  args = [...getGitArgumentsFor(path, args)]
+
   // The combined contents of stdout and stderr with some light processing
   // applied to remove redundant lines caused by Git's use of `\r` to "erase"
   // the current line while writing progress output. See createTerminalOutput.
@@ -291,6 +317,7 @@ export async function git(
                 ...opts.env,
                 ...hooksEnv,
                 ...env,
+                ...getGitEnvironmentFor(path, args),
               },
             })
           ).catch(err => {

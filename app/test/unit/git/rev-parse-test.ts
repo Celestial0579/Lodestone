@@ -289,3 +289,46 @@ describe('git/rev-parse', () => {
     })
   })
 })
+
+describe('getRepositoryType and core.worktree', () => {
+  it('refuses a repository whose configuration puts the working tree elsewhere', async t => {
+    const repo = await createTempDirectory(t)
+    const other = await createTempDirectory(t)
+    await exec(['init', '-q'], repo)
+    await exec(['config', 'core.worktree', other], repo)
+
+    const type = await getRepositoryType(repo)
+
+    assert.equal(type.kind, 'redirected')
+  })
+
+  it('accepts a repository whose .git is a file, as in a linked work tree', async t => {
+    const main = await createTempDirectory(t)
+    await exec(['init', '-q', '-b', 'main'], main)
+    await exec(['config', 'user.name', 't'], main)
+    await exec(['config', 'user.email', 't@e.x'], main)
+    await exec(['commit', '-q', '--allow-empty', '-m', 'one'], main)
+    const linked = path.join(await createTempDirectory(t), 'linked')
+    await exec(['worktree', 'add', '-q', linked], main)
+
+    const type = await getRepositoryType(linked)
+
+    assert.equal(type.kind, 'regular')
+  })
+
+  it('reports the folder that holds .git when asked in a subfolder', async t => {
+    const repo = await createTempDirectory(t)
+    await exec(['init', '-q'], repo)
+    const sub = path.join(repo, 'a', 'b')
+    await mkdir(sub, { recursive: true })
+
+    const type = await getRepositoryType(sub)
+
+    assert.equal(type.kind, 'regular')
+    assert.equal(
+      type.kind === 'regular' &&
+        (await realpath(type.topLevelWorkingDirectory)),
+      await realpath(repo)
+    )
+  })
+})

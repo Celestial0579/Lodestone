@@ -727,6 +727,7 @@ export class Preferences extends React.Component<
             onRepositoryIndicatorsEnabledChanged={
               this.onRepositoryIndicatorsEnabledChanged
             }
+            onRevokeRepositoryTrust={this.onRevokeRepositoryTrust}
           />
         )
         break
@@ -754,6 +755,10 @@ export class Preferences extends React.Component<
         {View}
       </div>
     )
+  }
+
+  private onRevokeRepositoryTrust = (path: string) => {
+    this.props.dispatcher.revokeRepositoryTrust(path)
   }
 
   private onRepositoryIndicatorsEnabledChanged = (

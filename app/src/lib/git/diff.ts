@@ -120,6 +120,8 @@ export async function getCommitDiff(
 ): Promise<IDiff> {
   const args = [
     'log',
+    '--no-ext-diff',
+    '--no-textconv',
     commitish,
     ...(hideWhitespaceInDiff ? ['-w'] : []),
     '-m',
@@ -161,6 +163,8 @@ export async function getBranchMergeBaseDiff(
 ): Promise<IDiff> {
   const args = [
     'diff',
+    '--no-ext-diff',
+    '--no-textconv',
     '--merge-base',
     ...(hideWhitespaceInDiff ? ['-w'] : []),
     '--patch-with-raw',
@@ -207,6 +211,8 @@ export async function getCommitRangeDiff(
   const latestCommit = commits.at(-1) ?? '' // can't be undefined since commits.length > 0
   const args = [
     'diff',
+    '--no-ext-diff',
+    '--no-textconv',
     oldestCommitRef,
     latestCommit,
     ...(hideWhitespaceInDiff ? ['-w'] : []),
@@ -258,6 +264,8 @@ export async function getBranchMergeBaseChangedFiles(
 ): Promise<IChangesetData | null> {
   const baseArgs = [
     'diff',
+    '--no-ext-diff',
+    '--no-textconv',
     '--merge-base',
     '-C',
     '-M',
@@ -306,6 +314,8 @@ export async function getCommitRangeChangedFiles(
   const latestCommitRef = shas.at(-1) ?? '' // can't be undefined since shas.length > 0
   const baseArgs = [
     'diff',
+    '--no-ext-diff',
+    '--no-textconv',
     oldestCommitRef,
     latestCommitRef,
     '-C',
@@ -352,6 +362,7 @@ export async function getWorkingDirectoryDiff(
     'diff',
     ...(hideWhitespaceInDiff ? ['-w'] : []),
     '--no-ext-diff',
+    '--no-textconv',
     '--patch-with-raw',
     '-z',
     '--no-color',
@@ -498,6 +509,7 @@ export async function getResolutionDiff(
       'diff',
       ...(hideWhitespaceInDiff ? ['-w'] : []),
       '--no-ext-diff',
+      '--no-textconv',
       '--patch-with-raw',
       '-z',
       '--no-color',
@@ -585,6 +597,7 @@ export async function getFilesDiffText(
   const args = [
     'diff',
     '--no-ext-diff',
+    '--no-textconv',
     '--patch-with-raw',
     '--no-color',
     '--staged',
@@ -969,7 +982,7 @@ export async function getBinaryPaths(
  */
 async function getDetectedBinaryFiles(repository: Repository, ref: string) {
   const { stdout } = await git(
-    ['diff', '--numstat', '-z', ref],
+    ['diff', '--no-ext-diff', '--no-textconv', '--numstat', '-z', ref],
     repository.path,
     'getBinaryPaths'
   )

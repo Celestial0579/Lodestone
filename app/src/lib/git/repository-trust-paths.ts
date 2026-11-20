@@ -31,7 +31,7 @@
  */
 
 import { exec } from 'dugite'
-import { lstat, mkdir, readdir, readFile } from 'fs/promises'
+import { lstat, mkdir, open, readdir, readFile } from 'fs/promises'
 import type { Stats } from 'fs'
 import { tmpdir } from 'os'
 import * as Path from 'path'
@@ -127,6 +127,47 @@ export function msys2Name(name: string): string {
   return name.replace(/[<>"|?*]/g, c =>
     String.fromCharCode(0xf000 + c.charCodeAt(0))
   )
+}
+
+/** The keys whose value Git hands to ssh-keygen. */
+const SshKeygenKeys: ReadonlySet<string> = new Set([
+  'user.signingkey',
+  'gpg.ssh.allowedsignersfile',
+  'gpg.ssh.revocationfile',
+])
+
+/**
+ * The name Cygwin and MSYS2 use for a name with characters Windows forbids:
+ * every control character 1 to 31 and `" * : < > ? |` becomes U+F000 plus its
+ * code (winsup/cygwin/strfuncs.cc). `lnk:s` is `lnk` U+F03A `s`, a name that
+ * can exist, not a stream of `lnk`.
+ */
+export function cygwinName(name: string): string {
+  return name.replace(/[\x01-\x1f"*:<>?|]/g, c =>
+    String.fromCharCode(0xf000 + c.charCodeAt(0))
+  )
+}
+
+/**
+ * How an MSYS2 or Cygwin ssh-keygen reads a value. Only `X:\` and `X:/` are
+ * Windows paths to it; a single leading `/` is a POSIX path (`/proc/self/cwd`
+ * is the repository, `/c/` and `/tmp/` go through the mount table), which is
+ * refused; anything else is a relative POSIX name, whose parts are mapped
+ * (`C:lnk` is `C` U+F03A `lnk`) and opened in the repository.
+ */
+export function cygwinReading(value: string): {
+  readonly refuse?: string
+  readonly relative?: string
+} {
+  if (/^[A-Za-z]:[\\/]/.test(value) || /^[\\/]{2}/.test(value)) {
+    return {}
+  }
+
+  if (/^[\\/]/.test(value)) {
+    return { refuse: 'a POSIX absolute path an MSYS2 ssh-keygen would resolve' }
+  }
+
+  return { relative: value.split(/[\\/]/).map(cygwinName).join('/') }
 }
 
 /**
@@ -261,6 +302,9 @@ async function lookAt(scan: IScan, path: string): Promise<Stats | null> {
       // could not look, and Git may still open the path.
       if (!isMissing(e)) {
         scan.found.push(show(`cannot be looked at (${errorCode(e)})`, part))
+      } else if (isWindows() && (await hasShortcutBeside(part))) {
+        // Cygwin opens `foo` through a read-only `foo.lnk` when `foo` is missing.
+        scan.found.push(show('a .lnk shortcut stands for it', `${part}.lnk`))
       }
       return null
     }
@@ -269,9 +313,63 @@ async function lookAt(scan: IScan, path: string): Promise<Stats | null> {
       scan.found.push(show('link or junction', part))
       return null
     }
+
+    // Cygwin and MSYS2 programs (the ssh-keygen that Git may start) follow
+    // links that Node reports as plain files: a .lnk shortcut, and a small
+    // file that starts `!<symlink>` or the Interix cookie.
+    if (isWindows() && info.isFile()) {
+      if (/\.lnk$/i.test(part)) {
+        scan.found.push(show('a .lnk shortcut', part))
+        return null
+      }
+      if (info.size >= CygwinLinkCookie.length && info.size <= 4096) {
+        if (await startsWithCygwinLinkCookie(part)) {
+          scan.found.push(show('a Cygwin or MSYS2 link', part))
+          return null
+        }
+      }
+    }
   }
 
   return info
+}
+
+/** The first bytes of a Cygwin or MSYS2 symbolic link written as a file. */
+const CygwinLinkCookie = '!<symlink>'
+const InterixLinkCookie = 'IntxLNK\x01'
+
+/** Whether a small file starts with the cookie of a Cygwin symlink or an Interix link. */
+async function startsWithCygwinLinkCookie(path: string): Promise<boolean> {
+  try {
+    const handle = await open(path, 'r')
+    try {
+      const buffer = Buffer.alloc(CygwinLinkCookie.length)
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0)
+      return isCygwinLinkHead(buffer.subarray(0, bytesRead))
+    } finally {
+      await handle.close()
+    }
+  } catch {
+    return false
+  }
+}
+
+/** Whether these first bytes of a file are the cookie of a Cygwin symlink or an Interix link. */
+export function isCygwinLinkHead(head: Buffer): boolean {
+  const text = head.toString('latin1')
+  return text.startsWith(CygwinLinkCookie) || text.startsWith(InterixLinkCookie)
+}
+
+/** Whether `<path>.lnk` is there as a file. */
+async function hasShortcutBeside(path: string): Promise<boolean> {
+  if (/\.lnk$/i.test(path)) {
+    return false
+  }
+  try {
+    return (await lstat(`${path}.lnk`)).isFile()
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -555,6 +653,17 @@ async function scanConfig(scan: IScan, file: string, depth: number) {
         await lookAt(scan, target)
         if (lower === 'core.hookspath') {
           await walk(scan, target)
+        }
+
+        // ssh-keygen may be an MSYS2 or Cygwin build, which reads the name by
+        // other rules: look at that reading as well.
+        if (isWindows() && SshKeygenKeys.has(lower)) {
+          const reading = cygwinReading(named)
+          if (reading.refuse !== undefined) {
+            scan.found.push(show(reading.refuse, `${key} = ${named}`))
+          } else if (reading.relative !== undefined) {
+            await lookAt(scan, Path.resolve(scan.base, reading.relative))
+          }
         }
       }
     }

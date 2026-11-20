@@ -1,7 +1,7 @@
 import { describe, it, mock } from 'node:test'
 import assert from 'node:assert'
 import { exec } from 'dugite'
-import { promises as fsPromises } from 'fs'
+import { existsSync, promises as fsPromises } from 'fs'
 import { chmod, mkdir, rm, symlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { createTempDirectory } from '../../helpers/temp'
@@ -12,6 +12,9 @@ import {
   hasWindowsForbiddenCharacter,
   msys2Name,
   windowsLookName,
+  cygwinName,
+  cygwinReading,
+  isCygwinLinkHead,
   isNetworkPath,
   parseGitFile,
   PathKeys,
@@ -1098,6 +1101,180 @@ describe('errors other than "not there" (#104)', () => {
     await exec(['config', 'diff.orderFile', 'lnk/order'], path)
     assert.ok(
       (await findNetworkPaths(path)).some(l => l.includes('link or junction'))
+    )
+  })
+})
+
+describe('Cygwin and MSYS2 readings for ssh-keygen (#116)', () => {
+  async function repo(t: Parameters<typeof createTempDirectory>[0]) {
+    const path = await createTempDirectory(t)
+    await exec(['init', '-q', '-b', 'main'], path)
+    return path
+  }
+
+  it('maps control characters and " * : < > ? | to U+F000 plus the code (cygwinName)', () => {
+    assert.equal(cygwinName('lnk:s'), 'lnk\uF03As')
+    assert.equal(cygwinName('C:lnk'), 'C\uF03Alnk')
+    assert.equal(cygwinName('a\tb'), 'a\uF009b')
+    assert.equal(
+      cygwinName('a*b?c|d"e<f>g'),
+      'a\uF02Ab\uF03Fc\uF07Cd\uF022e\uF03Cf\uF03Eg'
+    )
+    assert.equal(cygwinName('plain.txt'), 'plain.txt')
+  })
+
+  it('reads a value the way an MSYS2 ssh-keygen does (cygwinReading)', () => {
+    // Windows paths to it: nothing more to look at.
+    assert.deepEqual(cygwinReading('C:\\Users\\me\\key'), {})
+    assert.deepEqual(cygwinReading('C:/Users/me/key'), {})
+    assert.deepEqual(cygwinReading('//host/share/key'), {})
+    // POSIX absolute paths are refused.
+    for (const value of [
+      '/proc/self/cwd/lnk/key',
+      '/c/Users/me/key',
+      '/tmp/key',
+      '/dev/null',
+      '\\proc\\self',
+    ]) {
+      assert.ok(cygwinReading(value).refuse !== undefined, value)
+    }
+    // Everything else is a relative name with mapped parts.
+    assert.equal(cygwinReading('lnk:s/key').relative, 'lnk\uF03As/key')
+    assert.equal(cygwinReading('C:lnk/key').relative, 'C\uF03Alnk/key')
+    assert.equal(cygwinReading('a\tb/lnk/key').relative, 'a\uF009b/lnk/key')
+    assert.equal(cygwinReading('id_key').relative, 'id_key')
+    assert.equal(
+      cygwinReading('Name <me@example.com>').relative,
+      'Name \uF03Cme@example.com\uF03E'
+    )
+  })
+
+  it('knows the cookies of Cygwin and Interix links (isCygwinLinkHead)', () => {
+    assert.equal(
+      isCygwinLinkHead(Buffer.from('!<symlink>\xff\xfeC\0:\0')),
+      true
+    )
+    assert.equal(isCygwinLinkHead(Buffer.from('IntxLNK\x01rest')), true)
+    assert.equal(isCygwinLinkHead(Buffer.from('[core]\n')), false)
+    assert.equal(isCygwinLinkHead(Buffer.from('')), false)
+  })
+
+  const gitUsrBin = 'C:\\Program Files\\Git\\usr\\bin'
+
+  for (const mode of ['sys', 'lnk']) {
+    it(`refuses a link made by MSYS2 ln with winsymlinks:${mode} (Windows)`, async t => {
+      const ln = join(gitUsrBin, 'ln.exe')
+      if (process.platform !== 'win32' || !existsSync(ln)) {
+        return t.skip("needs Git for Windows' usr\\bin")
+      }
+      const { spawnSync } = await import('child_process')
+      const elsewhere = await createTempDirectory(t)
+      await writeFile(join(elsewhere, 'key'), 'x')
+      const path = await repo(t)
+
+      const made = spawnSync(
+        ln,
+        ['-s', fwd(elsewhere), fwd(join(path, 'lnk'))],
+        {
+          cwd: path,
+          encoding: 'utf8',
+          env: { ...process.env, MSYS: `winsymlinks:${mode}` },
+        }
+      )
+      if (made.status !== 0) {
+        return t.skip(`ln could not make the link: ${made.stderr}`)
+      }
+
+      // For the record: an MSYS2 ssh-keygen follows it to the local file.
+      const follow = spawnSync(
+        join(gitUsrBin, 'ssh-keygen.exe'),
+        ['-lf', 'lnk/key'],
+        {
+          cwd: path,
+          encoding: 'utf8',
+        }
+      )
+      t.diagnostic(
+        `ssh-keygen -lf lnk/key through winsymlinks:${mode}: rc=${
+          follow.status
+        } err=${(follow.stderr ?? '').trim().slice(0, 120)}`
+      )
+
+      for (const [key, value] of [
+        ['user.signingkey', 'lnk/key'],
+        ['diff.orderFile', 'lnk/key'],
+      ]) {
+        await exec(['config', key, value], path)
+        assert.ok(
+          (await findNetworkPaths(path)).some(l =>
+            /Cygwin or MSYS2 link|\.lnk shortcut/.test(l)
+          ),
+          `${mode}: ${key}`
+        )
+      }
+    })
+  }
+
+  it('looks at the Cygwin reading of lnk:s, C:lnk and a control character (Windows)', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const elsewhere = await createTempDirectory(t)
+
+    const cases: ReadonlyArray<readonly [string, string]> = [
+      ['user.signingkey', 'lnk:s/key'],
+      ['gpg.ssh.allowedSignersFile', 'lnk:s/key'],
+      ['user.signingkey', 'C:lnk/key'],
+      ['gpg.ssh.revocationFile', 'a\tb/lnk/key'],
+    ]
+    for (const [key, value] of cases) {
+      const path = await repo(t)
+      try {
+        // The names an MSYS2 program opens for the value.
+        const parts = cygwinReading(value).relative!.split('/')
+        let current = path
+        for (const part of parts.slice(0, -2)) {
+          current = join(current, part)
+          await mkdir(current)
+        }
+        await symlink(
+          elsewhere,
+          join(current, parts[parts.length - 2]),
+          'junction'
+        )
+      } catch {
+        return t.skip('this system does not let the test make links')
+      }
+      await exec(['config', key, value], path)
+      assert.ok(
+        (await findNetworkPaths(path)).some(l =>
+          l.includes('link or junction')
+        ),
+        `${key} = ${JSON.stringify(value)}`
+      )
+    }
+  })
+
+  it('refuses a POSIX absolute path for the three ssh-keygen keys only (Windows)', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const path = await repo(t)
+    for (const key of [
+      'user.signingkey',
+      'gpg.ssh.allowedSignersFile',
+      'gpg.ssh.revocationFile',
+    ]) {
+      await exec(['config', key, '/proc/self/cwd/lnk/key'], path)
+      assert.ok(
+        (await findNetworkPaths(path)).some(l => l.includes('POSIX absolute')),
+        key
+      )
+      await exec(['config', '--unset', key], path)
+    }
+    await exec(['config', 'diff.orderFile', '/proc/self/cwd/lnk/key'], path)
+    assert.ok(
+      !(await findNetworkPaths(path)).some(l => l.includes('POSIX absolute'))
     )
   })
 })

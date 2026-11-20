@@ -1584,6 +1584,16 @@ export class Dispatcher {
   }
 
   /** Open the URL in a browser */
+  /** The user answered whether to trust a repository's own configuration and hooks. */
+  public answerRepositoryTrust(repository: Repository, trusted: boolean) {
+    return this.appStore._answerRepositoryTrust(repository, trusted)
+  }
+
+  /** Forget a trusted answer, so the repository is asked about again. */
+  public revokeRepositoryTrust(path: string) {
+    return this.appStore._revokeRepositoryTrust(path)
+  }
+
   public openInBrowser(url: string): Promise<boolean> {
     return this.appStore._openInBrowser(url)
   }

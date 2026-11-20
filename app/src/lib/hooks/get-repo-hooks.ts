@@ -1,4 +1,8 @@
 import { exec } from 'dugite'
+import {
+  getGitArgumentsFor,
+  getGitEnvironmentFor,
+} from '../git/repository-trust-state'
 import { access, constants, readdir } from 'fs/promises'
 import { basename, join, resolve } from 'path'
 
@@ -41,9 +45,14 @@ const knownHooks = [
 // getRepoHooks is used by withHooksEnv which is used by git in core.ts so we
 // have to be careful to not accidentally run into a circular dependency here
 // where we invoke git which calls us which calls git which calls us, etc. To
-// avoid that we call dugite directly here.
+// avoid that we call dugite directly here, with the arguments and the
+// environment the trust policy gives (repository-trust-state.ts has no
+// dependency on git, so that is not circular). This is the one place besides
+// the trust inspection that runs Git outside git().
 const git = (args: string[], path: string) =>
-  exec(args, path).then(({ exitCode, stdout, stderr }) => {
+  exec(getGitArgumentsFor(path, args) as string[], path, {
+    env: getGitEnvironmentFor(path, args),
+  }).then(({ exitCode, stdout, stderr }) => {
     return exitCode === 0
       ? stdout
       : Promise.reject(

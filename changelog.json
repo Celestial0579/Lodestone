@@ -1,5 +1,9 @@
 {
   "releases": {
+    "1.0.8": [
+      "[New] A repository that brings its own Git configuration or hooks asks first: the question lists the commands, keys and hooks it would run, and the default answer is not to trust it. An untrusted repository runs Git with those commands switched off and hooks disabled; if it also changes how Git connects, it gets no network operations. Revoke a decision in Settings, Advanced",
+      "[Improved] Git runs with the file system monitor off for status, with external diff and text conversion off for diff, log and show, and refuses bare repositories and repositories whose configuration moves the working folder elsewhere"
+    ],
     "1.0.7": [
       "[Improved] The accent colour of links and the mark has more contrast on the deep surface in both themes",
       "[Fixed] Branch, remote and file names that start with a dash or hold characters Git treats specially are passed to Git as names, not as options or patterns, in every Git operation of the app (ported from GitHub Desktop)",

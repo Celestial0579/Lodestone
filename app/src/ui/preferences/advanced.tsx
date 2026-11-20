@@ -4,11 +4,40 @@ import { Checkbox, CheckboxValue } from '../lib/checkbox'
 import { LinkButton } from '../lib/link-button'
 import { isWindowsOpenSSHAvailable } from '../../lib/ssh/ssh'
 import { TextBox } from '../lib/text-box'
+import { Button } from '../lib/button'
+import {
+  IStoredTrustAnswer,
+  localStorageTrust,
+} from '../../lib/stores/repository-trust-store'
+import { makeVisible } from '../../lib/git/repository-trust'
 import {
   getUpdateSourceURL,
   parseUpdateSource,
   setUpdateSourceURL,
 } from '../../lib/forges/update-source'
+
+interface ITrustedRepositoryRowProps {
+  readonly path: string
+  readonly onRevoke: (path: string) => void
+}
+
+/** A trusted folder with the button that takes the trust back. */
+class TrustedRepositoryRow extends React.Component<ITrustedRepositoryRowProps> {
+  public render() {
+    const shown = makeVisible(this.props.path)
+
+    return (
+      <li>
+        <span>{shown}</span>{' '}
+        <Button onClick={this.onClick} ariaLabel={`Revoke trust for ${shown}`}>
+          Revoke
+        </Button>
+      </li>
+    )
+  }
+
+  private onClick = () => this.props.onRevoke(this.props.path)
+}
 
 interface IAdvancedPreferencesProps {
   readonly useWindowsOpenSSH: boolean
@@ -19,6 +48,8 @@ interface IAdvancedPreferencesProps {
   readonly onOptOutofReportingChanged: (checked: boolean) => void
   readonly onUseExternalCredentialHelperChanged: (checked: boolean) => void
   readonly onRepositoryIndicatorsEnabledChanged: (enabled: boolean) => void
+  /** Forget that the user trusts the repository in this folder. */
+  readonly onRevokeRepositoryTrust: (path: string) => void
 }
 
 interface IAdvancedPreferencesState {
@@ -26,12 +57,19 @@ interface IAdvancedPreferencesState {
   readonly canUseWindowsSSH: boolean
   readonly useExternalCredentialHelper: boolean
   readonly updateSourceURL: string
+  readonly trustedRepositories: ReadonlyArray<IStoredTrustAnswer>
 }
 
 export class Advanced extends React.Component<
   IAdvancedPreferencesProps,
   IAdvancedPreferencesState
 > {
+  private static readTrusted(): ReadonlyArray<IStoredTrustAnswer> {
+    return Object.values(localStorageTrust.read())
+      .filter(a => a.trusted)
+      .sort((a, b) => a.path.localeCompare(b.path))
+  }
+
   public constructor(props: IAdvancedPreferencesProps) {
     super(props)
 
@@ -40,7 +78,49 @@ export class Advanced extends React.Component<
       canUseWindowsSSH: false,
       useExternalCredentialHelper: this.props.useExternalCredentialHelper,
       updateSourceURL: getUpdateSourceURL(),
+      trustedRepositories: Advanced.readTrusted(),
     }
+  }
+
+  private onRevoked = (path: string) => {
+    this.props.onRevokeRepositoryTrust(path)
+    this.setState({ trustedRepositories: Advanced.readTrusted() })
+  }
+
+  private renderTrustedRepositories() {
+    const { trustedRepositories } = this.state
+
+    return (
+      <div className="advanced-section">
+        <h2>Trusted repositories</h2>
+        <div
+          id="trusted-repositories-description"
+          className="settings-description"
+        >
+          <p>
+            A repository that carries its own Git settings or hooks that run
+            programs is trusted only after you said so. Revoking makes Lodestone
+            ask again.
+          </p>
+        </div>
+        {trustedRepositories.length === 0 ? (
+          <p>No repository is trusted.</p>
+        ) : (
+          <ul
+            className="trusted-repositories"
+            aria-describedby="trusted-repositories-description"
+          >
+            {trustedRepositories.map(a => (
+              <TrustedRepositoryRow
+                key={a.path}
+                path={a.path}
+                onRevoke={this.onRevoked}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+    )
   }
 
   public componentDidMount() {
@@ -164,6 +244,7 @@ export class Advanced extends React.Component<
           </div>
         </div>
         {this.renderUpdateSource()}
+        {this.renderTrustedRepositories()}
         <div className="advanced-section">
           <h2>Usage</h2>
           <Checkbox

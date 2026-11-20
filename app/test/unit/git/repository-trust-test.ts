@@ -185,6 +185,8 @@ interface IVector {
   readonly remoteUrl?: string
   /** The app never lets this one run, trusted or not. */
   readonly neverRuns?: boolean
+  /** Operations the app never lets it run on, trusted or not. */
+  readonly neverRunsOn?: ReadonlyArray<string>
 }
 
 const vectors: ReadonlyArray<IVector> = [
@@ -192,6 +194,8 @@ const vectors: ReadonlyArray<IVector> = [
     key: 'core.fsmonitor',
     setup: f => run(['config', 'core.fsmonitor', marks(f.marker)], f.repo.path),
     operations: [status, diff, fetchOp, commitOp, checkoutOp],
+    // Reading the status never starts the monitor.
+    neverRunsOn: ['status'],
   },
   {
     key: '.git/hooks',
@@ -378,8 +382,10 @@ describe('repository trust: what an untrusted repository may run', () => {
 
         assert.equal(
           await exists(f.marker),
-          !v.neverRuns,
-          v.neverRuns ? 'the app let it run' : 'the vector is not real'
+          !(v.neverRuns || v.neverRunsOn?.includes(op.name)),
+          v.neverRuns || v.neverRunsOn?.includes(op.name)
+            ? 'the app let it run'
+            : 'the vector is not real'
         )
       })
     }

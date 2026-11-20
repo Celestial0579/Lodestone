@@ -1,3 +1,4 @@
+import { getNetworkBlock } from '../../git/repository-trust-state'
 import { Repository } from '../../../models/repository'
 import { GitHubRepository } from '../../../models/github-repository'
 import { API, getAccountForEndpoint } from '../../api'
@@ -82,7 +83,11 @@ export class BackgroundFetcher {
       return
     }
 
-    const shouldFetch = await this.shouldPerformFetch(this.repository)
+    // An untrusted repository that sets its own transport keys is not fetched
+    // in the background (#98); the user is told when they fetch themselves.
+    const shouldFetch =
+      getNetworkBlock(this.repository.path, ['fetch']) === null &&
+      (await this.shouldPerformFetch(this.repository))
 
     if (this.stopped) {
       return

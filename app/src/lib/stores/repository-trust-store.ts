@@ -176,8 +176,8 @@ export class RepositoryTrustStore {
 
   /** Forget the answer for a folder, so that it is asked about again. */
   public revoke(path: string) {
-    const { [repositoryPolicyKey(path)]: _removed, ...rest } =
-      this.storage.read()
+    const rest = { ...this.storage.read() }
+    delete rest[repositoryPolicyKey(path)]
     this.storage.write(rest)
     this.lastEvaluations.delete(repositoryPolicyKey(path))
   }

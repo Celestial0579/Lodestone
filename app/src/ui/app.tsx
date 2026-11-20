@@ -190,6 +190,7 @@ import { DialogStackContext } from './dialog'
 import { TestNotifications } from './test-notifications/test-notifications'
 import { NotificationsDebugStore } from '../lib/stores/notifications-debug-store'
 import { PullRequestComment } from './notifications/pull-request-comment'
+import { RepositoryTrustDialog } from './repository-trust/repository-trust-dialog'
 import { UnknownAuthors } from './unknown-authors/unknown-authors-dialog'
 import { UnsupportedOSBannerDismissedAtKey } from './banners/os-version-no-longer-supported-banner'
 import { NewerReleaseBanner } from './banners/newer-release-banner'
@@ -2768,6 +2769,19 @@ export class App extends React.Component<IAppProps, IAppState> {
           />
         )
       }
+      case PopupType.RepositoryTrust: {
+        return (
+          <RepositoryTrustDialog
+            key="repository-trust"
+            repository={popup.repository}
+            lines={popup.lines}
+            networkKeys={popup.networkKeys}
+            inWorkTree={popup.inWorkTree}
+            onAnswer={this.onRepositoryTrustAnswered}
+            onDismissed={onPopupDismissedFn}
+          />
+        )
+      }
       case PopupType.UnknownAuthors: {
         return (
           <UnknownAuthors
@@ -3245,6 +3259,13 @@ export class App extends React.Component<IAppProps, IAppState> {
   }
 
   private onQuitAndInstall = () => updateStore.quitAndInstallUpdate()
+
+  private onRepositoryTrustAnswered = (
+    repository: Repository,
+    trusted: boolean
+  ) => {
+    this.props.dispatcher.answerRepositoryTrust(repository, trusted)
+  }
 
   private renderPopups() {
     const popupContent = this.allPopupContent()

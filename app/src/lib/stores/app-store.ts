@@ -354,6 +354,14 @@ import { RepositoryIndicatorUpdater } from './helpers/repository-indicator-updat
 import { isAttributableEmailFor } from '../email'
 import { TrashNameLabel } from '../../ui/lib/context-menu'
 import { GitError as DugiteError } from 'dugite'
+import { RepositoryTrustStore } from './repository-trust-store'
+import {
+  getRepositoryGitPolicy,
+  setEmptyHooksDirectory,
+} from '../git/repository-trust-state'
+import { getPath } from '../../ui/main-process-proxy'
+import { mkdir as mkdirAsync } from 'fs/promises'
+import * as PathModule from 'path'
 import {
   ErrorWithMetadata,
   CheckoutError,
@@ -752,6 +760,11 @@ export class AppStore extends TypedBaseStore<IAppState> {
     new Map()
   private byokProviders: ReadonlyArray<IBYOKProvider> = []
 
+  private readonly repositoryTrustStore = new RepositoryTrustStore()
+
+  /** The questions already asked this session, by folder and fingerprint. */
+  private readonly askedTrustQuestions = new Set<string>()
+
   public constructor(
     private readonly gitHubUserStore: GitHubUserStore,
     private readonly cloningRepositoriesStore: CloningRepositoriesStore,
@@ -1053,6 +1066,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.accountsStore.onDidError(error => this.emitError(error))
 
     this.repositoriesStore.onDidUpdate(updateRepositories => {
+      this.markRepositoriesPending(updateRepositories)
       this.repositories = updateRepositories
       this.updateRepositorySelectionAfterRepositoriesChanged()
       this.emitUpdate()
@@ -2182,6 +2196,10 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
     this.notificationsStore.selectRepository(repository)
 
+    // The first look at what the repository brings with it, before any Git
+    // work is started for it.
+    await this.evaluateRepositoryTrust(refreshedRepository)
+
     return this._selectRepositoryRefreshTasks(
       refreshedRepository,
       previouslySelectedRepository
@@ -2417,6 +2435,70 @@ export class AppStore extends TypedBaseStore<IAppState> {
   }
 
   /** Load the initial state for the app. */
+  /**
+   * Until a repository has been looked at, nothing it names runs and nothing
+   * goes over the network from it (#98).
+   */
+  private markRepositoriesPending(repositories: ReadonlyArray<Repository>) {
+    for (const r of repositories) {
+      if (getRepositoryGitPolicy(r.path) === null) {
+        this.repositoryTrustStore.markPending(r.path)
+      }
+    }
+  }
+
+  /**
+   * Look at what a repository brings with it, set how Git runs in it, and
+   * ask the user once if it brings something that runs programs and nothing
+   * was answered for what it brings now.
+   */
+  private async evaluateRepositoryTrust(repository: Repository) {
+    const evaluation = await this.repositoryTrustStore.evaluate(repository.path)
+
+    if (evaluation.needsQuestion && evaluation.findings !== null) {
+      const asked = `${repository.path}\0${evaluation.fingerprint}`
+
+      if (!this.askedTrustQuestions.has(asked)) {
+        this.askedTrustQuestions.add(asked)
+        this._showPopup({
+          type: PopupType.RepositoryTrust,
+          repository,
+          lines: evaluation.lines,
+          networkKeys: evaluation.networkKeys,
+          inWorkTree:
+            evaluation.findings.hooksPathInWorkTree ||
+            evaluation.findings.includesInWorkTree.length > 0,
+        })
+      }
+    }
+
+    return evaluation
+  }
+
+  public async _answerRepositoryTrust(
+    repository: Repository,
+    trusted: boolean
+  ) {
+    this.repositoryTrustStore.answer(repository.path, trusted)
+    await this._refreshRepository(repository)
+  }
+
+  public _revokeRepositoryTrust(path: string) {
+    this.repositoryTrustStore.revoke(path)
+    this.repositoryTrustStore.markPending(path)
+    const repository = this.repositories.find(r => r.path === path)
+    if (repository instanceof Repository) {
+      this.askedTrustQuestions.clear()
+      void this.evaluateRepositoryTrust(repository)
+    }
+    this.emitUpdate()
+  }
+
+  /** The folders the user trusts, for the settings. */
+  public getTrustedRepositoryAnswers() {
+    return this.repositoryTrustStore.listTrusted()
+  }
+
   public async loadInitialState() {
     const [accounts, repositories] = await Promise.all([
       this.accountsStore.getAll(),
@@ -2431,6 +2513,21 @@ export class AppStore extends TypedBaseStore<IAppState> {
     })
 
     this.accounts = accounts
+
+    // Hooks of an untrusted repository point to a directory that stays empty.
+    try {
+      const emptyHooks = PathModule.join(
+        await getPath('userData'),
+        'empty-hooks'
+      )
+      await mkdirAsync(emptyHooks, { recursive: true })
+      setEmptyHooksDirectory(emptyHooks)
+    } catch (e) {
+      log.warn('[trust] could not make the empty hooks directory', e)
+    }
+
+    // Before anything runs Git in them, and before they are looked at.
+    this.markRepositoriesPending(repositories)
     this.repositories = repositories
 
     this.updateRepositorySelectionAfterRepositoriesChanged()
@@ -4060,6 +4157,12 @@ export class AppStore extends TypedBaseStore<IAppState> {
   public async _refreshRepository(repository: Repository): Promise<void> {
     if (repository.missing) {
       return
+    }
+
+    // Look again at what the repository brings: anything that changed its own
+    // files (a pull, a checkout) can change it, and an answer is for one state.
+    if (getRepositoryGitPolicy(repository.path) !== null) {
+      await this.evaluateRepositoryTrust(repository)
     }
 
     // if the repository path doesn't exist on disk,

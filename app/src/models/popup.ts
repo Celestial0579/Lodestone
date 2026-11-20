@@ -100,6 +100,7 @@ export enum PopupType {
   TestNotifications = 'TestNotifications',
   PullRequestComment = 'PullRequestComment',
   UnknownAuthors = 'UnknownAuthors',
+  RepositoryTrust = 'RepositoryTrust',
   TestIcons = 'TestIcons',
   ConfirmCommitFilteredChanges = 'ConfirmCommitFilteredChanges',
   TestAbout = 'TestAbout',
@@ -466,6 +467,13 @@ export type PopupDetail =
       type: PopupType.UnknownAuthors
       authors: ReadonlyArray<UnknownAuthor>
       onCommit: () => void
+    }
+  | {
+      type: PopupType.RepositoryTrust
+      repository: Repository
+      lines: ReadonlyArray<string>
+      networkKeys: ReadonlyArray<string>
+      inWorkTree: boolean
     }
   | {
       type: PopupType.TestIcons

@@ -74,4 +74,50 @@ describe('openFile', () => {
 
     assert.strictEqual(postError.mock.callCount(), 0)
   })
+
+  describe('files Windows would run', () => {
+    const asWindows = (t: import('node:test').TestContext) => {
+      const g = globalThis as unknown as { __WIN32__: boolean }
+      const before = g.__WIN32__
+      g.__WIN32__ = true
+      t.after(() => {
+        g.__WIN32__ = before
+      })
+    }
+
+    for (const name of [
+      'README.lnk',
+      'notes.HTA',
+      'setup.msi',
+      'run.exe.',
+      'script.js',
+      'link.url',
+    ]) {
+      it(`does not open ${name}, and says why`, async t => {
+        asWindows(t)
+        const openPath = t.mock.method(shell, 'openPath', async () => '')
+        const postError = t.mock.fn(async (_error: Error) => {})
+
+        await openFile(`C:\\repo\\${name}`, createMockDispatcher(postError))
+
+        assert.strictEqual(openPath.mock.callCount(), 0)
+        assert.strictEqual(postError.mock.callCount(), 1)
+        assert.strictEqual(
+          (postError.mock.calls[0].arguments[0] as Error).name,
+          'unsafe-file-type'
+        )
+      })
+    }
+
+    it('still opens a document', async t => {
+      asWindows(t)
+      const openPath = t.mock.method(shell, 'openPath', async () => '')
+      const postError = t.mock.fn(async () => {})
+
+      await openFile('C:\\repo\\readme.md', createMockDispatcher(postError))
+
+      assert.strictEqual(openPath.mock.callCount(), 1)
+      assert.strictEqual(postError.mock.callCount(), 0)
+    })
+  })
 })

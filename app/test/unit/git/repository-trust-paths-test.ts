@@ -803,24 +803,27 @@ describe('errors other than "not there" (#104)', () => {
       path
     )
     await exec(['config', 'url.https://example.com/.insteadOf', 'ex:'], path)
+    await exec(
+      ['config', 'lfs.https://example.com/info/lfs.access', 'basic'],
+      path
+    )
+    await exec(
+      ['config', 'credential.https://example.com.username', 'me'],
+      path
+    )
     assert.deepEqual(await findNetworkPaths(path), [])
   })
 
-  it('looks at user.signingkey when it is a path, not when it is an id or a literal key', async t => {
+  it('looks at user.signingkey as a file unless it is a literal key, ids and addresses not refused', async t => {
     const elsewhere = await createTempDirectory(t)
     const path = await repo(t)
-    try {
-      await symlink(elsewhere, join(path, 'lnk'), 'junction')
-    } catch {
-      return t.skip('this system does not let the test make links')
-    }
 
     for (const value of [
       'ABCDEF0123456789',
       'me@example.com',
+      'Name <me@example.com>',
       'key::ssh-ed25519 AAAA/BBBB',
       'ssh-ed25519 AAAA/BBBB ' + 'x'.repeat(300),
-      'sha256//abc',
       '~/key',
     ]) {
       await exec(['config', 'user.signingkey', value], path)
@@ -830,10 +833,27 @@ describe('errors other than "not there" (#104)', () => {
     await exec(['config', 'http.pinnedPubKey', 'sha256//abc/def'], path)
     assert.deepEqual(await findNetworkPaths(path), [])
 
-    await exec(['config', 'user.signingkey', 'lnk/id_key'], path)
-    assert.ok(
-      (await findNetworkPaths(path)).some(l => l.includes('link or junction'))
-    )
+    // A junction named like a key id, and one under a name that starts like a type.
+    for (const [value, name] of [
+      ['id_key', 'id_key'],
+      ['ecdsa-lnk/key', 'ecdsa-lnk'],
+      ['sk-lnk/key', 'sk-lnk'],
+      ['lnk/id_key', 'lnk'],
+    ]) {
+      const withLink = await repo(t)
+      try {
+        await symlink(elsewhere, join(withLink, name), 'junction')
+      } catch {
+        return t.skip('this system does not let the test make links')
+      }
+      await exec(['config', 'user.signingkey', value], withLink)
+      assert.ok(
+        (await findNetworkPaths(withLink)).some(l =>
+          l.includes('link or junction')
+        ),
+        value
+      )
+    }
   })
 
   it('refuses a diff.orderFile that goes through a junction', async t => {

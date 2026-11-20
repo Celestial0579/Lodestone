@@ -411,10 +411,19 @@ function pathNamedBy(lower: string, value: string): string | null {
     return null
   }
 
-  // user.signingkey is a key id, an e-mail address or a literal key as often
-  // as a path: only a value with a separator that is not a literal key.
+  // user.signingkey is a key id, an e-mail address, a name with an address or
+  // a path, and ssh-keygen opens it as a file. Only `key::` and `ssh-` mark a
+  // literal key, exactly as Git reads it (is_literal_ssh_key). Every other
+  // value is looked at: a link named like an id is opened as a file. Values
+  // that Windows cannot name at all (`Name <me@example.com>`) are no path.
   if (lower === 'user.signingkey') {
-    if (/^(key::|ssh-|ecdsa-|sk-)/.test(value) || !/[\\/]/.test(value)) {
+    if (/^(key::|ssh-)/.test(value)) {
+      return null
+    }
+    if (
+      /[<>"|?*]/.test(value) ||
+      /^[^\\/]*:/.test(value.replace(/^[A-Za-z]:(?=[\\/])/, ''))
+    ) {
       return null
     }
   }

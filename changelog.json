@@ -1,6 +1,7 @@
 {
   "releases": {
     "1.0.7": [
+      "[Improved] The accent colour of links and the mark has more contrast on the deep surface in both themes",
       "[Fixed] Branch, remote and file names that start with a dash or hold characters Git treats specially are passed to Git as names, not as options or patterns, in every Git operation of the app (ported from GitHub Desktop)",
       "[Fixed] Cloning from a local path in quotes or a Windows file address, and the clone transport policy, follow Git's own rules",
       "[Fixed] A crash when reading Git LFS progress, repeated branch name checks that gave different answers, and ignore file rules written for paths with special characters",

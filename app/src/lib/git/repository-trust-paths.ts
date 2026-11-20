@@ -712,10 +712,13 @@ async function scanConfig(scan: IScan, file: string, depth: number) {
             // Cygwin also opens `name.exe` and `name.lnk` for a last part that
             // is missing.
             scan.cygwinSuffixes = true
-            for (const path of reading.paths) {
-              await lookAt(scan, Path.resolve(scan.base, path))
+            try {
+              for (const path of reading.paths) {
+                await lookAt(scan, Path.resolve(scan.base, path))
+              }
+            } finally {
+              scan.cygwinSuffixes = false
             }
-            scan.cygwinSuffixes = false
           }
         }
       }

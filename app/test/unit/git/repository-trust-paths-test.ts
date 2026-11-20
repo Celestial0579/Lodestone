@@ -9,6 +9,8 @@ import {
   findNetworkPaths,
   findNetworkPathsUpward,
   hasTrailingDotOrSpace,
+  hasWindowsForbiddenCharacter,
+  msys2Name,
   isNetworkPath,
   parseGitFile,
   PathKeys,
@@ -901,6 +903,71 @@ describe('errors other than "not there" (#104)', () => {
       await exec(['config', 'user.signingkey', value], plain)
       assert.deepEqual(await findNetworkPaths(plain), [], value)
     }
+  })
+
+  it('looks at the parts before a character Windows forbids, and resolves .. first (#112)', async t => {
+    const elsewhere = await createTempDirectory(t)
+    for (const value of [
+      'lnk/a<b',
+      'a<b/../lnk/key',
+      'lnk/a?b/c',
+      'lnk/a*b',
+      'lnk/"x"',
+      'lnk/a|b',
+    ]) {
+      const path = await repo(t)
+      try {
+        await symlink(elsewhere, join(path, 'lnk'), 'junction')
+      } catch {
+        return t.skip('this system does not let the test make links')
+      }
+      await exec(['config', 'user.signingkey', value], path)
+      assert.ok(
+        (await findNetworkPaths(path)).some(l =>
+          l.includes('link or junction')
+        ),
+        value
+      )
+    }
+
+    // Ids and addresses are still not refused.
+    const plain = await repo(t)
+    for (const value of [
+      'Name <me@example.com>',
+      'me@example.com',
+      'ABCDEF0123456789',
+      '"Name" <a@b.c>',
+    ]) {
+      await exec(['config', 'user.signingkey', value], plain)
+      assert.deepEqual(await findNetworkPaths(plain), [], value)
+    }
+  })
+
+  it('maps forbidden characters to the private use area, as MSYS2 does', () => {
+    assert.equal(hasWindowsForbiddenCharacter('a<b'), true)
+    assert.equal(hasWindowsForbiddenCharacter('ab'), false)
+    assert.equal(msys2Name('a<b'), 'a\uF03Cb')
+    assert.equal(msys2Name('a?*"|>'), 'a\uF03F\uF02A\uF022\uF07C\uF03E')
+    assert.equal(msys2Name('plain'), 'plain')
+  })
+
+  it('looks at the MSYS2 name of a part with a forbidden character when it exists (Windows)', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const elsewhere = await createTempDirectory(t)
+    const path = await repo(t)
+    const real = join(path, msys2Name('a<b'))
+    await mkdir(real)
+    try {
+      await symlink(elsewhere, join(real, 'lnk'), 'junction')
+    } catch {
+      return t.skip('this system does not let the test make links')
+    }
+    await exec(['config', 'user.signingkey', 'a<b/lnk/key'], path)
+    assert.ok(
+      (await findNetworkPaths(path)).some(l => l.includes('link or junction'))
+    )
   })
 
   it('refuses a diff.orderFile that goes through a junction', async t => {

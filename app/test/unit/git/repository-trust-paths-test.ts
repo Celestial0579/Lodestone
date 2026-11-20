@@ -1,6 +1,7 @@
-import { describe, it } from 'node:test'
+import { describe, it, mock } from 'node:test'
 import assert from 'node:assert'
 import { exec } from 'dugite'
+import { promises as fsPromises } from 'fs'
 import { chmod, mkdir, rm, symlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { createTempDirectory } from '../../helpers/temp'
@@ -616,5 +617,154 @@ describe('files read byte for byte, as Git reads them (#103)', () => {
     assert.equal(hasTrailingDotOrSpace('/a/.'), false)
     assert.equal(hasTrailingDotOrSpace('/a/..'), false)
     assert.equal(hasTrailingDotOrSpace('/a/x.cfg'), false)
+  })
+})
+
+describe('errors other than "not there" (#104)', () => {
+  async function repo(t: Parameters<typeof createTempDirectory>[0]) {
+    const path = await createTempDirectory(t)
+    await exec(['init', '-q', '-b', 'main'], path)
+    return path
+  }
+
+  /** Makes lstat fail with `code` for a path that ends in `suffix`. */
+  function failLstat(suffix: string, code: string) {
+    const original = fsPromises.lstat
+    return mock.method(fsPromises, 'lstat', async (p: string, ...rest: []) => {
+      if (String(p).endsWith(suffix)) {
+        throw Object.assign(new Error(code), { code })
+      }
+      return (original as (...a: unknown[]) => Promise<unknown>)(p, ...rest)
+    })
+  }
+
+  for (const code of ['EACCES', 'EPERM', 'EBUSY']) {
+    it(`refuses a path that lstat could not look at (${code})`, async t => {
+      const path = await repo(t)
+      const m = failLstat(join('.git', 'objects'), code)
+      t.after(() => m.mock.restore())
+      const found = await findNetworkPaths(path)
+      assert.ok(
+        found.some(l => l.includes(`cannot be looked at (${code})`)),
+        JSON.stringify(found)
+      )
+    })
+  }
+
+  for (const code of ['ENOENT', 'ENOTDIR']) {
+    it(`does not refuse a path that is not there (${code})`, async t => {
+      const path = await repo(t)
+      const m = failLstat(join('.git', 'config.worktree'), code)
+      t.after(() => m.mock.restore())
+      assert.deepEqual(await findNetworkPaths(path), [])
+    })
+  }
+
+  it('refuses a .git entry that lstat could not look at', async t => {
+    const path = await repo(t)
+    const m = failLstat(`${join(path, '.git')}`, 'EACCES')
+    t.after(() => m.mock.restore())
+    assert.equal((await findNetworkPaths(path)).length, 1)
+  })
+
+  it('refuses a module directory whose HEAD lstat could not look at', async t => {
+    const path = await repo(t)
+    await mkdir(join(path, '.git', 'modules', 'sm'), { recursive: true })
+    const m = failLstat(join('modules', 'sm', 'HEAD'), 'EACCES')
+    t.after(() => m.mock.restore())
+    assert.ok(
+      (await findNetworkPaths(path)).some(l =>
+        l.includes('cannot be looked at (EACCES)')
+      )
+    )
+  })
+
+  it('refuses a file that cannot be read', async t => {
+    const path = await repo(t)
+    await mkdir(join(path, '.git', 'objects', 'info'), { recursive: true })
+    await writeFile(join(path, '.git', 'objects', 'info', 'alternates'), 'x\n')
+    const original = fsPromises.readFile
+    const m = mock.method(
+      fsPromises,
+      'readFile',
+      async (p: string, ...rest: []) => {
+        if (String(p).endsWith('alternates')) {
+          throw Object.assign(new Error('EACCES'), { code: 'EACCES' })
+        }
+        return (original as (...a: unknown[]) => Promise<unknown>)(p, ...rest)
+      }
+    )
+    t.after(() => m.mock.restore())
+    assert.ok(
+      (await findNetworkPaths(path)).some(l =>
+        l.includes('cannot be read (EACCES)')
+      )
+    )
+  })
+
+  it('refuses a file that is not valid UTF-8 (.git file, commondir, alternates)', async t => {
+    const path = await repo(t)
+    await mkdir(join(path, '.git', 'objects', 'info'), { recursive: true })
+    await writeFile(
+      join(path, '.git', 'objects', 'info', 'alternates'),
+      Buffer.from([0x61, 0xff, 0x62, 0x0a])
+    )
+    assert.ok(
+      (await findNetworkPaths(path)).some(l => l.includes('not valid UTF-8'))
+    )
+
+    const withFile = await createTempDirectory(t)
+    await writeFile(
+      join(withFile, '.git'),
+      Buffer.from('gitdir: a\xffb\n', 'latin1')
+    )
+    assert.ok(
+      (await findNetworkPaths(withFile)).some(l =>
+        l.includes('not valid UTF-8')
+      )
+    )
+  })
+
+  it('refuses an include path with a byte that is not UTF-8, as Git may read another name', async t => {
+    const path = await repo(t)
+    const dir = await createTempDirectory(t)
+    await writeFile(
+      join(dir, 'inc'),
+      Buffer.from('[include]\n\tpath = j\xe4/x\n', 'latin1')
+    )
+    await exec(['config', 'include.path', fwd(join(dir, 'inc'))], path)
+    assert.ok(
+      (await findNetworkPaths(path)).some(l => l.includes('not valid UTF-8'))
+    )
+  })
+
+  it('refuses a path key and a subsection with such a byte', async t => {
+    for (const text of [
+      '[core]\n\texcludesFile = j\xe4/x\n',
+      '[includeIf "gitdir:j\xe4/"]\n\tpath = /nonexistent/x\n',
+      '[url "j\xe4"]\n\tinsteadOf = x\n',
+    ]) {
+      const path = await repo(t)
+      await writeFile(
+        join(path, '.git', 'config'),
+        Buffer.from(`[core]\n\tbare = false\n${text}`, 'latin1')
+      )
+      assert.ok(
+        (await findNetworkPaths(path)).some(l => l.includes('not valid UTF-8')),
+        JSON.stringify(text)
+      )
+    }
+  })
+
+  it('does not refuse a config file Git reads fine: an umlaut in a name, an ANSI comment', async t => {
+    const path = await repo(t)
+    await writeFile(
+      join(path, '.git', 'config'),
+      Buffer.from(
+        '# J\xfcrgen wrote this\n[core]\n\tbare = false\n[user]\n\tname = J\xfcrgen\n',
+        'latin1'
+      )
+    )
+    assert.deepEqual(await findNetworkPaths(path), [])
   })
 })

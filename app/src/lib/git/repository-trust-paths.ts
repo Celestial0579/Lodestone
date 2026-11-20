@@ -94,6 +94,8 @@ interface IScan {
   readonly found: string[]
   /** Directory entries looked at by the walks, against a limit. */
   entries: number
+  /** A last part that is missing is looked at with `.exe` as well (Cygwin's open). */
+  cygwinSuffixes: boolean
   readonly walked: Set<string>
   /** Files and directories looked at, against a limit. */
   files: number
@@ -107,6 +109,7 @@ const newScan = (base: string): IScan => ({
   base,
   found: [],
   entries: 0,
+  cygwinSuffixes: false,
   walked: new Set(),
   files: 0,
   configs: new Map(),
@@ -149,25 +152,49 @@ export function cygwinName(name: string): string {
 }
 
 /**
- * How an MSYS2 or Cygwin ssh-keygen reads a value. Only `X:\` and `X:/` are
- * Windows paths to it; a single leading `/` is a POSIX path (`/proc/self/cwd`
- * is the repository, `/c/` and `/tmp/` go through the mount table), which is
- * refused; anything else is a relative POSIX name, whose parts are mapped
- * (`C:lnk` is `C` U+F03A `lnk`) and opened in the repository.
+ * How an MSYS2 or Cygwin ssh-keygen reads a value. `paths` are what it opens
+ * or passes through, to be looked at in the repository's folder:
+ *
+ * - `X:\` and `X:/` are Windows paths to it, and the parts after the drive
+ *   are mapped as well (`C:\r\lnk:s\key` opens `lnk` U+F03A `s`);
+ * - a single leading `/` is a POSIX path (`/proc/self/cwd` is the repository,
+ *   `/c/` and `/tmp/` go through the mount table): refused;
+ * - anything else is a relative POSIX name, whose parts are mapped
+ *   (`C:lnk` is `C` U+F03A `lnk`) and opened in the repository.
+ *
+ * Before Cygwin drops a part for `..` it resolves the path so far and follows
+ * a link there, so `lnk/../key` passes through `lnk`: every path up to a `..`
+ * is a path to look at as well.
  */
 export function cygwinReading(value: string): {
   readonly refuse?: string
-  readonly relative?: string
+  readonly paths: ReadonlyArray<string>
 } {
-  if (/^[A-Za-z]:[\\/]/.test(value) || /^[\\/]{2}/.test(value)) {
-    return {}
+  if (/^[\\/]{2}/.test(value)) {
+    return { paths: [] }
   }
 
   if (/^[\\/]/.test(value)) {
-    return { refuse: 'a POSIX absolute path an MSYS2 ssh-keygen would resolve' }
+    return {
+      refuse: 'a POSIX absolute path an MSYS2 ssh-keygen would resolve',
+      paths: [],
+    }
   }
 
-  return { relative: value.split(/[\\/]/).map(cygwinName).join('/') }
+  const drive = /^[A-Za-z]:(?=[\\/])/.exec(value)?.[0] ?? ''
+  const parts = value.slice(drive.length).split(/[\\/]/)
+  const mapped = parts.map(cygwinName)
+  const join = (names: ReadonlyArray<string>) =>
+    drive === '' ? names.join('/') : `${drive}${names.join('/')}`
+
+  const paths = [join(mapped)]
+  parts.forEach((part, i) => {
+    if (part === '..' && i > 0) {
+      paths.push(join(mapped.slice(0, i)))
+    }
+  })
+
+  return { paths }
 }
 
 /**
@@ -305,6 +332,14 @@ async function lookAt(scan: IScan, path: string): Promise<Stats | null> {
       } else if (isWindows() && (await hasShortcutBeside(part))) {
         // Cygwin opens `foo` through a read-only `foo.lnk` when `foo` is missing.
         scan.found.push(show('a .lnk shortcut stands for it', `${part}.lnk`))
+      } else if (
+        isWindows() &&
+        scan.cygwinSuffixes &&
+        original === parts[parts.length - 1] &&
+        (await existsAsEntry(`${part}.exe`))
+      ) {
+        // ... and through `foo.exe`, which can be a link.
+        scan.found.push(show('a .exe stands for it', `${part}.exe`))
       }
       return null
     }
@@ -322,7 +357,9 @@ async function lookAt(scan: IScan, path: string): Promise<Stats | null> {
         scan.found.push(show('a .lnk shortcut', part))
         return null
       }
-      if (info.size >= CygwinLinkCookie.length && info.size <= 4096) {
+      // No upper limit on the size: Cygwin reads a SYSTEM link file whatever
+      // its length (a UTF-16 target ends at its NUL).
+      if (info.size >= CygwinLinkCookie.length) {
         if (await startsWithCygwinLinkCookie(part)) {
           scan.found.push(show('a Cygwin or MSYS2 link', part))
           return null
@@ -358,6 +395,16 @@ async function startsWithCygwinLinkCookie(path: string): Promise<boolean> {
 export function isCygwinLinkHead(head: Buffer): boolean {
   const text = head.toString('latin1')
   return text.startsWith(CygwinLinkCookie) || text.startsWith(InterixLinkCookie)
+}
+
+/** Whether there is any entry at this path (not followed). */
+async function existsAsEntry(path: string): Promise<boolean> {
+  try {
+    await lstat(path)
+    return true
+  } catch {
+    return false
+  }
 }
 
 /** Whether `<path>.lnk` is there as a file. */
@@ -661,8 +708,14 @@ async function scanConfig(scan: IScan, file: string, depth: number) {
           const reading = cygwinReading(named)
           if (reading.refuse !== undefined) {
             scan.found.push(show(reading.refuse, `${key} = ${named}`))
-          } else if (reading.relative !== undefined) {
-            await lookAt(scan, Path.resolve(scan.base, reading.relative))
+          } else {
+            // Cygwin also opens `name.exe` and `name.lnk` for a last part that
+            // is missing.
+            scan.cygwinSuffixes = true
+            for (const path of reading.paths) {
+              await lookAt(scan, Path.resolve(scan.base, path))
+            }
+            scan.cygwinSuffixes = false
           }
         }
       }

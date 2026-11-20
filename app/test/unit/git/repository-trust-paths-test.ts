@@ -1125,9 +1125,28 @@ describe('Cygwin and MSYS2 readings for ssh-keygen (#116)', () => {
 
   it('reads a value the way an MSYS2 ssh-keygen does (cygwinReading)', () => {
     // Windows paths to it: nothing more to look at.
-    assert.deepEqual(cygwinReading('C:\\Users\\me\\key'), {})
-    assert.deepEqual(cygwinReading('C:/Users/me/key'), {})
-    assert.deepEqual(cygwinReading('//host/share/key'), {})
+    assert.deepEqual(cygwinReading('C:\\Users\\me\\key').paths, [
+      'C:/Users/me/key',
+    ])
+    assert.deepEqual(cygwinReading('C:/Users/me/key').paths, [
+      'C:/Users/me/key',
+    ])
+    assert.deepEqual(cygwinReading('//host/share/key').paths, [])
+    // The parts after the drive are mapped too.
+    assert.deepEqual(cygwinReading('C:/r/lnk:s/key').paths, [
+      'C:/r/lnk\uF03As/key',
+    ])
+    assert.deepEqual(cygwinReading('C:\\r\\lnk:s\\key').paths, [
+      'C:/r/lnk\uF03As/key',
+    ])
+    // `..` follows a link first: every path up to a `..` is looked at as well.
+    assert.deepEqual(cygwinReading('lnk/../key').paths, ['lnk/../key', 'lnk'])
+    assert.deepEqual(cygwinReading('a/lnk/../b/../key').paths, [
+      'a/lnk/../b/../key',
+      'a/lnk',
+      'a/lnk/../b',
+    ])
+    assert.deepEqual(cygwinReading('../key').paths, ['../key'])
     // POSIX absolute paths are refused.
     for (const value of [
       '/proc/self/cwd/lnk/key',
@@ -1139,12 +1158,12 @@ describe('Cygwin and MSYS2 readings for ssh-keygen (#116)', () => {
       assert.ok(cygwinReading(value).refuse !== undefined, value)
     }
     // Everything else is a relative name with mapped parts.
-    assert.equal(cygwinReading('lnk:s/key').relative, 'lnk\uF03As/key')
-    assert.equal(cygwinReading('C:lnk/key').relative, 'C\uF03Alnk/key')
-    assert.equal(cygwinReading('a\tb/lnk/key').relative, 'a\uF009b/lnk/key')
-    assert.equal(cygwinReading('id_key').relative, 'id_key')
+    assert.equal(cygwinReading('lnk:s/key').paths[0], 'lnk\uF03As/key')
+    assert.equal(cygwinReading('C:lnk/key').paths[0], 'C\uF03Alnk/key')
+    assert.equal(cygwinReading('a\tb/lnk/key').paths[0], 'a\uF009b/lnk/key')
+    assert.equal(cygwinReading('id_key').paths[0], 'id_key')
     assert.equal(
-      cygwinReading('Name <me@example.com>').relative,
+      cygwinReading('Name <me@example.com>').paths[0],
       'Name \uF03Cme@example.com\uF03E'
     )
   })
@@ -1231,7 +1250,7 @@ describe('Cygwin and MSYS2 readings for ssh-keygen (#116)', () => {
       const path = await repo(t)
       try {
         // The names an MSYS2 program opens for the value.
-        const parts = cygwinReading(value).relative!.split('/')
+        const parts = cygwinReading(value).paths[0].split('/')
         let current = path
         for (const part of parts.slice(0, -2)) {
           current = join(current, part)
@@ -1276,5 +1295,199 @@ describe('Cygwin and MSYS2 readings for ssh-keygen (#116)', () => {
     assert.ok(
       !(await findNetworkPaths(path)).some(l => l.includes('POSIX absolute'))
     )
+  })
+
+  // A Windows-only test is first run with PROBE = true on a branch of its own:
+  // it then reports what it saw (t.diagnostic) and cannot fail.
+  const PROBE = false
+  const expectThat = (
+    t: { diagnostic: (m: string) => void },
+    ok: boolean,
+    message: string
+  ) => {
+    if (PROBE) {
+      t.diagnostic(`PROBE ${ok ? 'OK' : 'WOULD FAIL'}: ${message}`)
+    } else {
+      assert.ok(ok, message)
+    }
+  }
+
+  const sshKeygenKeys = [
+    'user.signingkey',
+    'gpg.ssh.allowedSignersFile',
+    'gpg.ssh.revocationFile',
+  ]
+
+  it('looks at every part before a .. that Cygwin resolves through a link (Windows)', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const elsewhere = await createTempDirectory(t)
+    for (const key of sshKeygenKeys) {
+      const path = await repo(t)
+      try {
+        await symlink(elsewhere, join(path, 'lnk'), 'junction')
+      } catch {
+        return t.skip('this system does not let the test make links')
+      }
+      await exec(['config', key, 'lnk/../key'], path)
+      const found = await findNetworkPaths(path)
+      expectThat(
+        t,
+        found.some(l => l.includes('link or junction')),
+        `${key} = lnk/../key: ${JSON.stringify(found)}`
+      )
+    }
+  })
+
+  it('reads a Cygwin link file of any size (Windows)', async t => {
+    const ln = join(gitUsrBin, 'ln.exe')
+    if (process.platform !== 'win32' || !existsSync(ln)) {
+      return t.skip("needs Git for Windows' usr\\bin")
+    }
+    const { spawnSync } = await import('child_process')
+    const { appendFile } = await import('fs/promises')
+    const elsewhere = await createTempDirectory(t)
+    const path = await repo(t)
+    const made = spawnSync(ln, ['-s', fwd(elsewhere), fwd(join(path, 'lnk'))], {
+      cwd: path,
+      encoding: 'utf8',
+      env: { ...process.env, MSYS: 'winsymlinks:sys' },
+    })
+    if (made.status !== 0) {
+      return t.skip(`ln could not make the link: ${made.stderr}`)
+    }
+    // Pad the file far past 4096 bytes: the target ends at its NUL.
+    await appendFile(join(path, 'lnk'), Buffer.alloc(100000))
+    await exec(['config', 'user.signingkey', 'lnk/key'], path)
+    const found = await findNetworkPaths(path)
+    expectThat(
+      t,
+      found.some(l => l.includes('Cygwin or MSYS2 link')),
+      JSON.stringify(found)
+    )
+  })
+
+  it('looks at name.exe for a missing last part, for the ssh-keygen keys only (Windows)', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const path = await repo(t)
+    await writeFile(join(path, 'key.exe'), 'x')
+    for (const key of sshKeygenKeys) {
+      await exec(['config', key, 'key'], path)
+      const found = await findNetworkPaths(path)
+      expectThat(
+        t,
+        found.some(l => l.includes('.exe stands for it')),
+        `${key}: ${JSON.stringify(found)}`
+      )
+      await exec(['config', '--unset', key], path)
+    }
+    await exec(['config', 'diff.orderFile', 'key'], path)
+    const other = await findNetworkPaths(path)
+    expectThat(
+      t,
+      !other.some(l => l.includes('.exe stands for it')),
+      `diff.orderFile: ${JSON.stringify(other)}`
+    )
+  })
+
+  it('maps the parts after the drive of an absolute value (Windows)', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const elsewhere = await createTempDirectory(t)
+    for (const key of sshKeygenKeys) {
+      const path = await repo(t)
+      try {
+        await symlink(elsewhere, join(path, 'lnk\uF03As'), 'junction')
+      } catch {
+        return t.skip('this system does not let the test make links')
+      }
+      await exec(['config', key, `${path}\\lnk:s\\key`], path)
+      const found = await findNetworkPaths(path)
+      expectThat(
+        t,
+        found.some(l => l.includes('link or junction')),
+        `${key}: ${JSON.stringify(found)}`
+      )
+    }
+  })
+
+  it('reports what Node makes of a WSL symlink (Windows, report only)', async t => {
+    if (process.platform !== 'win32') {
+      return t.skip('Windows names only')
+    }
+    const { spawnSync } = await import('child_process')
+    const { lstatSync, statSync, readdirSync } = await import('fs')
+    const dir = await createTempDirectory(t)
+    const path = await repo(t)
+    const file = join(path, 'wsl')
+    await writeFile(file, '')
+    const script = `
+$src = @"
+using System;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+public static class Rp {
+  [DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+  public static extern SafeFileHandle CreateFile(string n, uint a, uint s, IntPtr sa, uint d, uint f, IntPtr t);
+  [DllImport("kernel32.dll", SetLastError=true)]
+  public static extern bool DeviceIoControl(SafeFileHandle h, uint c, byte[] i, int il, IntPtr o, int ol, out int r, IntPtr ov);
+  public static int Make(string path, string target) {
+    SafeFileHandle h = CreateFile(path, 0x40000000, 0, IntPtr.Zero, 3, 0x00200000, IntPtr.Zero);
+    if (h.IsInvalid) return Marshal.GetLastWin32Error();
+    byte[] t = System.Text.Encoding.UTF8.GetBytes(target);
+    byte[] b = new byte[12 + t.Length];
+    BitConverter.GetBytes((uint)0xA000001D).CopyTo(b, 0);
+    BitConverter.GetBytes((ushort)(4 + t.Length)).CopyTo(b, 4);
+    BitConverter.GetBytes((uint)2).CopyTo(b, 8);
+    t.CopyTo(b, 12);
+    int r;
+    return DeviceIoControl(h, 0x000900A4, b, b.Length, IntPtr.Zero, 0, out r, IntPtr.Zero) ? 0 : Marshal.GetLastWin32Error();
+  }
+}
+"@
+Add-Type -TypeDefinition $src
+[Rp]::Make('${file.replace(/'/g, "''")}', '${fwd(dir)}')
+`
+    const encoded = Buffer.from(script, 'utf16le').toString('base64')
+    const made = spawnSync(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
+      { encoding: 'utf8', timeout: 120000 }
+    )
+    t.diagnostic(
+      `PROBE wsl make: rc=${made.status} out=${(
+        made.stdout ?? ''
+      ).trim()} err=${(made.stderr ?? '').trim().slice(0, 300)}`
+    )
+
+    let lstatResult = ''
+    try {
+      const s = lstatSync(file)
+      lstatResult = `lstat ok: symlink=${s.isSymbolicLink()} file=${s.isFile()} dir=${s.isDirectory()} size=${
+        s.size
+      }`
+    } catch (e) {
+      lstatResult = `lstat error: ${(e as NodeJS.ErrnoException).code}`
+    }
+    let statResult = ''
+    try {
+      statResult = `stat ok: file=${statSync(file).isFile()}`
+    } catch (e) {
+      statResult = `stat error: ${(e as NodeJS.ErrnoException).code}`
+    }
+    const dirent = readdirSync(path, { withFileTypes: true }).find(
+      e => e.name === 'wsl'
+    )
+    t.diagnostic(
+      `PROBE wsl node: ${lstatResult} | ${statResult} | dirent symlink=${dirent?.isSymbolicLink()} file=${dirent?.isFile()}`
+    )
+
+    await exec(['config', 'user.signingkey', 'wsl/key'], path)
+    const found = await findNetworkPaths(path)
+    t.diagnostic(`PROBE wsl check: ${JSON.stringify(found)}`)
   })
 })

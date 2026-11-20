@@ -201,14 +201,15 @@ const DefaultAvatarSymbol: OcticonSymbolVariant = {
  * author's address to GitHub's avatar CDN as a query parameter, and get
  * nothing back for it.
  */
-function getEmailAvatarUrl(ep: string, email: string) {
+export function getEmailAvatarUrl(ep: string, email: string) {
   if (isGiteaEndpoint(ep)) {
     const hash = crypto
       .createHash('md5')
       .update(email.trim().toLowerCase())
       .digest('hex')
 
-    return new URL(`/avatar/${hash}`, getGiteaHTMLURL(ep))
+    // Append to the instance's address: a leading slash would replace a sub path.
+    return new URL(`${getGiteaHTMLURL(ep).replace(/\/+$/, '')}/avatar/${hash}`)
   }
 
   if (isGHES(ep)) {

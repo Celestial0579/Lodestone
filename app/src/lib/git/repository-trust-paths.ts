@@ -416,15 +416,24 @@ function pathNamedBy(lower: string, value: string): string | null {
   // literal key, exactly as Git reads it (is_literal_ssh_key). Every other
   // value is looked at: a link named like an id is opened as a file. Values
   // that Windows cannot name at all (`Name <me@example.com>`) are no path.
+  // A drive-relative path and a name with a stream are read as Windows does.
   if (lower === 'user.signingkey') {
     if (/^(key::|ssh-)/.test(value)) {
       return null
     }
-    if (
-      /[<>"|?*]/.test(value) ||
-      /^[^\\/]*:/.test(value.replace(/^[A-Za-z]:(?=[\\/])/, ''))
-    ) {
+    if (/[<>"|?*]/.test(value)) {
       return null
+    }
+
+    // A drive-relative path (`C:lnk/key`) is resolved like any other path,
+    // which reads it as Windows does. A colon after that names a stream
+    // (`lnk:stream`): look at the part before it.
+    const drive = /^[A-Za-z]:/.exec(value)?.[0] ?? ''
+    const rest = value.slice(drive.length)
+    const colon = rest.indexOf(':')
+    if (colon !== -1) {
+      const before = drive + rest.slice(0, colon)
+      return before === '' ? null : before
     }
   }
 

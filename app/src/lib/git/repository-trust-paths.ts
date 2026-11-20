@@ -120,6 +120,15 @@ export function hasTrailingDotOrSpace(path: string): boolean {
   return name !== '.' && name !== '..' && /[. ]$/.test(name)
 }
 
+/** Whether an error says the path is not there (and not that it could not be looked at). */
+const isMissing = (e: unknown) => {
+  const code = (e as NodeJS.ErrnoException | null)?.code
+  return code === 'ENOENT' || code === 'ENOTDIR'
+}
+
+const errorCode = (e: unknown) =>
+  (e as NodeJS.ErrnoException | null)?.code ?? 'error'
+
 const isWindows = () => process.platform === 'win32'
 
 const sameName = (a: string, b: string) =>
@@ -198,7 +207,12 @@ async function lookAt(scan: IScan, path: string): Promise<Stats | null> {
 
     try {
       info = await lstat(part)
-    } catch {
+    } catch (e) {
+      // Only "not there" is not a problem. Any other error means the check
+      // could not look, and Git may still open the path.
+      if (!isMissing(e)) {
+        scan.found.push(show(`cannot be looked at (${errorCode(e)})`, part))
+      }
       return null
     }
 
@@ -270,8 +284,20 @@ async function readChecked(scan: IScan, path: string): Promise<string | null> {
   }
 
   try {
-    return await readFile(path, 'utf8')
-  } catch {
+    const text = await readFile(path, 'utf8')
+
+    // Invalid UTF-8 became U+FFFD: the name read here would not be the one
+    // Git reads.
+    if (text.includes('\uFFFD')) {
+      scan.found.push(show('not valid UTF-8', path))
+      return null
+    }
+
+    return text
+  } catch (e) {
+    if (!isMissing(e)) {
+      scan.found.push(show(`cannot be read (${errorCode(e)})`, path))
+    }
     return null
   }
 }
@@ -519,9 +545,15 @@ async function scanModuleConfigs(scan: IScan, modules: string, depth = 0) {
     return
   }
 
-  const entries = await readdir(modules, { withFileTypes: true }).catch(
-    () => []
-  )
+  let entries
+  try {
+    entries = await readdir(modules, { withFileTypes: true })
+  } catch (e) {
+    if (!isMissing(e)) {
+      scan.found.push(show(`cannot be listed (${errorCode(e)})`, modules))
+    }
+    return
+  }
 
   for (const entry of entries) {
     const directory = Path.join(modules, entry.name)
@@ -529,7 +561,20 @@ async function scanModuleConfigs(scan: IScan, modules: string, depth = 0) {
       continue
     }
 
-    if (await lstat(Path.join(directory, 'HEAD')).catch(() => null)) {
+    let isGitDirectory = false
+    try {
+      await lstat(Path.join(directory, 'HEAD'))
+      isGitDirectory = true
+    } catch (e) {
+      if (!isMissing(e)) {
+        scan.found.push(
+          show(`cannot be looked at (${errorCode(e)})`, directory)
+        )
+        continue
+      }
+    }
+
+    if (isGitDirectory) {
       await scanGitDirectory(scan, directory)
     } else {
       await scanModuleConfigs(scan, directory, depth + 1)
@@ -636,8 +681,12 @@ export async function findNetworkPaths(
   const scan = newScan(folder)
   const dotGit = Path.join(folder, '.git')
 
-  if (!(await lstat(dotGit).catch(() => null))) {
-    return []
+  try {
+    await lstat(dotGit)
+  } catch (e) {
+    return isMissing(e)
+      ? []
+      : [show(`cannot be looked at (${errorCode(e)})`, dotGit)]
   }
 
   await scanDotGit(scan, dotGit)

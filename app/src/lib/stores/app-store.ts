@@ -8224,6 +8224,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     const addedRepositories = new Array<Repository>()
     const lfsRepositories = new Array<Repository>()
     const invalidPaths = new Array<string>()
+    const redirectedPaths = new Array<string>()
 
     for (const path of paths) {
       const repositoryType = await getRepositoryType(path).catch(e => {
@@ -8239,6 +8240,14 @@ export class AppStore extends TypedBaseStore<IAppState> {
         )
 
         addedRepositories.push(repository)
+        continue
+      }
+
+      if (repositoryType.kind === 'redirected') {
+        log.warn(
+          `[AppStore] refusing ${path}: its configuration points the working tree to ${repositoryType.topLevelWorkingDirectory}, not to the folder that holds .git`
+        )
+        redirectedPaths.push(path)
         continue
       }
 
@@ -8261,6 +8270,10 @@ export class AppStore extends TypedBaseStore<IAppState> {
           repositoryType.gitDir
         )
 
+        // Nothing it names runs, and nothing goes over the network, until it
+        // has been looked at.
+        this.markRepositoriesPending([addedRepo])
+
         // initialize the remotes for this new repository to ensure it can fetch
         // it's GitHub-related details using the GitHub API (if applicable)
         const gitStore = this.gitStoreCache.get(addedRepo)
@@ -8278,6 +8291,16 @@ export class AppStore extends TypedBaseStore<IAppState> {
       } else {
         invalidPaths.push(path)
       }
+    }
+
+    if (redirectedPaths.length > 0) {
+      this.emitError(
+        new Error(
+          `${redirectedPaths.join(
+            ', '
+          )}: the Git configuration of this repository points its working folder somewhere else (core.worktree), so Git would read and write files in another folder. Lodestone does not open such a repository.`
+        )
+      )
     }
 
     if (invalidPaths.length > 0) {

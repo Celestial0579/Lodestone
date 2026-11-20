@@ -14,7 +14,7 @@ import {
   CopyFilePathLabel,
   CopyRelativeFilePathLabel,
   DefaultEditorLabel,
-  isSafeFileExtension,
+  canOpenWithDefaultProgram,
   OpenWithDefaultProgramLabel,
   RevealInFileManagerLabel,
 } from '../lib/context-menu'
@@ -174,8 +174,7 @@ export class PullRequestFilesChanged extends React.Component<
 
     const { externalEditorLabel, dispatcher } = this.props
 
-    const extension = Path.extname(file.path)
-    const isSafeExtension = isSafeFileExtension(extension)
+    const isSafeExtension = canOpenWithDefaultProgram(file.path)
     const openInExternalEditor =
       externalEditorLabel !== undefined
         ? `Open in ${externalEditorLabel}`

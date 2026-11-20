@@ -187,6 +187,8 @@ interface IVector {
   readonly neverRuns?: boolean
   /** Operations the app never lets it run on, trusted or not. */
   readonly neverRunsOn?: ReadonlyArray<string>
+  /** Git for Windows does not start a script given as a bare program for this key, so the trusted run cannot show it. */
+  readonly noTrustedProofOnWindows?: boolean
 }
 
 const vectors: ReadonlyArray<IVector> = [
@@ -247,6 +249,7 @@ const vectors: ReadonlyArray<IVector> = [
     },
     operations: [fetchOp],
     mayFail: true,
+    noTrustedProofOnWindows: true,
     remoteUrl: 'git://127.0.0.1:1/x.git',
   },
   {
@@ -319,6 +322,7 @@ const vectors: ReadonlyArray<IVector> = [
     },
     operations: [commitOp],
     mayFail: true,
+    noTrustedProofOnWindows: true,
   },
 ]
 
@@ -369,6 +373,10 @@ describe('repository trust: what an untrusted repository may run', () => {
       })
 
       it(`${v.key}: ${op.name} runs it in a trusted repository, as Git does`, async t => {
+        if (__WIN32__ && v.noTrustedProofOnWindows) {
+          t.skip('Git for Windows does not start this program as a bare script')
+          return
+        }
         const f = await fixture(t)
         if (v.remoteUrl) {
           await run(['remote', 'set-url', 'origin', v.remoteUrl], f.repo.path)

@@ -114,6 +114,21 @@ const newScan = (base: string): IScan => ({
   gitDirectories: new Set(),
 })
 
+/** Whether a name holds a character Windows does not allow in one. */
+export function hasWindowsForbiddenCharacter(name: string): boolean {
+  return /[<>"|?*]/.test(name)
+}
+
+/**
+ * The name an MSYS2 program (Git for Windows' ssh-keygen) uses for a name
+ * with characters Windows forbids: each one is U+F000 plus its code.
+ */
+export function msys2Name(name: string): string {
+  return name.replace(/[<>"|?*]/g, c =>
+    String.fromCharCode(0xf000 + c.charCodeAt(0))
+  )
+}
+
 /** Whether the last part of a path ends in a dot or a space (not `.` or `..`). */
 export function hasTrailingDotOrSpace(path: string): boolean {
   const name = path.split(/[\\/]/).pop() ?? ''
@@ -197,12 +212,35 @@ async function lookAt(scan: IScan, path: string): Promise<Stats | null> {
   }
 
   let info: Stats | null = null
-  for (const part of parts) {
+  // When a part with a character Windows refuses was replaced by its MSYS2
+  // name, the parts below it are rewritten the same way.
+  let renamedFrom = ''
+  let renamedTo = ''
+  for (const original of parts) {
+    let part =
+      renamedFrom !== '' && original.startsWith(renamedFrom)
+        ? renamedTo + original.slice(renamedFrom.length)
+        : original
+
     // Windows drops trailing dots and spaces from the last part of a name when
     // Git opens it, but not Node's lstat, which then sees nothing there.
     if (isWindows() && hasTrailingDotOrSpace(part)) {
       scan.found.push(show('name ends in a dot or a space', part))
       return null
+    }
+
+    // `< > " | ? *` are not allowed in a Windows name: it ends the walk, as a
+    // name that is not there. An MSYS2 program (the ssh-keygen of Git for
+    // Windows) maps each to U+F000 plus the character, and that name can
+    // exist: then it is looked at instead.
+    if (isWindows() && hasWindowsForbiddenCharacter(Path.basename(part))) {
+      const mapped = Path.join(
+        Path.dirname(part),
+        msys2Name(Path.basename(part))
+      )
+      renamedFrom = original
+      renamedTo = mapped
+      part = mapped
     }
 
     try {
@@ -421,9 +459,9 @@ function pathNamedBy(lower: string, value: string): string | null {
     if (/^(key::|ssh-)/.test(value)) {
       return null
     }
-    if (/[<>"|?*]/.test(value)) {
-      return null
-    }
+    // A value with `< > " | ? *` (`Name <me@example.com>`) is resolved like any
+    // other: the parts before such a character are looked at (`lnk/a<b`), and
+    // lookAt ends the walk at the part that holds it.
 
     // A drive-relative path (`C:lnk/key`) is resolved like any other path,
     // which reads it as Windows does. A colon after that names a stream

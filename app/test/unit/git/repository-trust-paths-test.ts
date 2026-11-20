@@ -11,6 +11,7 @@ import {
   hasTrailingDotOrSpace,
   isNetworkPath,
   parseGitFile,
+  PathKeys,
   unquoteAlternate,
 } from '../../../src/lib/git/repository-trust-paths'
 import { readRepositoryFindings } from '../../../src/lib/git/repository-trust-facts'
@@ -766,5 +767,106 @@ describe('errors other than "not there" (#104)', () => {
       )
     )
     assert.deepEqual(await findNetworkPaths(path), [])
+  })
+
+  it('looks at every path key part by part, a link in a relative value included', async t => {
+    const elsewhere = await createTempDirectory(t)
+    const keys = [
+      ...PathKeys,
+      'http.https://example.com/.sslcainfo',
+      'http.https://example.com/.sslkey',
+      'http.https://example.com/.cookiefile',
+    ].filter(k => k !== 'user.signingkey')
+
+    for (const key of keys) {
+      const path = await repo(t)
+      try {
+        await symlink(elsewhere, join(path, 'lnk'), 'junction')
+      } catch {
+        return t.skip('this system does not let the test make links')
+      }
+      await exec(['config', key, 'lnk/x'], path)
+      assert.ok(
+        (await findNetworkPaths(path)).some(l =>
+          l.includes('link or junction')
+        ),
+        key
+      )
+    }
+  })
+
+  it('does not refuse an ordinary URL-scoped key', async t => {
+    const path = await repo(t)
+    await exec(['config', 'http.https://example.com/.sslVerify', 'true'], path)
+    await exec(
+      ['config', 'http.https://example.com/.extraHeader', 'X: y'],
+      path
+    )
+    await exec(['config', 'url.https://example.com/.insteadOf', 'ex:'], path)
+    await exec(
+      ['config', 'lfs.https://example.com/info/lfs.access', 'basic'],
+      path
+    )
+    await exec(
+      ['config', 'credential.https://example.com.username', 'me'],
+      path
+    )
+    assert.deepEqual(await findNetworkPaths(path), [])
+  })
+
+  it('looks at user.signingkey as a file unless it is a literal key, ids and addresses not refused', async t => {
+    const elsewhere = await createTempDirectory(t)
+    const path = await repo(t)
+
+    for (const value of [
+      'ABCDEF0123456789',
+      'me@example.com',
+      'Name <me@example.com>',
+      'key::ssh-ed25519 AAAA/BBBB',
+      'ssh-ed25519 AAAA/BBBB ' + 'x'.repeat(300),
+      '~/key',
+    ]) {
+      await exec(['config', 'user.signingkey', value], path)
+      assert.deepEqual(await findNetworkPaths(path), [], value)
+    }
+
+    await exec(['config', 'http.pinnedPubKey', 'sha256//abc/def'], path)
+    assert.deepEqual(await findNetworkPaths(path), [])
+
+    // A junction named like a key id, and one under a name that starts like a type.
+    for (const [value, name] of [
+      ['id_key', 'id_key'],
+      ['ecdsa-lnk/key', 'ecdsa-lnk'],
+      ['sk-lnk/key', 'sk-lnk'],
+      ['lnk/id_key', 'lnk'],
+    ]) {
+      const withLink = await repo(t)
+      try {
+        await symlink(elsewhere, join(withLink, name), 'junction')
+      } catch {
+        return t.skip('this system does not let the test make links')
+      }
+      await exec(['config', 'user.signingkey', value], withLink)
+      assert.ok(
+        (await findNetworkPaths(withLink)).some(l =>
+          l.includes('link or junction')
+        ),
+        value
+      )
+    }
+  })
+
+  it('refuses a diff.orderFile that goes through a junction', async t => {
+    const elsewhere = await createTempDirectory(t)
+    const path = await repo(t)
+    try {
+      await symlink(elsewhere, join(path, 'lnk'), 'junction')
+    } catch {
+      return t.skip('this system does not let the test make links')
+    }
+    await exec(['config', 'diff.orderFile', 'lnk/order'], path)
+    assert.ok(
+      (await findNetworkPaths(path)).some(l => l.includes('link or junction'))
+    )
   })
 })

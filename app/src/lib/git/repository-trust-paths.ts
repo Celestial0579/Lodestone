@@ -343,13 +343,93 @@ async function listConfigFile(
     })
 }
 
-/** Keys whose value is a path Git opens, or a directory it runs hooks from. */
-const PathKeys: ReadonlySet<string> = new Set([
+/**
+ * Keys whose value is a path Git opens, or a directory it runs hooks from.
+ * Taken from Git's source (master at f7de814569, read on 2026-11-20): every
+ * call of `git_config_pathname` and `repo_config_get_pathname`, plus
+ * `user.signingkey`, which `ssh-keygen` reads as a file when `gpg.format` is
+ * `ssh`. The app's own calls reach these: `diff.orderFile` (every porcelain
+ * diff, log and show: diff.ts, diff-check.ts, log.ts, show.ts),
+ * `format.signatureFile` (format-patch.ts), `core.excludesFile` and
+ * `core.attributesFile` (status and diff), `core.hooksPath` (every hook),
+ * `mailmap.file` (log, which has `log.mailmap` on), and `user.signingkey`
+ * with `commit.gpgsign` (commit). The others are opened by Git when a command
+ * the app does not run today asks for them, or when the user's own
+ * configuration turns an option on (`fetch.fsckObjects` for the skip lists);
+ * they are looked at the same way, so a link in a relative value cannot reach
+ * a network path.
+ */
+export const PathKeys: ReadonlySet<string> = new Set([
   'core.excludesfile',
   'core.attributesfile',
   'core.hookspath',
   'mailmap.file',
+  'diff.orderfile',
+  'format.signaturefile',
+  'commit.template',
+  'blame.ignorerevsfile',
+  'gpg.ssh.allowedsignersfile',
+  'gpg.ssh.revocationfile',
+  'fsck.skiplist',
+  'fetch.fsck.skiplist',
+  'receive.fsck.skiplist',
+  'http.sslcainfo',
+  'http.sslcapath',
+  'http.cookiefile',
+  'http.sslcert',
+  'http.sslkey',
+  'http.pinnedpubkey',
+  'http.proxysslcert',
+  'http.proxysslkey',
+  'http.proxysslcainfo',
+  'user.signingkey',
 ])
+
+/** The last part of a `http.<url>.<key>` key that names a file (Git's urlmatch). */
+const HttpScopedPathKeys = new Set(
+  [...PathKeys]
+    .filter(k => k.startsWith('http.'))
+    .map(k => k.slice('http.'.length))
+)
+
+/**
+ * The path a key's value names, to be looked at, or null when the key is not
+ * one that names a path or the value is not one (a literal key, an id).
+ */
+function pathNamedBy(lower: string, value: string): string | null {
+  const scoped = /^http\..+\.([^.]+)$/.exec(lower)
+  const isPathKey =
+    PathKeys.has(lower) ||
+    (scoped !== null && HttpScopedPathKeys.has(scoped[1]))
+
+  if (!isPathKey || value === '' || value.startsWith('~')) {
+    return null
+  }
+
+  // http.pinnedPubKey takes a hash as well as a file.
+  if (/pinnedpubkey$/.test(lower) && value.startsWith('sha256//')) {
+    return null
+  }
+
+  // user.signingkey is a key id, an e-mail address, a name with an address or
+  // a path, and ssh-keygen opens it as a file. Only `key::` and `ssh-` mark a
+  // literal key, exactly as Git reads it (is_literal_ssh_key). Every other
+  // value is looked at: a link named like an id is opened as a file. Values
+  // that Windows cannot name at all (`Name <me@example.com>`) are no path.
+  if (lower === 'user.signingkey') {
+    if (/^(key::|ssh-)/.test(value)) {
+      return null
+    }
+    if (
+      /[<>"|?*]/.test(value) ||
+      /^[^\\/]*:/.test(value.replace(/^[A-Za-z]:(?=[\\/])/, ''))
+    ) {
+      return null
+    }
+  }
+
+  return value
+}
 
 /**
  * Check one config file, and follow the files it includes. A file is scanned
@@ -394,6 +474,7 @@ async function scanConfig(scan: IScan, file: string, depth: number) {
     const namesPath =
       lower === 'include.path' ||
       /^includeif\..+\.path$/.test(lower) ||
+      pathNamedBy(lower, value) !== null ||
       PathKeys.has(lower) ||
       lower.startsWith('url.')
     if (
@@ -408,7 +489,9 @@ async function scanConfig(scan: IScan, file: string, depth: number) {
       isNetworkPath(value) ||
       (subsection !== null &&
         (isNetworkPath(subsection) ||
-          isNetworkPath(subsection.replace(/^[a-z/]+:/i, ''))))
+          // An includeIf condition is `gitdir:<path>`, `onbranch:<name>`, ...
+          (lower.startsWith('includeif.') &&
+            isNetworkPath(subsection.replace(/^[a-z/]+:/i, '')))))
     ) {
       scan.found.push(show(Path.basename(file), `${key} = ${value}`))
     } else if (
@@ -416,12 +499,11 @@ async function scanConfig(scan: IScan, file: string, depth: number) {
       /^includeif\..+\.path$/.test(lower)
     ) {
       await scanConfig(scan, Path.resolve(Path.dirname(file), value), depth + 1)
-    } else if (PathKeys.has(lower) && value !== '') {
+    } else {
       // Git opens (or runs hooks from) this path: look at it part by part.
-      const target = value.startsWith('~')
-        ? null
-        : Path.resolve(scan.base, value)
-      if (target !== null) {
+      const named = pathNamedBy(lower, value)
+      if (named !== null) {
+        const target = Path.resolve(scan.base, named)
         await lookAt(scan, target)
         if (lower === 'core.hookspath') {
           await walk(scan, target)

@@ -1,6 +1,7 @@
 {
   "releases": {
     "1.0.8": [
+      "[Fixed] Files that Windows runs, installs, mounts or starts a program with (scripts, shortcuts, installers, disk images and every other type on Microsoft's list of blocked Outlook attachments) are no longer opened with the program Windows has for them; Lodestone shows a message instead, and the file can still be shown in its folder",
       "[Fixed] Email avatars of a Gitea or Forgejo instance under a sub path are requested from that sub path, not from the root of the host",
       "[New] A repository that brings its own Git configuration or hooks asks first: the question lists the commands, keys and hooks it would run, and the default answer is not to trust it. An untrusted repository runs Git with those commands switched off and hooks disabled; if it also changes how Git connects, it gets no network operations. Revoke a decision in Settings, Advanced",
       "[Improved] Git runs with the file system monitor off for status, with external diff and text conversion off for diff, log and show, and refuses bare repositories and repositories whose configuration moves the working folder elsewhere"

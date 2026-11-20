@@ -767,4 +767,28 @@ describe('errors other than "not there" (#104)', () => {
     )
     assert.deepEqual(await findNetworkPaths(path), [])
   })
+
+  it('looks at the other path keys part by part, a link in a relative value included', async t => {
+    const elsewhere = await createTempDirectory(t)
+    for (const key of [
+      'commit.template',
+      'fsck.skipList',
+      'http.sslCAInfo',
+      'blame.ignoreRevsFile',
+    ]) {
+      const path = await repo(t)
+      try {
+        await symlink(elsewhere, join(path, 'lnk'), 'junction')
+      } catch {
+        return t.skip('this system does not let the test make links')
+      }
+      await exec(['config', key, 'lnk/x'], path)
+      assert.ok(
+        (await findNetworkPaths(path)).some(l =>
+          l.includes('link or junction')
+        ),
+        key
+      )
+    }
+  })
 })

@@ -349,6 +349,15 @@ const PathKeys: ReadonlySet<string> = new Set([
   'core.attributesfile',
   'core.hookspath',
   'mailmap.file',
+  // Not opened by the app's own calls today (it passes -F to commit, switches
+  // signature display off and does not run blame), but Git opens them.
+  'commit.template',
+  'blame.ignorerevsfile',
+  'gpg.ssh.allowedsignersfile',
+  'fsck.skiplist',
+  'http.sslcainfo',
+  'http.sslcapath',
+  'http.cookiefile',
 ])
 
 /**

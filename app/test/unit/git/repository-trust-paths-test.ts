@@ -724,4 +724,47 @@ describe('errors other than "not there" (#104)', () => {
       )
     )
   })
+
+  it('refuses an include path with a byte that is not UTF-8, as Git may read another name', async t => {
+    const path = await repo(t)
+    const dir = await createTempDirectory(t)
+    await writeFile(
+      join(dir, 'inc'),
+      Buffer.from('[include]\n\tpath = j\xe4/x\n', 'latin1')
+    )
+    await exec(['config', 'include.path', fwd(join(dir, 'inc'))], path)
+    assert.ok(
+      (await findNetworkPaths(path)).some(l => l.includes('not valid UTF-8'))
+    )
+  })
+
+  it('refuses a path key and a subsection with such a byte', async t => {
+    for (const text of [
+      '[core]\n\texcludesFile = j\xe4/x\n',
+      '[includeIf "gitdir:j\xe4/"]\n\tpath = /nonexistent/x\n',
+      '[url "j\xe4"]\n\tinsteadOf = x\n',
+    ]) {
+      const path = await repo(t)
+      await writeFile(
+        join(path, '.git', 'config'),
+        Buffer.from(`[core]\n\tbare = false\n${text}`, 'latin1')
+      )
+      assert.ok(
+        (await findNetworkPaths(path)).some(l => l.includes('not valid UTF-8')),
+        JSON.stringify(text)
+      )
+    }
+  })
+
+  it('does not refuse a config file Git reads fine: an umlaut in a name, an ANSI comment', async t => {
+    const path = await repo(t)
+    await writeFile(
+      join(path, '.git', 'config'),
+      Buffer.from(
+        '# J\xfcrgen wrote this\n[core]\n\tbare = false\n[user]\n\tname = J\xfcrgen\n',
+        'latin1'
+      )
+    )
+    assert.deepEqual(await findNetworkPaths(path), [])
+  })
 })

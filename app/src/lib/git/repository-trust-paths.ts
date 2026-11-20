@@ -271,7 +271,12 @@ async function walk(scan: IScan, directory: string) {
 }
 
 /** A small regular file's text, or null (missing, or refused and noted). */
-async function readChecked(scan: IScan, path: string): Promise<string | null> {
+async function readChecked(
+  scan: IScan,
+  path: string,
+  /** The text is read as paths: bytes that are not UTF-8 are a refusal. */
+  asPaths = false
+): Promise<string | null> {
   const info = await lookAt(scan, path)
 
   if (info === null) {
@@ -287,8 +292,9 @@ async function readChecked(scan: IScan, path: string): Promise<string | null> {
     const text = await readFile(path, 'utf8')
 
     // Invalid UTF-8 became U+FFFD: the name read here would not be the one
-    // Git reads.
-    if (text.includes('\uFFFD')) {
+    // Git reads. Only where the text names paths; a config file Git reads
+    // fine (an ANSI comment, a name with an umlaut) is not refused for it.
+    if (asPaths && text.includes('\uFFFD')) {
       scan.found.push(show('not valid UTF-8', path))
       return null
     }
@@ -380,6 +386,23 @@ async function scanConfig(scan: IScan, file: string, depth: number) {
   for (const { key, value } of entries) {
     const subsection = subsectionOf(key)
     const lower = key.toLowerCase()
+
+    // A value or subsection that names a path, with bytes that are not UTF-8:
+    // Git reads another name than the U+FFFD this check has. (Git for Windows
+    // maps such bytes to Latin-1, `j\xe4` is `jä`.) Refuse it. Other values,
+    // `user.name` with an umlaut among them, are not paths.
+    const namesPath =
+      lower === 'include.path' ||
+      /^includeif\..+\.path$/.test(lower) ||
+      PathKeys.has(lower) ||
+      lower.startsWith('url.')
+    if (
+      namesPath &&
+      (value.includes('\uFFFD') || (subsection ?? '').includes('\uFFFD'))
+    ) {
+      scan.found.push(show('not valid UTF-8', `${Path.basename(file)}: ${key}`))
+      continue
+    }
 
     if (
       isNetworkPath(value) ||
@@ -482,7 +505,7 @@ async function scanAlternates(scan: IScan, objects: string, depth: number) {
     return
   }
 
-  const text = await readChecked(scan, file)
+  const text = await readChecked(scan, file, true)
 
   // Lines as Git reads them: split at a line feed only, nothing trimmed.
   for (const line of text?.split('\n') ?? []) {
@@ -523,7 +546,7 @@ async function scanGitDirectory(scan: IScan, directory: string) {
   await scanAlternates(scan, Path.join(directory, 'objects'), 0)
 
   // In a linked work tree the common directory holds config and objects.
-  const raw = await readChecked(scan, Path.join(directory, 'commondir'))
+  const raw = await readChecked(scan, Path.join(directory, 'commondir'), true)
   const common = raw?.replace(/\n$/, '')
   if (common !== undefined && common !== '') {
     if (/^\s|\s$|\uFEFF|\0/.test(common)) {
@@ -602,7 +625,7 @@ async function gitFileTarget(
   scan: IScan,
   file: string
 ): Promise<string | null> {
-  const text = await readChecked(scan, file)
+  const text = await readChecked(scan, file, true)
   const target = text === null ? null : parseGitFile(text)
 
   if (target === null) {

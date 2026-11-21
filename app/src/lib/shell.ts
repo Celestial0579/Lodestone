@@ -57,7 +57,8 @@ export async function updateEnvironmentForProcess(): Promise<void> {
   try {
     const { stdout } = await execFile(shell, ['-ilc', cmd], opts)
 
-    for (const [, k, v] of stdout.matchAll(/\0(.+?)=(.+?)\0/g)) {
+    // No encoding is set, so stdout is a string; the type says both.
+    for (const [, k, v] of String(stdout).matchAll(/\0(.+?)=(.+?)\0/g)) {
       if (!ExcludedEnvironmentVars.has(k)) {
         process.env[k] = v
       }

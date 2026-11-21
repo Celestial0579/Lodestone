@@ -415,7 +415,11 @@ ipcRenderer.on('cli-action', (_, action) =>
     delete defaults?.[k]
     delete types?.[k]
   })
-})(Grid.defaultProps, Grid.propTypes)
+})(
+  Grid.defaultProps,
+  // @types/react-virtualized 9.22 no longer declares propTypes on Grid.
+  (Grid as unknown as { propTypes?: Record<string, unknown> }).propTypes
+)
 
 ReactDOM.render(
   <App

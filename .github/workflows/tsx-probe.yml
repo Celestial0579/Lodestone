@@ -1,0 +1,47 @@
+name: tsx probe
+
+# A probe for the tsx versions that break the unit tests on Windows (#129). It
+# reports and cannot fail: every step goes on whatever happens.
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/tsx-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Which tsx versions fail on a JSON file under node_modules
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          "node $(node --version)"
+          foreach ($v in '4.19.3', '4.19.4', '4.20.6', '4.21.1', '4.22.5', '4.23.0', '4.23.15') {
+            $dir = Join-Path $env:RUNNER_TEMP "probe-$v"
+            New-Item -ItemType Directory -Force $dir | Out-Null
+            Set-Location $dir
+            '{"name":"p","version":"1.0.0","private":true}' | Set-Content package.json
+            npm install --silent --no-audit --no-fund "tsx@$v" whatwg-encoding@3.1.1 2>&1 | Out-Null
+            "const w = require('whatwg-encoding'); console.log('required whatwg-encoding')" | Set-Content t.ts
+            foreach ($flags in @(@('--import', 'tsx'), @('--conditions=import', '--import', 'tsx'))) {
+              $out = (& node @flags t.ts 2>&1 | Out-String).Trim()
+              $first = ($out -split "`n" | Where-Object { $_ -match 'required|SyntaxError' } | Select-Object -First 1)
+              "PROBE tsx $v flags [$($flags -join ' ')]: exit $LASTEXITCODE $first"
+            }
+            $installed = (Get-Content node_modules\tsx\package.json | ConvertFrom-Json).version
+            "PROBE installed tsx $installed, register file: $((Get-ChildItem node_modules\tsx\dist\register-*.cjs | Select-Object -First 1).Name)"
+          }

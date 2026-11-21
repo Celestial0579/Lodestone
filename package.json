@@ -180,7 +180,7 @@
     "playwright": "^1.65.0",
     "reserved-words": "^0.1.2",
     "tsconfig-paths": "^3.15.0",
-    "tsx": "^4.23.15",
+    "tsx": "4.21.1",
     "webpack-cli": "^6.0.1"
   }
 }

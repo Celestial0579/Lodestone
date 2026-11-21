@@ -21,6 +21,8 @@ The dialog lists every key, value and hook name as text. Control characters, bid
 
 Until you answer, and after you answer no, every Git call for that repository, automatic or started by you, runs with the command keys overridden and hooks pointed at an empty folder. Local operations keep working. Git never goes into a submodule: status runs with `--ignore-submodules=all`, fetch and pull with `--no-recurse-submodules`, `submodule.recurse` is off, and submodules are not updated. Only `git:`, `http:`, `https:` and `ssh:` transports are allowed (`GIT_ALLOW_PROTOCOL`), whatever `protocol.*` says. `file` is left out, so an untrusted repository cannot fetch from a local path (which would copy the objects of another repository on the machine into it); trusting the repository restores that. If the repository also sets transport keys, it gets no network operations, background fetch included.
 
+`credential.helper` and `core.askPass` are overridden like the other command keys (`credential.helper` to an empty value, which clears the list). The app's own network operations add its credential helper through the environment, which replaces every helper of the repository, so a repository's helper never runs in them, trusted or not. Tests: "credential.helper ... fetch without the app's credential helper" and "core.askPass ..." (a local HTTP server that asks for credentials, a marker file per helper), and "credential.helper (through the app's own fetch)".
+
 ## Trusted
 
 Trusted works like the Git command line: nothing is overridden.

@@ -10,6 +10,7 @@
 import { afterEach, describe, it, TestContext } from 'node:test'
 import assert from 'node:assert'
 import { exec } from 'dugite'
+import { createServer, Server } from 'http'
 import { chmod, mkdir, stat, utimes, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { createTempDirectory } from '../../helpers/temp'
@@ -161,6 +162,33 @@ const commitOp: Operation = {
   },
 }
 
+/**
+ * A fetch run the way the policy runs any Git call, without the credential
+ * helper the app puts in the environment for its own network operations (that
+ * helper replaces every helper of the repository, so the app's fetch never
+ * runs one, trusted or not). What is under test here is the override.
+ */
+const plainFetchOp: Operation = {
+  name: "fetch without the app's credential helper",
+  run: async f => {
+    const args = ['fetch', '-q', 'origin']
+    const r = await exec(
+      [...getGitArgumentsFor(f.repo.path, args)],
+      f.repo.path,
+      {
+        env: {
+          GIT_TERMINAL_PROMPT: '0',
+          ...getGitEnvironmentFor(f.repo.path, args),
+        },
+      }
+    )
+    if (r.exitCode !== 0) {
+      throw new Error(r.stderr)
+    }
+  },
+  worked: async () => {},
+}
+
 const checkoutOp: Operation = {
   name: 'checkout',
   run: async f => {
@@ -184,6 +212,24 @@ const checkoutOp: Operation = {
 async function removeMarker(f: IFixture) {
   const { rm } = await import('fs/promises')
   await rm(f.marker, { force: true })
+}
+
+const servers = new Array<Server>()
+
+/** An HTTP server that asks for credentials on every request, so Git asks a helper. */
+async function remoteThatAsksForCredentials(): Promise<string> {
+  const server = createServer((_req, res) => {
+    res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="test"' })
+    res.end()
+  })
+  servers.push(server)
+  await new Promise<void>(listening =>
+    server.listen(0, '127.0.0.1', () => listening())
+  )
+  const address = server.address()
+  const port =
+    typeof address === 'object' && address !== null ? address.port : 0
+  return `http://127.0.0.1:${port}/x.git`
 }
 
 interface IVector {
@@ -249,6 +295,59 @@ const vectors: ReadonlyArray<IVector> = [
     operations: [fetchOp],
     mayFail: true,
     remoteUrl: 'ssh://127.0.0.1:1/x.git',
+  },
+  {
+    key: 'credential.helper (a remote that asks for credentials)',
+    setup: async f => {
+      const url = await remoteThatAsksForCredentials()
+      await run(['remote', 'set-url', 'origin', url], f.repo.path)
+      await run(
+        [
+          'config',
+          'credential.helper',
+          `!${marks(f.marker)}; echo username=a; echo password=b`,
+        ],
+        f.repo.path
+      )
+    },
+    operations: [plainFetchOp],
+    mayFail: true,
+    noTrustedProofOnWindows: true,
+  },
+  {
+    // The app's own fetch puts its credential helper in the environment, which
+    // replaces every helper of the repository: the helper never runs, trusted
+    // or not.
+    key: "credential.helper (through the app's own fetch)",
+    setup: async f => {
+      const url = await remoteThatAsksForCredentials()
+      await run(['remote', 'set-url', 'origin', url], f.repo.path)
+      await run(
+        [
+          'config',
+          'credential.helper',
+          `!${marks(f.marker)}; echo username=a; echo password=b`,
+        ],
+        f.repo.path
+      )
+    },
+    operations: [fetchOp],
+    mayFail: true,
+    neverRuns: true,
+  },
+  {
+    key: 'core.askPass (a remote that asks for credentials)',
+    setup: async f => {
+      const url = await remoteThatAsksForCredentials()
+      await run(['remote', 'set-url', 'origin', url], f.repo.path)
+      const prog = join(f.base, 'askpass.sh')
+      await writeFile(prog, `#!/bin/sh\n${marks(f.marker)}\necho x\n`)
+      await chmod(prog, 0o755)
+      await run(['config', 'core.askPass', shPath(prog)], f.repo.path)
+    },
+    operations: [plainFetchOp],
+    mayFail: true,
+    noTrustedProofOnWindows: true,
   },
   {
     key: 'core.gitProxy',
@@ -383,8 +482,12 @@ async function setPolicy(f: IFixture, trusted: boolean) {
   )
 }
 
-afterEach(() => {
-  // Each test sets its own policy; nothing carries over.
+afterEach(async () => {
+  // Each test sets its own policy; nothing carries over. The servers a case
+  // started for a remote that asks for credentials are closed.
+  await Promise.all(
+    servers.splice(0).map(s => new Promise<void>(done => s.close(() => done())))
+  )
 })
 
 describe('repository trust: what an untrusted repository may run', () => {

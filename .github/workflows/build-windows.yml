@@ -36,6 +36,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The Electron version of package.json, app/.npmrc and the check must be the
+      # same; stop before the long build when they are not (#143).
+      - name: Check the Electron version
+        run: npm run validate-electron-version
+        env:
+          RELEASE_CHANNEL: production
+
       - name: Build
         run: npm run build:prod
         env:

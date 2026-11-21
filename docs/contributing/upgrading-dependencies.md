@@ -86,6 +86,11 @@ These are the most important dependencies to the app, and include:
    - `react-dom`
    - `keytar`
 
+An update of `electron` changes the version in three places: `package.json`,
+`target` in `app/.npmrc` and `ValidElectronVersions` in
+`script/validate-electron-version.ts`. The Windows build runs
+`npm run validate-electron-version` and stops when they differ.
+
 Anyone who wants to get involved with updating these versions should be very
 familiar with both the library and what has changed between versions, so the
 review process is focused on verifying the impact of the change rather than

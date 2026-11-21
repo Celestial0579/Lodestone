@@ -4,10 +4,12 @@
 // `orange` instead of `glut` here means trouble at the next revision, because
 // the role stays and the hue may not.
 //
-// Source of truth is the `firestrike` child theme (theme.json / style.css);
-// these values are an extract of it, taken 2026-09-02, not a copy with a life
-// of its own. Two files ship alongside it upstream:
-// gestaltung-firestrike.css and gestaltung-firestrike.tokens.json.
+// Source of truth is `exporte/_firestrike.scss` in
+// https://github.com/Celestial0579/firestrike-branding, at the commit pinned in
+// `.github/workflows/ci.yml` (FIRESTRIKE_BRANDING_SHA). The colour values here
+// are a copy of it, not a copy with a life of its own: CI compares them with
+// that file and fails when one differs. To change a colour, change it in the
+// branding repository, move the pinned commit and update this file.
 //
 // The idea: flint strikes steel and a spark appears. Hence a cool steel ground
 // and a single warm accent. No signal red, no second accent, no gradients, and

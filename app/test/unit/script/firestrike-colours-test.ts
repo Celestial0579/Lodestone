@@ -5,6 +5,7 @@ import * as Path from 'path'
 import {
   compareColours,
   parseColours,
+  unreadColourLines,
 } from '../../../../script/firestrike-colours'
 
 describe('parseColours', () => {
@@ -60,6 +61,62 @@ describe('compareColours', () => {
 
   it('fails on a source without colours', () => {
     assert.ok(compareColours('nothing here', '$fs-a: #111111;').length > 0)
+  })
+})
+
+describe('unreadColourLines (format drift fails closed)', () => {
+  it('finds nothing in plain lines, comments and other values', () => {
+    assert.deepEqual(
+      unreadColourLines(
+        '// $fs-x: #123456;\n$fs-a: #111111; // note\n$fs-b: $fs-a;\n$fs-sans: ui-sans-serif;\n'
+      ),
+      []
+    )
+  })
+
+  it('reports a colour the comparison would not read', () => {
+    for (const line of [
+      '$fs_a: #111111;',
+      '$FS-A: #111111;',
+      '$fs-a: #111111 !default;',
+      '  grund: #ffffff,',
+      '$fs-a: #111111, #222222;',
+      '$fs-a: rgba(#111111, 0.5);',
+      '$fs-a: #111111',
+    ]) {
+      assert.equal(unreadColourLines(`ok\n${line}\n`).length, 1, line)
+    }
+  })
+
+  it('makes compareColours fail on such a line in the source or in the copy', () => {
+    const ok = '$fs-a: #111111;\n'
+    assert.ok(
+      compareColours(ok + '$fs_b: #222222;\n', ok).some(p =>
+        p.includes('the source holds')
+      )
+    )
+    assert.ok(
+      compareColours(ok, ok + '$fs-b: #222222 !default;\n').some(p =>
+        p.includes('the copy holds')
+      )
+    )
+  })
+
+  it('finds none in the copy of this repository', () => {
+    const copy = readFileSync(
+      Path.join(
+        __dirname,
+        '..',
+        '..',
+        '..',
+        '..',
+        'app',
+        'styles',
+        '_firestrike.scss'
+      ),
+      'utf8'
+    )
+    assert.deepEqual(unreadColourLines(copy), [])
   })
 })
 

@@ -25,11 +25,41 @@ export function parseColours(text: string): ReadonlyMap<string, string> {
   return colours
 }
 
+/**
+ * Lines outside `//` comments that hold a hex colour but are not a plain
+ * `$name: #hex;` line (an underscore or capital in the name, `!default`, a
+ * value in a map, a second colour on the line): the comparison would not read
+ * them, so they are reported instead of being skipped.
+ */
+export function unreadColourLines(text: string): string[] {
+  const lines = new Array<string>()
+
+  text.split(/\r?\n/).forEach((line, i) => {
+    const code = line.split('//')[0]
+    const holdsColour = /#[0-9a-fA-F]{3,8}\b/.test(code)
+    const isRead = new RegExp(ColourLine.source).test(line)
+
+    if (holdsColour && !isRead) {
+      lines.push(`line ${i + 1}: ${line.trim()}`)
+    }
+  })
+
+  return lines
+}
+
 /** What differs between the source and the copy, one line each; empty when they agree. */
 export function compareColours(source: string, copy: string): string[] {
   const from = parseColours(source)
   const to = parseColours(copy)
   const problems = new Array<string>()
+
+  // Fail closed: a colour the comparison cannot read is a problem, not a skip.
+  for (const line of unreadColourLines(source)) {
+    problems.push(`the source holds a colour that is not read (${line})`)
+  }
+  for (const line of unreadColourLines(copy)) {
+    problems.push(`the copy holds a colour that is not read (${line})`)
+  }
 
   if (from.size === 0) {
     problems.push('the source holds no colour variable (wrong file?)')

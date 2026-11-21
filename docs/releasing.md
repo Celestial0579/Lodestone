@@ -34,7 +34,8 @@ files (build provenance). The workflow publishes nothing. The builds are unsigne
 
 1. Make sure CI on `main` is green.
 2. Set the app version to the prerelease version (`1.0.3-beta01`) in
-   `app/package.json`, and add the entries of the release to `changelog.json` under
+   `app/package.json` and `app/package-lock.json` (the version is there twice; `npm run
+   validate-version` checks it), and add the entries of the release to `changelog.json` under
    the final version (`1.0.3`). Run `npm run validate-changelog`. Merge this to `main`.
 3. Run _Build the Windows setup for a release_ on that commit (`workflow_dispatch`). Note the
    run id.
@@ -62,7 +63,8 @@ The final is a build of its own, because the app version differs from the beta's
 It is tested like the beta.
 
 1. Make sure CI on `main` is green and every open item for the release is closed.
-2. Set the app version to the final version (`1.0.3`) in `app/package.json`.
+2. Set the app version to the final version (`1.0.3`) in `app/package.json` and
+   `app/package-lock.json` (twice; `npm run validate-version` checks it).
    `changelog.json` already holds the entries. Merge this to `main`.
 3. Run _Build the Windows setup for a release_ on that commit. Note the run id.
 4. Run _Smoke test the Windows setup_ with that run id. It must pass without

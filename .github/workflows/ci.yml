@@ -70,6 +70,10 @@ jobs:
       - name: Typecheck
         run: npm exec -- tsc --noEmit -p tsconfig.json
 
+      # The app version is in app/package.json and twice in app/package-lock.json.
+      - name: Check the app version in the lock file
+        run: npm run validate-version
+
       # app/styles/_firestrike.scss is a copy of the Firestrike tokens. The
       # source of the values is the export in Celestial0579/firestrike-branding,
       # taken here at a pinned commit, never from its main branch: moving to a

@@ -1,5 +1,8 @@
 {
   "releases": {
+    "1.0.9": [
+      "[Improved] Update Electron, the runtime Lodestone is built on, from 44.9.1 to 44.11.4: Chromium and V8 security fixes, Node.js 24.22.3, and certificates of revoked eMudhra intermediates are no longer trusted"
+    ],
     "1.0.8": [
       "[Fixed] Files that Windows runs, installs, mounts or starts a program with (scripts, shortcuts, installers, disk images and every other type on Microsoft's list of blocked Outlook attachments) are no longer opened with the program Windows has for them; Lodestone shows a message instead, and the file can still be shown in its folder",
       "[Fixed] Email avatars of a Gitea or Forgejo instance under a sub path are requested from that sub path, not from the root of the host",

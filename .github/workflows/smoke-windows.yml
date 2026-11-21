@@ -223,7 +223,15 @@ jobs:
           . "$env:RUNNER_TEMP\smoke.ps1"
           $proxyLog = "$env:RUNNER_TEMP\proxy.log"
           $proxy = Start-Process node -ArgumentList '.github/smoke/refusing-proxy.js', '8899', $proxyLog -PassThru -WindowStyle Hidden
-          Start-Sleep 2
+          # The app asks for updates at once, so it starts only when the proxy
+          # says it is listening (a fixed sleep lost this race once, #124).
+          $listening = $false
+          for ($i = 0; $i -lt 40 -and -not $listening; $i++) {
+            if ($proxy.HasExited) { throw "the proxy exited with $($proxy.ExitCode)" }
+            $listening = (Test-Path $proxyLog) -and [bool](Select-String -Path $proxyLog -SimpleMatch 'listening on 8899' -Quiet)
+            if (-not $listening) { Start-Sleep -Milliseconds 500 }
+          }
+          if (-not $listening) { throw 'the proxy did not say it is listening within 20 seconds' }
           $exe = "$env:LOCALAPPDATA\Lodestone\app-$env:VERSION\Lodestone.exe"
           $app = Start-Process $exe -ArgumentList '--proxy-server=127.0.0.1:8899' -PassThru
           $logs = "$env:LOCALAPPDATA\Lodestone\logs"

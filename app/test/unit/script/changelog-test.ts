@@ -36,8 +36,9 @@ describe('findDuplicateKeys', () => {
     assert.deepEqual(findDuplicateKeys('{"a": "\\"x\\": 1, \\"x\\": 2"}'), [])
   })
 
-  it('reads escapes in keys', () => {
-    assert.deepEqual(findDuplicateKeys('{"a\\"b": 1, "a\\"b": 2}'), ['a\\"b'])
+  it('reads escapes in keys, and counts two spellings of one key as one', () => {
+    assert.deepEqual(findDuplicateKeys('{"a\\"b": 1, "a\\"b": 2}'), ['a"b'])
+    assert.deepEqual(findDuplicateKeys('{"b": 1, "\\u0062": 2}'), ['b'])
   })
 })
 

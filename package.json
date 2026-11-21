@@ -49,7 +49,8 @@
     "draft-release": "ts-node -P script/tsconfig.json script/draft-release/index.ts",
     "draft-release:format": "prettier --check --write changelog.json app/package.json && npm run validate-changelog --",
     "draft-release:pr": "ts-node -P script/tsconfig.json script/draft-release/draft-pull-request.ts",
-    "validate-changelog": "ts-node -P script/tsconfig.json script/validate-changelog.ts"
+    "validate-changelog": "ts-node -P script/tsconfig.json script/validate-changelog.ts",
+    "check-firestrike-colours": "ts-node -P script/tsconfig.json script/firestrike-colours.ts"
   },
   "author": {
     "name": "Celestial0579",

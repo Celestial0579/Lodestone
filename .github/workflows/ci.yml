@@ -70,6 +70,19 @@ jobs:
       - name: Typecheck
         run: npm exec -- tsc --noEmit -p tsconfig.json
 
+      # app/styles/_firestrike.scss is a copy of the Firestrike tokens. The
+      # source of the values is the export in Celestial0579/firestrike-branding,
+      # taken here at a pinned commit, never from its main branch: moving to a
+      # newer commit is a deliberate change of this line (and of the copy).
+      - name: Check the Firestrike colours against the branding export
+        env:
+          FIRESTRIKE_BRANDING_SHA: 9ecdbe6efc78561a8f496c05430d508c2fc5aac4
+        run: |
+          git clone --quiet https://github.com/Celestial0579/firestrike-branding "$RUNNER_TEMP/firestrike-branding"
+          git -C "$RUNNER_TEMP/firestrike-branding" checkout --quiet --detach "$FIRESTRIKE_BRANDING_SHA"
+          test "$(git -C "$RUNNER_TEMP/firestrike-branding" rev-parse HEAD)" = "$FIRESTRIKE_BRANDING_SHA"
+          npm run check-firestrike-colours -- "$RUNNER_TEMP/firestrike-branding/exporte/_firestrike.scss" app/styles/_firestrike.scss
+
       - name: Test the forge translation layer
         run: node script/test.mjs app/test/unit/gitea
 

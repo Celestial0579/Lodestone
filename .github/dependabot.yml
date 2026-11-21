@@ -45,10 +45,11 @@ updates:
       - dependency-name: '*'
         update-types:
           - version-update:semver-major
-      # #133: 2.9 does not load under the test runner's tsx hook
+      # #133: from 2.0.2 on, tslib does not load under the test runner's tsx hook
+      # (checked version by version: 2.0.1 loads, 2.0.2 to 2.8.1 and 2.9 do not)
       - dependency-name: tslib
         versions:
-          - '>=2.9.0'
+          - '>=2.0.2'
       # #133: 1.0.28 and later ship the Copilot CLI in platform packages and
       # need vscode-jsonrpc 10; the build and license scripts and the webpack
       # resolution of vscode-jsonrpc have to follow first

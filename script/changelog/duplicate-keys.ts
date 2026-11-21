@@ -4,6 +4,15 @@
  * release that is listed twice in changelog.json would show only the entry
  * that comes last (#122).
  */
+/** The key as JSON.parse reads it, or as written when it is not valid JSON. */
+function unescapeKey(raw: string): string {
+  try {
+    return JSON.parse(`"${raw}"`)
+  } catch {
+    return raw
+  }
+}
+
 export function findDuplicateKeys(text: string): ReadonlyArray<string> {
   interface IFrame {
     readonly isObject: boolean
@@ -41,12 +50,14 @@ export function findDuplicateKeys(text: string): ReadonlyArray<string> {
 
       const top = stack[stack.length - 1]
       if (top !== undefined && top.isObject && top.expectKey) {
-        if (top.keys.has(value)) {
+        // Two spellings of one key (`"b"` and `"\u0062"`) are the same key.
+        const key = unescapeKey(value)
+        if (top.keys.has(key)) {
           const path = pathOf()
-          duplicates.push(path === '' ? value : `${path}.${value}`)
+          duplicates.push(path === '' ? key : `${path}.${key}`)
         }
-        top.keys.add(value)
-        top.key = value
+        top.keys.add(key)
+        top.key = key
         top.expectKey = false
       }
 

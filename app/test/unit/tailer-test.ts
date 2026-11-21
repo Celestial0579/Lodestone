@@ -72,7 +72,9 @@ async function setupTailer(t: TestContext) {
 async function consume(stream: Fs.ReadStream) {
   const closed = once(stream, 'close')
   const chunks: Buffer[] = []
-  stream.on('data', (chunk: Buffer) => chunks.push(chunk))
+  stream.on('data', (chunk: string | Buffer) => {
+    chunks.push(Buffer.from(chunk))
+  })
   await closed
   return Buffer.concat(chunks).toString()
 }

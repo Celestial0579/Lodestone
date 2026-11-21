@@ -77,6 +77,15 @@ export const renderer = merge({}, commonConfig, {
         test: /\.cmd$/,
         type: 'asset/resource',
       },
+      // react-confetti 6.4 is an ES module that imports 'react/jsx-runtime'
+      // without an extension. webpack 5 resolves the imports of an ES module
+      // as fully specified and fails on that; this package alone may resolve
+      // them the way a CommonJS module does (#133).
+      {
+        test: /\.m?js$/,
+        include: path.resolve(__dirname, 'node_modules', 'react-confetti'),
+        resolve: { fullySpecified: false },
+      },
     ],
   },
   plugins: [
